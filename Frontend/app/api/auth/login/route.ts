@@ -19,6 +19,12 @@ export async function GET(request: NextRequest) {
     .digest("base64url");
   const redirectUri = config.webOrigin + "/api/auth/callback";
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("returnTo"));
+  const requestedLocale =
+    request.nextUrl.searchParams.get("locale") ??
+    request.cookies.get("asterloom-locale")?.value;
+  const uiLocale = requestedLocale?.toLowerCase().startsWith("zh")
+    ? "zh-CN"
+    : "en";
 
   await saveLoginTransaction(state, {
     codeVerifier,
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
     response_type: "code",
     scope: "openid profile email roles offline_access asterloom.api",
     state,
+    ui_locales: uiLocale,
   }).toString();
 
   const response = NextResponse.redirect(authorizationUrl);

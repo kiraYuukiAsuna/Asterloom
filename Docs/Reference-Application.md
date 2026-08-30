@@ -1,0 +1,164 @@
+# Asterloom 全能力参考应用与诊断规范
+
+## 1. 目标
+
+参考应用不是演示用的静态页面，而是 Asterloom 的长期端到端契约：使用公开 C# SDK、原生 gRPC 和 gRPC JSON Transcoding 对平台能力做真实写入、读取和校验。任一能力失败时必须单独报告模块、状态码、gRPC 状态和错误正文，禁止退化成统一的 `An unexpected error occurred.`。
+
+它由三个 C# 项目组成：
+
+| 项目 | 作用 |
+| --- | --- |
+| `Asterloom.ReferenceApp.Contracts` | 示例应用自己的 protobuf 契约，不污染 Asterloom 核心协议和 OpenAPI。 |
+| `Asterloom.ReferenceApp.Backend` | ASP.NET Core 后台；同时提供原生 gRPC 与 JSON Transcoding，并使用 Npgsql 写入 PostgreSQL。 |
+| `Asterloom.ReferenceApp.Client` | 控制台/桌面宿主客户端；负责 Passport 登录、平台数据准备及全能力诊断。 |
+
+调用关系：
+
+```text
+Reference Client
+  ├─ Passport (OIDC authorization code + PKCE / client credentials)
+  ├─ Asterloom gRPC + JSON/HTTP
+  │    ├─ Authorization
+  │    ├─ Targeting / Feature / Rollout
+  │    ├─ Config
+  │    ├─ Release / signed artifact download
+  │    ├─ Analytics
+  │    ├─ Telemetry management
+  │    ├─ Storage
+  │    └─ Operations / OpenAPI
+  ├─ OTLP → OpenTelemetry Collector
+  └─ Reference Backend
+       ├─ native gRPC :5091
+       ├─ JSON Transcoding :5090
+       └─ Npgsql → PostgreSQL reference_app schema
+```
+
+## 2. 命令
+
+客户端包含三个命令：
+
+```bash
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+```
+
+- `provision`：创建独立的 tenant/application/environment，以及分群、已发布 Feature Flag、已发布动态配置、存储桶、签名密钥、更新通道、签名更新包、Analytics Schema/Write Key 和 Telemetry Source；敏感状态只写入被 Git 忽略的 `reference-state.json`。
+- `doctor`：逐项运行诊断。某项失败不会阻止后续能力，进程最终以非零退出码表示存在失败；加 `--json` 可供 CI 和监控采集。
+- `login`：启动系统浏览器，以 OIDC Authorization Code + PKCE 登录 Passport，并验证 token/refresh token。此命令用于桌面交互验证，不在无界面的容器中执行。
+
+服务身份和原生客户端由管理面完成一次性注册：
+
+```bash
+bash Deploy/Scripts/Provision-Reference-App.sh
+```
+
+该脚本使用 Web BFF 登录，不把管理员 access token 暴露给浏览器脚本；它创建/轮换 `asterloom-reference-service` 密钥、创建 `asterloom-reference-native`，并把服务身份绑定到全局 `super-administrator`。生成的密钥只保存在 `.data/reference-app/reference.env`，权限为 `0600`；可写状态单独位于 `.data/reference-app/state`，生产容器仍以非 root UID 1654 运行。
+
+## 3. 环境变量
+
+| 名称 | 必需 | 说明 |
+| --- | --- | --- |
+| `ASTERLOOM_REFERENCE_CLIENT_ID` | 是 | confidential service client ID。 |
+| `ASTERLOOM_REFERENCE_CLIENT_SECRET` | 是 | service client secret。 |
+| `ASTERLOOM_BASE_URL` | 否 | Asterloom gRPC/HTTP 地址；默认生产域名。 |
+| `ASTERLOOM_ISSUER` | 否 | Passport issuer；默认同平台地址。 |
+| `ASTERLOOM_REFERENCE_BACKEND_URL` | 否 | 参考后台 JSON Transcoding 地址。 |
+| `ASTERLOOM_REFERENCE_BACKEND_GRPC_URL` | 否 | 参考后台原生 gRPC 地址。 |
+| `ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID` | 否 | public native OIDC client ID。 |
+| `ASTERLOOM_REFERENCE_STATE_FILE` | 否 | provision 产生的状态文件。 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | 否 | OTLP Collector 地址；未设置时禁用导出。 |
+
+除显式启用的 loopback 开发环境外，Passport 和平台地址必须使用 HTTPS。
+
+## 4. 能力覆盖和成功条件
+
+| 能力 | 真实操作 | 成功条件 |
+| --- | --- | --- |
+| Identity | OIDC discovery、client credentials、受保护 Identity API；另有交互登录命令 | 能取得 token，受保护 API 返回成功；PKCE 登录能形成 principal。 |
+| Authorization | `AsterloomAuthorizationClient.CheckPermissionAsync` | 服务身份在指定 scope 获得 `feature.flag.evaluate`。 |
+| Targeting | `AsterloomTargetingAdminClient.ListSegmentsAsync` | PostgreSQL 中创建的 segment 可由 gRPC SDK 读取。 |
+| Feature Flag | `AsterloomFeatureProvider` | CN context 命中 segment 并返回 `on/true`。 |
+| Rollout | Feature allocation 与 Release 100% rollout | 产生稳定且可解释的命中结果。 |
+| Dynamic Config | `AsterloomConfigClient` snapshot/typed getter | CN context 返回目标值，snapshot 包含配置 key。 |
+| Desktop Update | `AsterloomReleaseClient` check/download/verify | 找到新版本，manifest 和 artifact RSA-PSS 签名及 SHA-256 全部通过。生产桌面包可直接把同一 client 包装为 `AsterloomVelopackUpdateSource` 交给 Velopack `UpdateManager` 安装。 |
+| Analytics | `AsterloomAnalyticsClient.TrackAsync/FlushAsync` | Schema 校验通过且 accepted=1、remaining=0。 |
+| Telemetry | 自定义 Activity/Meter/Log + OTLP；读取 source/collector health | 三类信号均生成，Collector 管理 API 可访问。 |
+| RPC | 调用参考后台 `RecordHeartbeat` | 原生 HTTP/2 gRPC 成功返回 heartbeat ID。 |
+| HTTP | 调用同一 protobuf 的 JSON 路由 | HTTP/1.1 POST/GET 成功，证明浏览器可用 Transcoding。 |
+| File Storage | SDK upload/complete/download | 对象可读回且字节完全一致，SHA-256 一致。 |
+| Persistence | 参考后台 Npgsql 查询 | 新 heartbeat 可从 PostgreSQL `reference_app.client_heartbeats` 读回。 |
+| Operations | health、API catalog、OpenAPI，以及各后台主列表 | 全部返回 2xx；用于捕获缺表、权限映射和代理错误。 |
+
+参考应用生成的诊断更新包是平台传输/签名探针；如果要测试 Velopack 的最终替换与重启，应把由 `vpk pack` 生成的真实 `.nupkg` 上传到同一 channel。平台检查、定向、签名验证和下载路径保持不变。
+
+## 5. 生产部署与运行
+
+生产 Compose 新增 `reference-backend`，Nginx 路由如下：
+
+- `/api/reference/*` → 参考后台 JSON Transcoding (`127.0.0.1:15082`)
+- `/asterloom.reference.v1.ReferenceAppService/*` → 参考后台原生 gRPC (`127.0.0.1:15083`)
+- 其他 `/asterloom.*` → Asterloom Server 专用 HTTP/2 端口 (`127.0.0.1:15084`)，HTTP/JSON 继续使用 `127.0.0.1:15080`。
+
+生产执行：
+
+```bash
+docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml up -d reference-backend
+bash Deploy/Scripts/Provision-Reference-App.sh
+docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \
+  --profile reference run --rm --no-deps reference-client provision --json
+docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \
+  --profile reference run --rm --no-deps reference-client doctor --json
+```
+
+`doctor` 的 JSON 输出应由 CI 或定时监控保存；任何 `succeeded=false` 都应视为平台回归。
+
+## 6. 本轮生产问题与修复
+
+Web 的多个 `An unexpected error occurred.` 并非前端统一主题问题，而是生产迁移工具只注册了 Platform、Authorization、Audit 和 Infrastructure。Server 已启用但迁移工具漏掉 Targeting、Feature、Config、Storage、Release、Analytics、Telemetry，导致页面查询不存在的表，例如 `release.channels`、`targeting.segments`、`telemetry.recent_errors`。
+
+迁移工具现已与 Server 的模块注册对齐，并由数据库集成测试固定迁移总数。参考客户端的 Operations 步骤还会持续访问这些模块主列表，防止以后再次出现“模块已启动、表未迁移”的静默漂移。
+
+参考应用继续发现并固定了以下部署/SDK 边界：
+
+| 问题 | 根因 | 修复 |
+| --- | --- | --- |
+| 参考客户端拿不到 service secret | Compose 的 `environment` 空值覆盖了 `env_file` | 不再声明空 secret；凭据只由权限为 `0600` 的 `reference.env` 注入。 |
+| Release/Storage 预签名传输返回 S3 `multiple authentication types` | 统一 HttpClient 又给 AWS Signature V4 URL 添加 Bearer | API 与对象传输使用不同 HttpClient；公共 Bearer Handler 同时跳过预签名 URL，并禁止向非 Asterloom origin 泄漏 token。 |
+| `reference-state.json` 无法写入 | bind mount 为 `root:root`，容器以 UID 1654 运行 | 凭据目录与可写状态目录分离，state 目录只授权给 UID 1654，容器保持非 root。 |
+| Authorization/Targeting/Feature 原生 gRPC 返回 502 | 明文单端口无法在 HTTP/1.1 和 HTTP/2 间通过 ALPN 协商 | Asterloom Server 使用 `8080/Http1` 与 `8081/Http2` 独立端点；Nginx gRPC upstream 改到生产端口 `15084`。 |
+| `compose run` 重建平台依赖 | 一次性诊断命令默认启动 `depends_on` | 生产命令统一使用 `run --rm --no-deps`，参考后端和平台服务单独常驻。 |
+| PostgreSQL 首次连接打印缺少 `libgssapi` | Npgsql 默认优先探测 GSS，而容器部署只使用密码认证 | 容器连接串显式设置 `GSS Encryption Mode=Disable`，避免无意义的 Kerberos native library 探测。 |
+
+## 7. 2026-08-31 验收基线
+
+- 生产 `provision` 成功创建全套资源，`doctor` 13/13 通过。
+- .NET Unit 46、Integration 9、Contract 20，共 75 项通过。
+- Web Vitest 29 项、生产 Chromium Playwright E2E 15 项全部通过；E2E 覆盖全部管理能力、Passport/BFF 和浅色主题。
+- ESLint、TypeScript、Next.js production build 与生产 Smoke Test 全部通过。
+
+## 8. Web 生产回归
+
+生产回归使用独立配置，不启动本地 `webServer`，也不在仓库中保存管理员凭据：
+
+```powershell
+$env:ASTERLOOM_E2E_WEB_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
+$env:ASTERLOOM_E2E_PASSPORT_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
+$env:ASTERLOOM_E2E_API_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
+$env:ASTERLOOM_E2E_ADMIN_EMAIL = "<production-admin-email>"
+$env:ASTERLOOM_E2E_ADMIN_PASSWORD = "<production-admin-password>"
+npm --prefix Frontend run test:e2e:production
+```
+
+生产配置固定单 worker，并在失败时保留 screenshot、video 和 trace。测试数据使用每次运行唯一的 slug、actor 和策略名称，避免历史数据造成定位歧义。
+
+本轮 Web 回归发现并修复：
+
+| 问题 | 根因 | 修复 |
+| --- | --- | --- |
+| Config 连续保存、校验、发布偶发版本冲突 | 异步保存尚未完成时后续按钮仍可点击 | mutation 期间禁用相关操作，并等待最新 draft version。 |
+| Storage/Release 预签名上传返回 `AccessDenied` | Kiota metadata/header 已标准化后被二次解析，签名所需的 `x-amz-meta-*` header 被丢弃 | transfer ticket schema 同时接受 Kiota `additionalData` 和已标准化字典，并增加回归单测。 |
+| 租户超过 25 条后，新建 Targeting/Telemetry scope 无法继续 | 新租户落在分页之外，页面仍在第一页，选中 ID 无法解析为当前页记录 | 创建租户、应用、环境后自动按新 slug 定位；分页数量不再影响后续操作。 |
+| Authorization 重跑后定位器命中多条历史策略 | 策略描述使用固定测试值 | 策略名称加入本轮唯一后缀，保持生产回归可重复执行。 |
+
+2026-08-31 最终连续生产回归结果为 `15 passed (5.1m)`；随后生产 Smoke Test 通过，参考客户端 `doctor --json` 为 13/13，Asterloom 相关容器近 20 分钟无 severe 日志，Nginx 最近 5000 条请求无 5xx。

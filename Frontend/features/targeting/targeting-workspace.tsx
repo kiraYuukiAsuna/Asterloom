@@ -64,6 +64,8 @@ import {
   type TargetingRuleDraft,
 } from "./rule-editor";
 import { useTargetingSelection } from "./targeting-store";
+import { translate } from "@/lib/i18n/locale";
+import { formatNumber } from "@/lib/i18n/format";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -238,14 +240,14 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       const result = await work();
       await segments.mutate();
-      toast.success(successMessage);
+      toast.success(translate(successMessage));
       return result;
     } catch (error) {
       await segments.mutate();
       toast.error(
-        isTargetingVersionConflict(error)
+        translate(isTargetingVersionConflict(error)
           ? "This segment changed in another session. Latest data loaded; review it and retry."
-          : targetingErrorMessage(error),
+          : targetingErrorMessage(error)),
       );
       return undefined;
     } finally {
@@ -280,7 +282,7 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
       setEditRule(createRuleDraft(detail.rule));
       setSimulation(undefined);
     } catch (error) {
-      toast.error(targetingErrorMessage(error));
+      toast.error(translate(targetingErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -337,7 +339,7 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
   }
 
   async function changeStatus(record: TargetingSegmentRecord, restore: boolean) {
-    if (!restore && !window.confirm(`Archive ${record.displayName}?`)) {
+    if (!restore && !window.confirm(translate(`Archive ${record.displayName}?`))) {
       return;
     }
     const updated = await runMutation(
@@ -393,9 +395,9 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
         preview,
       );
       setSimulation(result);
-      toast.success("Server-side targeting simulation completed.");
+      toast.success(translate("Server-side targeting simulation completed."));
     } catch (error) {
-      toast.error(targetingErrorMessage(error));
+      toast.error(translate(targetingErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -416,21 +418,16 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
       data-targeting-workspace
     >
       <fieldset className="contents" disabled={!hydrated}>
-        <section className="overflow-hidden rounded-3xl border border-violet-300/10 bg-[linear-gradient(135deg,rgba(139,92,246,0.14),rgba(15,23,42,0.84)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
+        <section className="theme-hero-violet overflow-hidden rounded-3xl border border-violet-300/10 bg-[linear-gradient(135deg,rgba(139,92,246,0.14),rgba(15,23,42,0.84)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Badge variant="info">
                 <SlidersHorizontal aria-hidden="true" className="size-3" />
-                Engine v1 live
-              </Badge>
+                {translate("Engine v1 live")}</Badge>
               <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-                Targeting segments
-              </h1>
+                {translate("Targeting segments")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-                Build reusable typed audiences, inspect short-circuit traces, and
-                preview deterministic allocations. Simulations always run on the
-                server against the same engine used by Feature, Config, and Release.
-              </p>
+                {translate("Build reusable typed audiences, inspect short-circuit traces, and preview deterministic allocations. Simulations always run on the server against the same engine used by Feature, Config, and Release.")}</p>
             </div>
             <div className="text-right text-xs leading-6 text-slate-500">
               <p>{selectedTenant?.displayName ?? "Choose a tenant"}</p>
@@ -460,9 +457,7 @@ export function TargetingWorkspace({ csrfToken }: { csrfToken: string }) {
         {!scope ? (
           <Card>
             <CardContent className="flex min-h-40 items-center justify-center pt-6 text-center text-sm text-slate-500">
-              Select an active tenant, application, and environment to manage its
-              targeting segments.
-            </CardContent>
+              {translate("Select an active tenant, application, and environment to manage its targeting segments.")}</CardContent>
           </Card>
         ) : (
           <>
@@ -591,21 +586,20 @@ function ScopeSelector({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Environment scope</CardTitle>
+        <CardTitle>{translate("Environment scope")}</CardTitle>
         <CardDescription>
-          Segments are isolated to one application environment.
-        </CardDescription>
+          {translate("Segments are isolated to one application environment.")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-3">
         <label>
-          <span className={labelClassName}>Tenant</span>
+          <span className={labelClassName}>{translate("Tenant")}</span>
           <select
-            aria-label="Targeting tenant"
+            aria-label={translate("Targeting tenant")}
             className={inputClassName}
             onChange={(event) => onTenant(event.target.value)}
             value={tenantId}
           >
-            <option value="">Select tenant</option>
+            <option value="">{translate("Select tenant")}</option>
             {tenants.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
                 {tenant.displayName} ({tenant.slug})
@@ -614,15 +608,15 @@ function ScopeSelector({
           </select>
         </label>
         <label>
-          <span className={labelClassName}>Application</span>
+          <span className={labelClassName}>{translate("Application")}</span>
           <select
-            aria-label="Targeting application"
+            aria-label={translate("Targeting application")}
             className={inputClassName}
             disabled={!tenantId}
             onChange={(event) => onApplication(event.target.value)}
             value={applicationId}
           >
-            <option value="">Select application</option>
+            <option value="">{translate("Select application")}</option>
             {applications.map((application) => (
               <option key={application.id} value={application.id}>
                 {application.displayName} ({application.slug})
@@ -631,15 +625,15 @@ function ScopeSelector({
           </select>
         </label>
         <label>
-          <span className={labelClassName}>Environment</span>
+          <span className={labelClassName}>{translate("Environment")}</span>
           <select
-            aria-label="Targeting environment"
+            aria-label={translate("Targeting environment")}
             className={inputClassName}
             disabled={!applicationId}
             onChange={(event) => onEnvironment(event.target.value)}
             value={environmentId}
           >
-            <option value="">Select environment</option>
+            <option value="">{translate("Select environment")}</option>
             {environments.map((environment) => (
               <option key={environment.id} value={environment.id}>
                 {environment.displayName} ({environment.slug})
@@ -664,11 +658,9 @@ function CatalogPanel({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Braces aria-hidden="true" className="size-4 text-violet-300" />
-          Evaluation contract
-        </CardTitle>
+          {translate("Evaluation contract")}</CardTitle>
         <CardDescription>
-          Authoritative built-ins, operators, and bucketing limits.
-        </CardDescription>
+          {translate("Authoritative built-ins, operators, and bucketing limits.")}</CardDescription>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -684,14 +676,14 @@ function CatalogPanel({
                   key={attribute.key}
                 >
                   {attribute.key}
-                  {attribute.required ? " *" : ""}
+                  {translate(attribute.required ? " *" : "")}
                 </span>
               ))}
             </div>
             <div className="grid grid-cols-3 gap-3 text-center text-xs">
-              <Metric label="Operators" value={catalog.operators.length} />
-              <Metric label="Max conditions" value={catalog.maximumConditions} />
-              <Metric label={`Buckets ${catalog.bucketingVersion}`} value={catalog.bucketCount} />
+              <Metric label={translate("Operators")} value={catalog.operators.length} />
+              <Metric label={translate("Max conditions")} value={catalog.maximumConditions} />
+              <Metric label={translate(`Buckets ${catalog.bucketingVersion}`)} value={catalog.bucketCount} />
             </div>
           </div>
         )}
@@ -736,10 +728,9 @@ function SegmentList({
   return (
     <Card data-ui-action="list-segments">
       <CardHeader>
-        <CardTitle>Segment inventory</CardTitle>
+        <CardTitle>{translate("Segment inventory")}</CardTitle>
         <CardDescription>
-          Search, inspect, archive, and restore reusable audiences.
-        </CardDescription>
+          {translate("Search, inspect, archive, and restore reusable audiences.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -749,10 +740,10 @@ function SegmentList({
               className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600"
             />
             <input
-              aria-label="Search targeting segments"
+              aria-label={translate("Search targeting segments")}
               className={cn(inputClassName, "pl-9")}
               onChange={(event) => onQuery(event.target.value)}
-              placeholder="Search key or name"
+              placeholder={translate("Search key or name")}
               value={query}
             />
           </label>
@@ -762,8 +753,7 @@ function SegmentList({
               onChange={(event) => onIncludeArchived(event.target.checked)}
               type="checkbox"
             />
-            Include archived segments
-          </label>
+            {translate("Include archived segments")}</label>
         </div>
 
         {error ? (
@@ -772,8 +762,7 @@ function SegmentList({
           <LoadingLabel />
         ) : data.length === 0 ? (
           <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-500">
-            No segments match this scope and filter.
-          </p>
+            {translate("No segments match this scope and filter.")}</p>
         ) : (
           <div className="space-y-2">
             {data.map((segment) => {
@@ -794,16 +783,14 @@ function SegmentList({
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-slate-100">{segment.displayName}</p>
                         <Badge variant={active ? "success" : "planned"}>
-                          {active ? "Active" : "Archived"}
+                          {translate(active ? "Active" : "Archived")}
                         </Badge>
                       </div>
                       <p className="mt-1 font-mono text-xs text-violet-300">
                         {segment.key}
                       </p>
                       <p className="mt-2 text-xs text-slate-500">
-                        {segment.rule.conditions.length} condition
-                        {segment.rule.conditions.length === 1 ? "" : "s"} · v
-                        {segment.version}
+                        {segment.rule.conditions.length} {translate(segment.rule.conditions.length === 1 ? "condition" : "conditions")} {translate("· v")} {segment.version}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -820,11 +807,10 @@ function SegmentList({
                         ) : (
                           <SlidersHorizontal className="size-3.5" />
                         )}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                       {active ? (
                         <Button
-                          aria-label={`Archive ${segment.displayName}`}
+                          aria-label={translate(`Archive ${segment.displayName}`)}
                           data-ui-action="archive-segment"
                           disabled={pending === `archive-${segment.id}`}
                           onClick={() => void onChangeStatus(segment, false)}
@@ -844,8 +830,7 @@ function SegmentList({
                           variant="ghost"
                         >
                           <RotateCcw className="size-3.5" />
-                          Restore
-                        </Button>
+                          {translate("Restore")}</Button>
                       )}
                     </div>
                   </div>
@@ -856,10 +841,10 @@ function SegmentList({
         )}
 
         <div className="flex items-center justify-between border-t border-white/8 pt-4">
-          <span className="text-xs text-slate-500">Page {pageIndex + 1}</span>
+          <span className="text-xs text-slate-500">{translate("Page")}{" "}{pageIndex + 1}</span>
           <div className="flex gap-2">
             <Button
-              aria-label="Previous segment page"
+              aria-label={translate("Previous segment page")}
               disabled={pageIndex === 0}
               onClick={onPrevious}
               size="sm"
@@ -869,7 +854,7 @@ function SegmentList({
               <ChevronLeft className="size-3.5" />
             </Button>
             <Button
-              aria-label="Next segment page"
+              aria-label={translate("Next segment page")}
               disabled={!nextPageToken}
               onClick={() => onNext(nextPageToken)}
               size="sm"
@@ -913,10 +898,9 @@ function CreateSegmentPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create segment</CardTitle>
+        <CardTitle>{translate("Create segment")}</CardTitle>
         <CardDescription>
-          Keys are immutable; rules remain editable with optimistic concurrency.
-        </CardDescription>
+          {translate("Keys are immutable; rules remain editable with optimistic concurrency.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -926,18 +910,18 @@ function CreateSegmentPanel({
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <label>
-              <span className={labelClassName}>Segment key</span>
+              <span className={labelClassName}>{translate("Segment key")}</span>
               <input
                 className={inputClassName}
                 name="segmentKey"
                 onChange={(event) => onKey(event.target.value)}
-                placeholder="early-access"
+                placeholder={translate("early-access")}
                 required
                 value={keyValue}
               />
             </label>
             <label>
-              <span className={labelClassName}>Display name</span>
+              <span className={labelClassName}>{translate("Display name")}</span>
               <input
                 className={inputClassName}
                 name="segmentDisplayName"
@@ -948,7 +932,7 @@ function CreateSegmentPanel({
             </label>
           </div>
           <label className="block">
-            <span className={labelClassName}>Description</span>
+            <span className={labelClassName}>{translate("Description")}</span>
             <textarea
               className={cn(inputClassName, "h-20 resize-y py-2")}
               name="segmentDescription"
@@ -968,8 +952,7 @@ function CreateSegmentPanel({
             ) : (
               <Plus className="size-4" />
             )}
-            Create segment
-          </Button>
+            {translate("Create segment")}</Button>
         </form>
       </CardContent>
     </Card>
@@ -1004,13 +987,13 @@ function EditSegmentPanel({
     <Card>
       <CardHeader className="sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <CardTitle>Selected segment · {segment.key}</CardTitle>
+          <CardTitle>{translate("Selected segment ·")}{" "}{segment.key}</CardTitle>
           <CardDescription>
-            Loaded through GetSegment · version {segment.version}
+            {translate("Loaded through GetSegment · version")} {segment.version}
           </CardDescription>
         </div>
         <Badge variant={active ? "success" : "planned"}>
-          {active ? "Active" : "Archived"}
+          {translate(active ? "Active" : "Archived")}
         </Badge>
       </CardHeader>
       <CardContent>
@@ -1021,7 +1004,7 @@ function EditSegmentPanel({
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <label>
-              <span className={labelClassName}>Display name</span>
+              <span className={labelClassName}>{translate("Display name")}</span>
               <input
                 className={inputClassName}
                 name="editSegmentDisplayName"
@@ -1031,12 +1014,12 @@ function EditSegmentPanel({
               />
             </label>
             <label>
-              <span className={labelClassName}>Immutable key</span>
+              <span className={labelClassName}>{translate("Immutable key")}</span>
               <input className={inputClassName} disabled value={segment.key} />
             </label>
           </div>
           <label className="block">
-            <span className={labelClassName}>Description</span>
+            <span className={labelClassName}>{translate("Description")}</span>
             <textarea
               className={cn(inputClassName, "h-20 resize-y py-2")}
               name="editSegmentDescription"
@@ -1056,8 +1039,7 @@ function EditSegmentPanel({
             ) : (
               <Save className="size-4" />
             )}
-            Save segment
-          </Button>
+            {translate("Save segment")}</Button>
         </form>
       </CardContent>
     </Card>
@@ -1135,25 +1117,23 @@ function SimulatorPanel({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FlaskConical aria-hidden="true" className="size-4 text-violet-300" />
-          Server-side simulator
-        </CardTitle>
+          {translate("Server-side simulator")}</CardTitle>
         <CardDescription>
-          Context values are sent to the authoritative engine and are never logged.
-        </CardDescription>
+          {translate("Context values are sent to the authoritative engine and are never logged.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-5" onSubmit={onSubmit}>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="sm:col-span-2">
-              <span className={labelClassName}>Segment</span>
+              <span className={labelClassName}>{translate("Segment")}</span>
               <select
-                aria-label="Simulation segment"
+                aria-label={translate("Simulation segment")}
                 className={inputClassName}
                 onChange={(event) => selectSegment(event.target.value)}
                 required
                 value={segmentId}
               >
-                <option value="">Select segment</option>
+                <option value="">{translate("Select segment")}</option>
                 {segments.map((segment) => (
                   <option key={segment.id} value={segment.id}>
                     {segment.displayName} ({segment.key})
@@ -1162,38 +1142,38 @@ function SimulatorPanel({
               </select>
             </label>
             <TextField
-              label="Targeting key"
+              label={translate("Targeting key")}
               name="simulationTargetingKey"
               onChange={onTargetingKey}
               required
               value={targetingKey}
             />
             <TextField
-              label="User ID"
+              label={translate("User ID")}
               name="simulationUserId"
               onChange={onUserId}
               value={userId}
             />
             <TextField
-              label="Client version"
+              label={translate("Client version")}
               name="simulationClientVersion"
               onChange={onClientVersion}
               value={clientVersion}
             />
             <TextField
-              label="Platform"
+              label={translate("Platform")}
               name="simulationPlatform"
               onChange={onPlatform}
               value={platform}
             />
             <TextField
-              label="Region"
+              label={translate("Region")}
               name="simulationRegion"
               onChange={onRegion}
               value={region}
             />
             <TextField
-              label="Language"
+              label={translate("Language")}
               name="simulationLanguage"
               onChange={onLanguage}
               value={language}
@@ -1203,14 +1183,12 @@ function SimulatorPanel({
           <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-200">Custom attributes</p>
+                <p className="text-sm font-medium text-slate-200">{translate("Custom attributes")}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Typed non-PII attributes only; built-ins belong in the fields above.
-                </p>
+                  {translate("Typed non-PII attributes only; built-ins belong in the fields above.")}</p>
               </div>
               <Button onClick={onAddAttribute} size="sm" type="button" variant="outline">
-                <Plus className="size-3.5" /> Add attribute
-              </Button>
+                <Plus className="size-3.5" /> {translate("Add attribute")}</Button>
             </div>
             <div className="mt-3 space-y-2">
               {attributes.map((attribute, index) => (
@@ -1219,7 +1197,7 @@ function SimulatorPanel({
                   key={index}
                 >
                   <input
-                    aria-label={`Custom attribute ${index + 1} name`}
+                    aria-label={translate(`Custom attribute ${index + 1} name`)}
                     className={inputClassName}
                     onChange={(event) =>
                       onAttribute(
@@ -1229,11 +1207,11 @@ function SimulatorPanel({
                         }),
                       )
                     }
-                    placeholder="subscription.plan"
+                    placeholder={translate("subscription.plan")}
                     value={attribute.key}
                   />
                   <select
-                    aria-label={`Custom attribute ${index + 1} type`}
+                    aria-label={translate(`Custom attribute ${index + 1} type`)}
                     className={inputClassName}
                     onChange={(event) =>
                       onAttribute(
@@ -1245,12 +1223,12 @@ function SimulatorPanel({
                     }
                     value={attribute.kind}
                   >
-                    <option value="text">Text</option>
-                    <option value="truth">Boolean</option>
-                    <option value="numeric">Number</option>
+                    <option value="text">{translate("Text")}</option>
+                    <option value="truth">{translate("Boolean")}</option>
+                    <option value="numeric">{translate("Number")}</option>
                   </select>
                   <input
-                    aria-label={`Custom attribute ${index + 1} value`}
+                    aria-label={translate(`Custom attribute ${index + 1} value`)}
                     className={inputClassName}
                     onChange={(event) =>
                       onAttribute(
@@ -1263,7 +1241,7 @@ function SimulatorPanel({
                     value={attribute.rawValue}
                   />
                   <Button
-                    aria-label={`Remove custom attribute ${index + 1}`}
+                    aria-label={translate(`Remove custom attribute ${index + 1}`)}
                     onClick={() =>
                       onAttribute(attributes.filter((_, candidate) => candidate !== index))
                     }
@@ -1285,27 +1263,26 @@ function SimulatorPanel({
                 onChange={(event) => onBucketEnabled(event.target.checked)}
                 type="checkbox"
               />
-              Preview deterministic bucket allocation
-            </label>
+              {translate("Preview deterministic bucket allocation")}</label>
             {bucketEnabled && (
               <div className="mt-4 space-y-3">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <TextField
-                    label="Resource type"
+                    label={translate("Resource type")}
                     name="simulationResourceType"
                     onChange={onResourceType}
                     required
                     value={resourceType}
                   />
                   <TextField
-                    label="Resource key"
+                    label={translate("Resource key")}
                     name="simulationResourceKey"
                     onChange={onResourceKey}
                     required
                     value={resourceKey}
                   />
                   <TextField
-                    label="Stable salt"
+                    label={translate("Stable salt")}
                     name="simulationSalt"
                     onChange={onSalt}
                     value={salt}
@@ -1317,7 +1294,7 @@ function SimulatorPanel({
                     key={index}
                   >
                     <input
-                      aria-label={`Allocation ${index + 1} variant`}
+                      aria-label={translate(`Allocation ${index + 1} variant`)}
                       className={inputClassName}
                       onChange={(event) =>
                         onAllocation(
@@ -1327,11 +1304,11 @@ function SimulatorPanel({
                           }),
                         )
                       }
-                      placeholder="enabled"
+                      placeholder={translate("enabled")}
                       value={allocation.variant}
                     />
                     <input
-                      aria-label={`Allocation ${index + 1} start`}
+                      aria-label={translate(`Allocation ${index + 1} start`)}
                       className={inputClassName}
                       min="0"
                       onChange={(event) =>
@@ -1346,7 +1323,7 @@ function SimulatorPanel({
                       value={allocation.start}
                     />
                     <input
-                      aria-label={`Allocation ${index + 1} end`}
+                      aria-label={translate(`Allocation ${index + 1} end`)}
                       className={inputClassName}
                       max="100000"
                       onChange={(event) =>
@@ -1361,7 +1338,7 @@ function SimulatorPanel({
                       value={allocation.end}
                     />
                     <Button
-                      aria-label={`Remove allocation ${index + 1}`}
+                      aria-label={translate(`Remove allocation ${index + 1}`)}
                       disabled={allocations.length === 1}
                       onClick={() =>
                         onAllocation(
@@ -1377,8 +1354,7 @@ function SimulatorPanel({
                   </div>
                 ))}
                 <Button onClick={onAddAllocation} size="sm" type="button" variant="outline">
-                  <Plus className="size-3.5" /> Add allocation
-                </Button>
+                  <Plus className="size-3.5" /> {translate("Add allocation")}</Button>
               </div>
             )}
           </div>
@@ -1389,8 +1365,7 @@ function SimulatorPanel({
             ) : (
               <FlaskConical className="size-4" />
             )}
-            Simulate on server
-          </Button>
+            {translate("Simulate on server")}</Button>
         </form>
 
         {simulation && <SimulationResult result={simulation} />}
@@ -1409,15 +1384,15 @@ function SimulationResult({ result }: { result: TargetingSimulationResult }) {
           </div>
           <div>
             <p className="font-semibold text-white">
-              {result.matched ? "Segment matched" : "Segment did not match"}
+              {translate(result.matched ? "Segment matched" : "Segment did not match")}
             </p>
             <p className="text-xs text-slate-500">
-              {result.segmentKey} · version {result.segmentVersion}
+              {result.segmentKey} {" "}{translate("· version")}{" "}{result.segmentVersion}
             </p>
           </div>
         </div>
         <Badge variant={result.matched ? "success" : "planned"}>
-          {result.reason.replaceAll("_", " ")}
+          {translate(result.reason.replaceAll("_", " ").toLowerCase())}
         </Badge>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1425,17 +1400,17 @@ function SimulationResult({ result }: { result: TargetingSimulationResult }) {
           <div className="rounded-lg border border-white/8 bg-black/10 p-3" key={trace.conditionId}>
             <p className="font-mono text-xs text-slate-300">{trace.conditionId}</p>
             <p className="mt-1 text-xs text-slate-500">
-              {trace.matched ? "Matched" : "Not matched"} · {prettyReason(trace.reason)}
+              {translate(trace.matched ? "Matched" : "Not matched")} · {prettyReason(trace.reason)}
             </p>
           </div>
         ))}
       </div>
       {result.bucketEvaluated && (
         <div className="mt-4 rounded-lg border border-white/8 bg-black/10 p-3 text-xs text-slate-400">
-          Bucket <span className="font-mono text-violet-300">{result.bucket}</span>
+          {translate("Bucket")}<span className="font-mono text-violet-300">{result.bucket}</span>
           {result.selectedVariant ? (
             <>
-              {" "}selected variant{" "}
+              {" "}{translate("selected variant")}{" "}
               <span className="font-mono text-violet-300">
                 {result.selectedVariant}
               </span>
@@ -1482,7 +1457,7 @@ function TextField({
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3">
-      <p className="text-lg font-semibold text-white">{value.toLocaleString()}</p>
+      <p className="text-lg font-semibold text-white">{formatNumber(value)}</p>
       <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-600">{label}</p>
     </div>
   );
@@ -1492,7 +1467,7 @@ function InlineError({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-2 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-3 text-sm text-rose-200">
       <CircleAlert className="mt-0.5 size-4 shrink-0" />
-      <span>{message}</span>
+      <span>{translate(message)}</span>
     </div>
   );
 }
@@ -1500,8 +1475,7 @@ function InlineError({ message }: { message: string }) {
 function LoadingLabel() {
   return (
     <p className="flex items-center gap-2 text-sm text-slate-500">
-      <LoaderCircle className="size-4 animate-spin" /> Loading…
-    </p>
+      <LoaderCircle className="size-4 animate-spin" /> {translate("Loading…")}</p>
   );
 }
 
@@ -1538,8 +1512,8 @@ function replaceAt<T>(values: T[], index: number, value: T): T[] {
 }
 
 function prettyReason(value: string): string {
-  return value
+  return translate(value
     .replace("TARGETING_CONDITION_REASON_", "")
     .toLowerCase()
-    .replaceAll("_", " ");
+    .replaceAll("_", " "));
 }

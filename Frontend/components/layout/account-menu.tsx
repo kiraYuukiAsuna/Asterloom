@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { Actor } from "@/lib/auth/types";
 
 export function AccountMenu({
@@ -14,6 +15,7 @@ export function AccountMenu({
   actor: Actor;
   csrfToken: string;
 }) {
+  const { t } = useLocale();
   const [pending, setPending] = useState(false);
 
   async function logout() {
@@ -29,7 +31,7 @@ export function AccountMenu({
       const payload = (await response.json()) as { logoutUrl: string };
       window.location.assign(payload.logoutUrl);
     } catch {
-      toast.error("Unable to sign out. Please try again.");
+      toast.error(t("Unable to sign out. Please try again."));
       setPending(false);
     }
   }
@@ -48,11 +50,11 @@ export function AccountMenu({
         <UserRound aria-hidden="true" className="size-4" />
       </div>
       <Button
-        aria-label="Sign out"
+        aria-label={t("Sign out")}
         disabled={pending}
         onClick={logout}
         size="icon"
-        title="Sign out"
+        title={t("Sign out")}
         type="button"
         variant="ghost"
       >

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { apiUrl, signIn, webUrl } from "./support/environment";
+
 test("manages every Analytics API through the Web Console", async ({ page, request }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(25_000);
@@ -17,12 +19,12 @@ test("manages every Analytics API through the Web Console", async ({ page, reque
     .getByLabel("Primary navigation")
     .getByRole("link", { name: "Analytics", exact: true })
     .click();
-  await expect(page).toHaveURL("http://localhost:3000/analytics/explorer");
+  await expect(page).toHaveURL(webUrl("/analytics/explorer"));
   await expect(page.locator("[data-analytics-workspace]")).toHaveAttribute("data-hydrated", "true");
   await selectScope(page, tenantSlug, applicationSlug, environmentSlug);
 
   await page.getByRole("link", { name: "Schemas & keys", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/analytics/schemas");
+  await expect(page).toHaveURL(webUrl("/analytics/schemas"));
   await expect(page.locator('[data-ui-action="list-analytics-schemas"]')).toBeVisible();
   await expect(page.locator('[data-ui-action="list-analytics-write-keys"]')).toBeVisible();
 
@@ -73,7 +75,7 @@ test("manages every Analytics API through the Web Console", async ({ page, reque
   secret = (await page.getByTestId("analytics-write-key-secret").textContent())!.trim();
 
   const eventId = `analytics-e2e-${suffix}`;
-  const ingestion = await request.post("http://127.0.0.1:5080/api/v1/analytics/events:batch", {
+  const ingestion = await request.post(apiUrl("/api/v1/analytics/events:batch"), {
     headers: { "X-Asterloom-Write-Key": secret },
     data: {
       events: [
@@ -96,7 +98,7 @@ test("manages every Analytics API through the Web Console", async ({ page, reque
   expect(JSON.parse(ingestionBody).accepted, ingestionBody).toBe(1);
 
   await page.getByRole("link", { name: "Explorer", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/analytics/explorer");
+  await expect(page).toHaveURL(webUrl("/analytics/explorer"));
   await expect(page.locator('[data-ui-action="list-analytics-events"]')).toBeVisible();
   const eventRow = page.getByTestId(`analytics-event-${eventId}`);
   await expect(eventRow).toBeVisible();
@@ -151,14 +153,4 @@ async function createScope(
   await form.getByLabel("Type").selectOption("Development");
   await form.locator('[data-ui-action="create-environment"]').click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page.locator('input[name="Password"]').fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

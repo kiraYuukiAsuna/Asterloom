@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Asterloom.Modules.Hosting;
+using Asterloom.Modules.Analytics;
 using Asterloom.Modules.Auditing;
 using Asterloom.Modules.Authorization;
 using Asterloom.Modules.Authorization.Model;
@@ -18,6 +19,7 @@ using Asterloom.Modules.Requests;
 using Asterloom.Modules.Targeting;
 using Asterloom.Modules.Targeting.Model;
 using Asterloom.Modules.Storage;
+using Asterloom.Modules.Telemetry;
 using Asterloom.Modules.Release;
 using Asterloom.Modules.Release.Model;
 using Asterloom.Targeting;
@@ -61,6 +63,8 @@ public sealed class DatabaseMigrationTests
             new ConfigModule(),
             new StorageModule(),
             new ReleaseModule(),
+            new AnalyticsModule(),
+            new TelemetryModule(),
             new InfrastructureModule());
         services.AddAsterloomIdentityCore(configuration);
 
@@ -388,9 +392,9 @@ public sealed class DatabaseMigrationTests
         }
 
         Assert.True(firstRun.IsPersistent);
-        Assert.Equal(9, firstRun.AppliedCount);
+        Assert.Equal(11, firstRun.AppliedCount);
         Assert.Equal(0, secondRun.AppliedCount);
-        Assert.Equal(9, secondRun.PreviouslyAppliedCount);
+        Assert.Equal(11, secondRun.PreviouslyAppliedCount);
         Assert.Contains(
             persistedEnvironments.Items,
             candidate => candidate.Id == environment.Id);

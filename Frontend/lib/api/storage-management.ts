@@ -80,12 +80,18 @@ export const storageMetadataSchema = z
   )
   .refine((value) => Object.keys(value).length <= 32, "At most 32 metadata entries are allowed.");
 
-const wireMetadataSchema = z
-  .object({
-    additionalData: z.record(z.string(), z.string()).optional(),
-  })
-  .nullish()
-  .transform((value) => storageMetadataSchema.parse(value?.additionalData ?? {}));
+const wireMetadataSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) return {};
+  if (
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "additionalData" in value
+  ) {
+    return (value as { additionalData?: unknown }).additionalData ?? {};
+  }
+
+  return value;
+}, storageMetadataSchema);
 
 const bucketSchema = z.object({
   accessPolicy: storageAccessPolicySchema,

@@ -32,6 +32,8 @@ import {
   analyticsInputClassName,
   analyticsLabelClassName,
 } from "./analytics-ui";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 type EventFilters = {
   actorId: string;
@@ -82,9 +84,9 @@ export function AnalyticsExplorerPanel({
     setGettingId(item.id);
     try {
       setSelected(await getAnalyticsEvent(scope, item.id));
-      toast.success("Analytics event refreshed.");
+      toast.success(translate("Analytics event refreshed."));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -95,30 +97,29 @@ export function AnalyticsExplorerPanel({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)]">
         <Card data-ui-action="list-analytics-events">
           <CardHeader>
-            <CardTitle>Event stream</CardTitle>
+            <CardTitle>{translate("Event stream")}</CardTitle>
             <CardDescription>
-              Browse accepted, schema-validated event payloads after server-side redaction.
-            </CardDescription>
+              {translate("Browse accepted, schema-validated event payloads after server-side redaction.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={applyFilters}>
-              <FilterInput label="Event name" name="analyticsEventName" onChange={(value) => setDraft((current) => ({ ...current, eventName: value }))} placeholder="checkout.completed" value={draft.eventName} />
-              <FilterInput label="Actor / anonymous ID" name="analyticsActor" onChange={(value) => setDraft((current) => ({ ...current, actorId: value }))} placeholder="user-123" value={draft.actorId} />
-              <FilterInput label="Event ID" name="analyticsEventId" onChange={(value) => setDraft((current) => ({ ...current, eventId: value }))} placeholder="SDK idempotency ID" value={draft.eventId} />
-              <FilterInput label="From" name="analyticsFrom" onChange={(value) => setDraft((current) => ({ ...current, fromAt: value }))} type="datetime-local" value={draft.fromAt} />
-              <FilterInput label="To" name="analyticsTo" onChange={(value) => setDraft((current) => ({ ...current, toAt: value }))} type="datetime-local" value={draft.toAt} />
+              <FilterInput label={translate("Event name")} name="analyticsEventName" onChange={(value) => setDraft((current) => ({ ...current, eventName: value }))} placeholder={translate("checkout.completed")} value={draft.eventName} />
+              <FilterInput label={translate("Actor / anonymous ID")} name="analyticsActor" onChange={(value) => setDraft((current) => ({ ...current, actorId: value }))} placeholder={translate("user-123")} value={draft.actorId} />
+              <FilterInput label={translate("Event ID")} name="analyticsEventId" onChange={(value) => setDraft((current) => ({ ...current, eventId: value }))} placeholder={translate("SDK idempotency ID")} value={draft.eventId} />
+              <FilterInput label={translate("From")} name="analyticsFrom" onChange={(value) => setDraft((current) => ({ ...current, fromAt: value }))} type="datetime-local" value={draft.fromAt} />
+              <FilterInput label={translate("To")} name="analyticsTo" onChange={(value) => setDraft((current) => ({ ...current, toAt: value }))} type="datetime-local" value={draft.toAt} />
               <div className="flex items-end gap-2">
-                <Button type="submit" variant="outline"><Search className="size-4" /> Apply filters</Button>
-                <Button onClick={() => { setDraft(emptyFilters); setFilters(emptyFilters); }} type="button" variant="ghost">Clear</Button>
+                <Button type="submit" variant="outline"><Search className="size-4" /> {" "}{translate("Apply filters")}</Button>
+                <Button onClick={() => { setDraft(emptyFilters); setFilters(emptyFilters); }} type="button" variant="ghost">{translate("Clear")}</Button>
               </div>
             </form>
 
             {events.isLoading ? (
-              <AnalyticsLoading label="Loading analytics events" />
+              <AnalyticsLoading label={translate("Loading analytics events")} />
             ) : events.error ? (
               <AnalyticsError error={events.error} />
             ) : (events.data?.events.length ?? 0) === 0 ? (
-              <AnalyticsEmpty message="No analytics events match these filters." />
+              <AnalyticsEmpty message={translate("No analytics events match these filters.")} />
             ) : (
               <div className="space-y-2">
                 {events.data?.events.map((item) => (
@@ -136,7 +137,7 @@ export function AnalyticsExplorerPanel({
                       <button className="min-w-0 text-left" onClick={() => setSelected(item)} type="button">
                         <p className="font-mono text-sm font-medium text-cyan-200">{item.eventName}</p>
                         <p className="mt-1 truncate text-xs text-slate-500">
-                          {item.actorId || item.anonymousId} · {new Date(item.occurredAt).toLocaleString()}
+                          {item.actorId || item.anonymousId} · {formatDateTime(item.occurredAt)}
                         </p>
                         <p className="mt-1 truncate font-mono text-[11px] text-slate-600">{item.eventId}</p>
                       </button>
@@ -149,8 +150,7 @@ export function AnalyticsExplorerPanel({
                         variant="outline"
                       >
                         {gettingId === item.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                     </div>
                   </article>
                 ))}
@@ -159,7 +159,7 @@ export function AnalyticsExplorerPanel({
           </CardContent>
         </Card>
 
-        {selected ? <EventInspector event={selected} /> : <AnalyticsEmpty message="Select an event to inspect its redacted properties and context." />}
+        {selected ? <EventInspector event={selected} /> : <AnalyticsEmpty message={translate("Select an event to inspect its redacted properties and context.")} />}
       </div>
 
       <AnalyticsQueryCard csrfToken={csrfToken} scope={scope} />
@@ -177,13 +177,13 @@ function EventInspector({ event }: { event: AnalyticsEventRecord }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
-          <div><dt className="text-slate-600">Actor</dt><dd className="mt-1 break-all text-slate-300">{event.actorId || event.anonymousId}</dd></div>
-          <div><dt className="text-slate-600">Schema</dt><dd className="mt-1 text-slate-300">v{event.schemaVersion}</dd></div>
-          <div><dt className="text-slate-600">SDK</dt><dd className="mt-1 text-slate-300">{event.sdkName || "unknown"} {event.sdkVersion}</dd></div>
-          <div><dt className="text-slate-600">Write key</dt><dd className="mt-1 font-mono text-slate-300">{event.writeKeyPrefix}</dd></div>
+          <div><dt className="text-slate-600">{translate("Actor")}</dt><dd className="mt-1 break-all text-slate-300">{event.actorId || event.anonymousId}</dd></div>
+          <div><dt className="text-slate-600">{translate("Schema")}</dt><dd className="mt-1 text-slate-300">{translate("v")}{event.schemaVersion}</dd></div>
+          <div><dt className="text-slate-600">{translate("SDK")}</dt><dd className="mt-1 text-slate-300">{event.sdkName || "unknown"} {event.sdkVersion}</dd></div>
+          <div><dt className="text-slate-600">{translate("Write key")}</dt><dd className="mt-1 font-mono text-slate-300">{event.writeKeyPrefix}</dd></div>
         </dl>
-        <JsonBlock label="Properties" value={event.propertiesJson} />
-        <JsonBlock label="Context" value={event.contextJson} />
+        <JsonBlock label={translate("Properties")} value={event.propertiesJson} />
+        <JsonBlock label={translate("Context")} value={event.contextJson} />
       </CardContent>
     </Card>
   );
@@ -209,9 +209,9 @@ function AnalyticsQueryCard({ csrfToken, scope }: { csrfToken: string; scope: An
         interval,
       });
       setBuckets(result.buckets);
-      toast.success("Analytics aggregation refreshed.");
+      toast.success(translate("Analytics aggregation refreshed."));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -221,29 +221,28 @@ function AnalyticsQueryCard({ csrfToken, scope }: { csrfToken: string; scope: An
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Outcome query</CardTitle>
-        <CardDescription>Aggregate event volume and unique actors by a bounded time interval.</CardDescription>
+        <CardTitle>{translate("Outcome query")}</CardTitle>
+        <CardDescription>{translate("Aggregate event volume and unique actors by a bounded time interval.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <form className="grid gap-3 md:grid-cols-4" onSubmit={submit}>
-          <FilterInput label="Event names (comma separated)" name="queryEventNames" onChange={setEventNames} placeholder="checkout.completed" value={eventNames} />
-          <FilterInput label="From" name="queryFrom" onChange={setFromAt} type="datetime-local" value={fromAt} />
-          <FilterInput label="To" name="queryTo" onChange={setToAt} type="datetime-local" value={toAt} />
-          <label className={analyticsLabelClassName}>Interval<select className={analyticsInputClassName} onChange={(event) => setInterval(event.target.value as typeof interval)} value={interval}><option value="hour">Hour</option><option value="day">Day</option><option value="week">Week</option></select></label>
+          <FilterInput label={translate("Event names (comma separated)")} name="queryEventNames" onChange={setEventNames} placeholder={translate("checkout.completed")} value={eventNames} />
+          <FilterInput label={translate("From")} name="queryFrom" onChange={setFromAt} type="datetime-local" value={fromAt} />
+          <FilterInput label={translate("To")} name="queryTo" onChange={setToAt} type="datetime-local" value={toAt} />
+          <label className={analyticsLabelClassName}>{translate("Interval")}<select className={analyticsInputClassName} onChange={(event) => setInterval(event.target.value as typeof interval)} value={interval}><option value="hour">{translate("Hour")}</option><option value="day">{translate("Day")}</option><option value="week">{translate("Week")}</option></select></label>
           <div className="md:col-span-4">
             <Button data-ui-action="query-analytics-aggregation" disabled={busy} type="submit">
               {busy ? <LoaderCircle className="size-4 animate-spin" /> : <BarChart3 className="size-4" />}
-              Run query
-            </Button>
+              {translate("Run query")}</Button>
           </div>
         </form>
         {buckets.length > 0 && (
           <div className="space-y-2" data-testid="analytics-query-results">
             {buckets.map((bucket) => (
               <div className="grid gap-2 rounded-lg border border-white/8 bg-white/[0.02] p-3 sm:grid-cols-[11rem_1fr_8rem] sm:items-center" key={`${bucket.periodStart}:${bucket.eventName}`}>
-                <div><p className="font-mono text-xs text-cyan-200">{bucket.eventName}</p><p className="mt-1 text-[11px] text-slate-600">{new Date(bucket.periodStart).toLocaleString()}</p></div>
+                <div><p className="font-mono text-xs text-cyan-200">{bucket.eventName}</p><p className="mt-1 text-[11px] text-slate-600">{formatDateTime(bucket.periodStart)}</p></div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-cyan-400/60" style={{ width: `${Math.max(2, (bucket.eventCount / maximum) * 100)}%` }} /></div>
-                <p className="text-right text-xs text-slate-400">{bucket.eventCount} events · {bucket.uniqueActors} actors</p>
+                <p className="text-right text-xs text-slate-400">{bucket.eventCount} {" "}{translate("events ·")}{" "}{bucket.uniqueActors} {" "}{translate("actors")}</p>
               </div>
             ))}
           </div>
@@ -265,9 +264,9 @@ function AnalyticsExportCard({ csrfToken, scope }: { csrfToken: string; scope: A
     try {
       const result = await exportAnalyticsEvents(csrfToken, scope, { actorId, eventName, maximumRows });
       downloadBase64(result.fileName, result.contentType, result.content);
-      toast.success(`Exported ${result.exportedRows} analytics events.`);
+      toast.success(translate(`Exported ${result.exportedRows} analytics events.`));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -276,19 +275,18 @@ function AnalyticsExportCard({ csrfToken, scope }: { csrfToken: string; scope: A
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Controlled export</CardTitle>
-        <CardDescription>Download a bounded CSV after applying server-side redaction and spreadsheet neutralization.</CardDescription>
+        <CardTitle>{translate("Controlled export")}</CardTitle>
+        <CardDescription>{translate("Download a bounded CSV after applying server-side redaction and spreadsheet neutralization.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={exportEvents}>
-          <FilterInput label="Event name" name="exportEventName" onChange={setEventName} placeholder="Optional" value={eventName} />
-          <FilterInput label="Actor ID" name="exportActor" onChange={setActorId} placeholder="Optional" value={actorId} />
-          <label className={analyticsLabelClassName}>Maximum rows<input className={analyticsInputClassName} max={10000} min={1} onChange={(event) => setMaximumRows(event.target.valueAsNumber)} type="number" value={maximumRows} /></label>
+          <FilterInput label={translate("Event name")} name="exportEventName" onChange={setEventName} placeholder={translate("Optional")} value={eventName} />
+          <FilterInput label={translate("Actor ID")} name="exportActor" onChange={setActorId} placeholder={translate("Optional")} value={actorId} />
+          <label className={analyticsLabelClassName}>{translate("Maximum rows")}<input className={analyticsInputClassName} max={10000} min={1} onChange={(event) => setMaximumRows(event.target.valueAsNumber)} type="number" value={maximumRows} /></label>
           <div className="sm:col-span-3">
             <Button data-ui-action="export-analytics-events" disabled={busy} type="submit" variant="outline">
               {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
-              Export CSV
-            </Button>
+              {translate("Export CSV")}</Button>
           </div>
         </form>
       </CardContent>

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages and simulates targeting segments through every admin API", async ({
   page,
 }) => {
@@ -23,7 +25,7 @@ test("manages and simulates targeting segments through every admin API", async (
   );
 
   await page.getByRole("link", { name: "Targeting" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/targeting/segments");
+  await expect(page).toHaveURL(webUrl("/targeting/segments"));
   await expect(page.locator("[data-targeting-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -147,16 +149,4 @@ async function createTargetingScope(
     .locator('[data-ui-action="create-environment"]')
     .click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

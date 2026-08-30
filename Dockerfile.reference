@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY global.json ./
+COPY Backend/ Backend/
+COPY Proto/ Proto/
+
+RUN dotnet restore Backend/Samples/Asterloom.ReferenceApp.Backend/Asterloom.ReferenceApp.Backend.csproj
+RUN dotnet restore Backend/Samples/Asterloom.ReferenceApp.Client/Asterloom.ReferenceApp.Client.csproj
+RUN dotnet publish Backend/Samples/Asterloom.ReferenceApp.Backend/Asterloom.ReferenceApp.Backend.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/backend \
+    /p:UseAppHost=false
+RUN dotnet publish Backend/Samples/Asterloom.ReferenceApp.Client/Asterloom.ReferenceApp.Client.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/client \
+    /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS backend
+WORKDIR /app
+ENV DOTNET_EnableDiagnostics=0
+EXPOSE 5090 5091
+COPY --from=build /app/backend ./
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Asterloom.ReferenceApp.Backend.dll"]
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS client
+WORKDIR /app
+ENV DOTNET_EnableDiagnostics=0 \
+    ASTERLOOM_REFERENCE_STATE_FILE=/var/lib/asterloom-reference/reference-state.json
+RUN install -d -o "$APP_UID" -g "$APP_UID" /var/lib/asterloom-reference
+COPY --from=build /app/client ./
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Asterloom.ReferenceApp.Client.dll"]

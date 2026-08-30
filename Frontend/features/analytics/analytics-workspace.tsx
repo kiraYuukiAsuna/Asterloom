@@ -28,6 +28,7 @@ import {
   analyticsInputClassName,
   analyticsLabelClassName,
 } from "./analytics-ui";
+import { translate } from "@/lib/i18n/locale";
 
 const page = { includeArchived: false, pageSize: 100, pageToken: "", query: "" };
 
@@ -66,33 +67,29 @@ export function AnalyticsWorkspace({
 
   return (
     <div className="space-y-6" data-analytics-workspace data-hydrated={hydrated ? "true" : "false"}>
-      <section className="flex flex-col gap-5 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-cyan-400/[0.09] via-slate-950/60 to-violet-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="theme-hero-cyan flex flex-col gap-5 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-cyan-400/[0.09] via-slate-950/60 to-violet-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Badge variant="info">Product intelligence</Badge>
+          <Badge variant="info">{translate("Product intelligence")}</Badge>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            Analytics control center
-          </h1>
+            {translate("Analytics control center")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Govern event contracts and write keys, inspect redacted payloads, and query
-            product outcomes without mixing technical telemetry into business events.
-          </p>
+            {translate("Govern event contracts and write keys, inspect redacted payloads, and query product outcomes without mixing technical telemetry into business events.")}</p>
         </div>
-        <nav aria-label="Analytics views" className="flex rounded-xl border border-white/10 p-1">
-          <AnalyticsTab active={view === "explorer"} href="/analytics/explorer" icon={ChartNoAxesCombined} label="Explorer" />
-          <AnalyticsTab active={view === "schemas"} href="/analytics/schemas" icon={DatabaseZap} label="Schemas & keys" />
+        <nav aria-label={translate("Analytics views")} className="flex rounded-xl border border-white/10 p-1">
+          <AnalyticsTab active={view === "explorer"} href="/analytics/explorer" icon={ChartNoAxesCombined} label={translate("Explorer")} />
+          <AnalyticsTab active={view === "schemas"} href="/analytics/schemas" icon={DatabaseZap} label={translate("Schemas & keys")} />
         </nav>
       </section>
 
       <Card>
         <CardHeader className="sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle>Analytics boundary</CardTitle>
+            <CardTitle>{translate("Analytics boundary")}</CardTitle>
             <CardDescription>
-              Schemas, write keys, retention, and events are isolated per environment.
-            </CardDescription>
+              {translate("Schemas, write keys, retention, and events are isolated per environment.")}</CardDescription>
           </div>
           <Button
-            aria-label="Refresh analytics scope"
+            aria-label={translate("Refresh analytics scope")}
             onClick={() => {
               void tenants.mutate();
               void applications.mutate();
@@ -103,49 +100,45 @@ export function AnalyticsWorkspace({
             variant="outline"
           >
             <RefreshCw aria-hidden="true" className="size-3.5" />
-            Refresh
-          </Button>
+            {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <label className={analyticsLabelClassName}>
-            Tenant
-            <select
-              aria-label="Analytics tenant"
+            {translate("Tenant")}<select
+              aria-label={translate("Analytics tenant")}
               className={analyticsInputClassName}
               onChange={(event) => selection.selectTenant(event.target.value)}
               value={selection.tenantId}
             >
-              <option value="">Choose a tenant</option>
+              <option value="">{translate("Choose a tenant")}</option>
               {(tenants.data?.tenants ?? []).map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>{tenant.displayName} ({tenant.slug})</option>
               ))}
             </select>
           </label>
           <label className={analyticsLabelClassName}>
-            Application
-            <select
-              aria-label="Analytics application"
+            {translate("Application")}<select
+              aria-label={translate("Analytics application")}
               className={analyticsInputClassName}
               disabled={!selection.tenantId}
               onChange={(event) => selection.selectApplication(event.target.value)}
               value={selection.applicationId}
             >
-              <option value="">Choose an application</option>
+              <option value="">{translate("Choose an application")}</option>
               {(applications.data?.applications ?? []).map((application) => (
                 <option key={application.id} value={application.id}>{application.displayName} ({application.slug})</option>
               ))}
             </select>
           </label>
           <label className={analyticsLabelClassName}>
-            Environment
-            <select
-              aria-label="Analytics environment"
+            {translate("Environment")}<select
+              aria-label={translate("Analytics environment")}
               className={analyticsInputClassName}
               disabled={!selection.applicationId}
               onChange={(event) => selection.selectEnvironment(event.target.value)}
               value={selection.environmentId}
             >
-              <option value="">Choose an environment</option>
+              <option value="">{translate("Choose an environment")}</option>
               {(environments.data?.environments ?? []).map((environment) => (
                 <option key={environment.id} value={environment.id}>{environment.displayName} ({environment.slug})</option>
               ))}
@@ -156,7 +149,7 @@ export function AnalyticsWorkspace({
       </Card>
 
       {!scope ? (
-        <AnalyticsEmpty message="Choose a tenant, application, and environment to manage analytics." />
+        <AnalyticsEmpty message={translate("Choose a tenant, application, and environment to manage analytics.")} />
       ) : view === "schemas" ? (
         <AnalyticsSchemasPanel csrfToken={csrfToken} scope={scope} />
       ) : (

@@ -10,6 +10,7 @@ import {
   type FeatureValueInput,
   type FeatureValueKind,
 } from "@/lib/api/feature-management";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -158,9 +159,9 @@ export function FeatureDefinitionEditor({
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <label>
-          <span className={labelClassName}>Default variant</span>
+          <span className={labelClassName}>{translate("Default variant")}</span>
           <select
-            aria-label={`${idPrefix} default variant`}
+            aria-label={translate(`${idPrefix} default variant`)}
             className={inputClassName}
             name={`${idPrefix}DefaultVariant`}
             onChange={(event) =>
@@ -182,8 +183,7 @@ export function FeatureDefinitionEditor({
             onChange={(event) => onChange({ ...draft, enabled: event.target.checked })}
             type="checkbox"
           />
-          Flag enabled
-        </label>
+          {translate("Flag enabled")}</label>
       </div>
 
       <EditorSection
@@ -206,11 +206,10 @@ export function FeatureDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> Add variant
-          </Button>
+            <Plus className="size-3.5" /> {translate("Add variant")}</Button>
         }
-        description={`All values are stored as ${prettyKind(valueKind)}.`}
-        title="Variants"
+        description={translate(`All values are stored as ${prettyKind(valueKind)}.`)}
+        title={translate("Variants")}
       >
         {draft.variants.map((variant, index) => (
           <div
@@ -219,22 +218,22 @@ export function FeatureDefinitionEditor({
             key={index}
           >
             <TextField
-              label="Key"
+              label={translate("Key")}
               name={`${idPrefix}VariantKey`}
               onChange={(value) => updateVariant(index, { key: value })}
               value={variant.key}
             />
             <TextField
-              label="Display name"
+              label={translate("Display name")}
               name={`${idPrefix}VariantDisplayName`}
               onChange={(value) => updateVariant(index, { displayName: value })}
               value={variant.displayName}
             />
             <label>
-              <span className={labelClassName}>Typed value</span>
+              <span className={labelClassName}>{translate("Typed value")}</span>
               {valueKind === FeatureValueKindObject.FEATURE_VALUE_KIND_OBJECT ? (
                 <textarea
-                  aria-label={`${idPrefix} variant ${index + 1} value`}
+                  aria-label={translate(`${idPrefix} variant ${index + 1} value`)}
                   className={`${inputClassName} min-h-20 py-2 font-mono text-xs`}
                   name={`${idPrefix}VariantValue`}
                   onChange={(event) => updateVariant(index, { rawValue: event.target.value })}
@@ -242,7 +241,7 @@ export function FeatureDefinitionEditor({
                 />
               ) : (
                 <input
-                  aria-label={`${idPrefix} variant ${index + 1} value`}
+                  aria-label={translate(`${idPrefix} variant ${index + 1} value`)}
                   className={inputClassName}
                   name={`${idPrefix}VariantValue`}
                   onChange={(event) => updateVariant(index, { rawValue: event.target.value })}
@@ -251,7 +250,7 @@ export function FeatureDefinitionEditor({
               )}
             </label>
             <Button
-              aria-label={`Remove variant ${index + 1}`}
+              aria-label={translate(`Remove variant ${index + 1}`)}
               disabled={draft.variants.length === 1}
               onClick={() => {
                 const variants = draft.variants.filter((_, candidate) => candidate !== index);
@@ -290,14 +289,13 @@ export function FeatureDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> Add prerequisite
-          </Button>
+            <Plus className="size-3.5" /> {translate("Add prerequisite")}</Button>
         }
-        description="Published dependencies must resolve to the expected variant."
-        title="Prerequisites"
+        description={translate("Published dependencies must resolve to the expected variant.")}
+        title={translate("Prerequisites")}
       >
         {draft.prerequisites.length === 0 ? (
-          <EmptyRow text="No prerequisites. This flag evaluates independently." />
+          <EmptyRow text={translate("No prerequisites. This flag evaluates independently.")} />
         ) : (
           draft.prerequisites.map((prerequisite, index) => (
             <div
@@ -305,7 +303,7 @@ export function FeatureDefinitionEditor({
               key={index}
             >
               <TextField
-                label="Flag key"
+                label={translate("Flag key")}
                 name={`${idPrefix}PrerequisiteFlagKey`}
                 onChange={(value) =>
                   onChange({
@@ -319,7 +317,7 @@ export function FeatureDefinitionEditor({
                 value={prerequisite.flagKey}
               />
               <TextField
-                label="Expected variant"
+                label={translate("Expected variant")}
                 name={`${idPrefix}PrerequisiteVariantKey`}
                 onChange={(value) =>
                   onChange({
@@ -333,7 +331,7 @@ export function FeatureDefinitionEditor({
                 value={prerequisite.expectedVariantKey}
               />
               <RemoveButton
-                label={`Remove prerequisite ${index + 1}`}
+                label={translate(`Remove prerequisite ${index + 1}`)}
                 onClick={() =>
                   onChange({
                     ...draft,
@@ -369,18 +367,17 @@ export function FeatureDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> Add segment rule
-          </Button>
+            <Plus className="size-3.5" /> {translate("Add segment rule")}</Button>
         }
-        description="Rules run top-to-bottom and stop at the first matching active segment."
-        title="Targeting rules"
+        description={translate("Rules run top-to-bottom and stop at the first matching active segment.")}
+        title={translate("Targeting rules")}
       >
         {draft.targetingRules.length === 0 ? (
           <EmptyRow
             text={
-              segments.length === 0
+              translate(segments.length === 0
                 ? "Create an active Targeting segment before adding a rule."
-                : "No segment overrides. Evaluation proceeds to allocations."
+                : "No segment overrides. Evaluation proceeds to allocations.")
             }
           />
         ) : (
@@ -390,7 +387,7 @@ export function FeatureDefinitionEditor({
               key={index}
             >
               <TextField
-                label="Rule ID"
+                label={translate("Rule ID")}
                 name={`${idPrefix}TargetingRuleId`}
                 onChange={(value) =>
                   onChange({
@@ -404,7 +401,7 @@ export function FeatureDefinitionEditor({
                 value={rule.id}
               />
               <label>
-                <span className={labelClassName}>Active segment</span>
+                <span className={labelClassName}>{translate("Active segment")}</span>
                 <select
                   className={inputClassName}
                   name={`${idPrefix}TargetingSegment`}
@@ -428,7 +425,7 @@ export function FeatureDefinitionEditor({
               </label>
               <VariantSelect
                 idPrefix={`${idPrefix}Targeting`}
-                label="Serve variant"
+                label={translate("Serve variant")}
                 onChange={(variantKey) =>
                   onChange({
                     ...draft,
@@ -442,7 +439,7 @@ export function FeatureDefinitionEditor({
                 variants={draft.variants}
               />
               <RemoveButton
-                label={`Remove targeting rule ${index + 1}`}
+                label={translate(`Remove targeting rule ${index + 1}`)}
                 onClick={() =>
                   onChange({
                     ...draft,
@@ -477,14 +474,13 @@ export function FeatureDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> Add allocation
-          </Button>
+            <Plus className="size-3.5" /> {translate("Add allocation")}</Button>
         }
-        description="Deterministic v1 buckets use the half-open range [start, end) out of 100,000."
-        title="Rollout allocation"
+        description={translate("Deterministic v1 buckets use the half-open range [start, end) out of 100,000.")}
+        title={translate("Rollout allocation")}
       >
         {draft.allocations.length === 0 ? (
-          <EmptyRow text="No rollout allocation. Unmatched contexts receive the default variant." />
+          <EmptyRow text={translate("No rollout allocation. Unmatched contexts receive the default variant.")} />
         ) : (
           draft.allocations.map((allocation, index) => (
             <div
@@ -493,7 +489,7 @@ export function FeatureDefinitionEditor({
             >
               <VariantSelect
                 idPrefix={`${idPrefix}Allocation`}
-                label="Variant"
+                label={translate("Variant")}
                 onChange={(variantKey) =>
                   onChange({
                     ...draft,
@@ -507,7 +503,7 @@ export function FeatureDefinitionEditor({
                 variants={draft.variants}
               />
               <TextField
-                label="Start"
+                label={translate("Start")}
                 name={`${idPrefix}AllocationStart`}
                 onChange={(start) =>
                   onChange({
@@ -522,7 +518,7 @@ export function FeatureDefinitionEditor({
                 value={allocation.start}
               />
               <TextField
-                label="End"
+                label={translate("End")}
                 name={`${idPrefix}AllocationEnd`}
                 onChange={(end) =>
                   onChange({
@@ -537,7 +533,7 @@ export function FeatureDefinitionEditor({
                 value={allocation.end}
               />
               <RemoveButton
-                label={`Remove allocation ${index + 1}`}
+                label={translate(`Remove allocation ${index + 1}`)}
                 onClick={() =>
                   onChange({
                     ...draft,
@@ -558,7 +554,7 @@ export function FeatureDefinitionEditor({
             onClick={() => {
               if (
                 window.confirm(
-                  "Changing the salt reshuffles rollout buckets. Continue with a new salt?",
+                  translate("Changing the salt reshuffles rollout buckets. Continue with a new salt?"),
                 )
               ) {
                 onChange({ ...draft, bucketingSalt: createSalt() });
@@ -568,14 +564,13 @@ export function FeatureDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <RefreshCw className="size-3.5" /> Generate new salt
-          </Button>
+            <RefreshCw className="size-3.5" /> {translate("Generate new salt")}</Button>
         }
-        description="Keep this stable to preserve each targeting key's bucket assignment."
-        title="Bucketing identity"
+        description={translate("Keep this stable to preserve each targeting key's bucket assignment.")}
+        title={translate("Bucketing identity")}
       >
         <label>
-          <span className={labelClassName}>Stable salt</span>
+          <span className={labelClassName}>{translate("Stable salt")}</span>
           <div className="relative">
             <KeyRound className="absolute left-3 top-3 size-4 text-slate-600" />
             <input
@@ -730,7 +725,7 @@ function defaultRawValue(valueKind: FeatureValueKind, positive: boolean): string
 }
 
 function prettyKind(valueKind: FeatureValueKind): string {
-  return valueKind.replace("FEATURE_VALUE_KIND_", "").toLowerCase();
+  return translate(valueKind.replace("FEATURE_VALUE_KIND_", "").toLowerCase());
 }
 
 function createSalt(): string {

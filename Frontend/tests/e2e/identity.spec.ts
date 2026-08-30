@@ -1,4 +1,6 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser } from "@playwright/test";
+
+import { signIn, webUrl } from "./support/environment";
 
 test("manages the complete Identity surface through the Web Console", async ({ browser, page }) => {
   test.setTimeout(120_000);
@@ -6,7 +8,7 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   page.on("dialog", (dialog) => dialog.accept());
 
   await signIn(page, "/identity/users");
-  await expect(page).toHaveURL("http://localhost:3000/identity/users");
+  await expect(page).toHaveURL(webUrl("/identity/users"));
   await expect(page.locator("[data-identity-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -42,8 +44,12 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await invitationPage
     .locator('input[name="ConfirmPassword"]')
     .fill("Identity-E2E-User!2026");
-  await invitationPage.getByRole("button", { name: "激活账户" }).click();
-  await expect(invitationPage.getByText("账户已激活", { exact: true })).toBeVisible();
+  await invitationPage
+    .getByRole("button", { name: /激活账户|Activate account/ })
+    .click();
+  await expect(
+    invitationPage.getByText(/账户已激活|Account activated/, { exact: true }),
+  ).toBeVisible();
   await invitationPage.close();
   await reveal.getByRole("button", { name: "Dismiss" }).click();
 
@@ -149,26 +155,11 @@ async function establishUserSession(browser: Browser, email: string, password: s
   try {
     const page = await context.newPage();
     await signIn(page, "/", email, password);
-    await expect(page).toHaveURL("http://localhost:3000/");
+    await expect(page).toHaveURL(webUrl("/"));
     const session = await page.request.get("/api/auth/session");
     expect(session.ok()).toBeTruthy();
     expect((await session.json()).actor.email).toBe(email);
   } finally {
     await context.close();
   }
-}
-
-async function signIn(
-  page: Page,
-  returnTo: string,
-  email = "admin@asterloom.test",
-  password = "Asterloom-E2E-Admin!2026",
-) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login(?:\?returnTo=|$)/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill(email);
-  await page.locator('input[name="Password"]').fill(password);
-  await page.getByRole("button", { name: "继续" }).click();
 }

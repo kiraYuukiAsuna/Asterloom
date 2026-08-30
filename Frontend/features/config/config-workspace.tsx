@@ -84,6 +84,8 @@ import {
   type ConfigDefinitionDraft,
 } from "./definition-editor";
 import { useConfigSelection } from "./config-store";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -271,14 +273,14 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       const result = await work();
       await Promise.all([entries.mutate(), revisions.mutate(), snapshots.mutate()]);
-      toast.success(successMessage);
+      toast.success(translate(successMessage));
       return result;
     } catch (error) {
       await entries.mutate();
       toast.error(
-        isConfigVersionConflict(error)
+        translate(isConfigVersionConflict(error)
           ? "This entry changed in another session. Reload it, review, and retry."
-          : configErrorMessage(error),
+          : configErrorMessage(error)),
       );
       return undefined;
     } finally {
@@ -292,7 +294,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       loadIntoEditor(await getConfigEntry(scope, record.id));
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -350,7 +352,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
         result.valid ? "Draft passed validation." : "Draft has blocking issues.",
       );
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -361,16 +363,16 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
     setPending("diff");
     try {
       setDraftDiff(await diffConfigDraft(selectedEntry));
-      toast.success("Draft diff loaded.");
+      toast.success(translate("Draft diff loaded."));
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
   }
 
   async function publishCurrent() {
-    if (!selectedEntry || !window.confirm("Publish this draft as an immutable snapshot?")) return;
+    if (!selectedEntry || !window.confirm(translate("Publish this draft as an immutable snapshot?"))) return;
     const published = await runMutation(
       "publish",
       () => publishConfigEntry(csrfToken, selectedEntry),
@@ -380,7 +382,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
   }
 
   async function rollbackCurrent(revision: number) {
-    if (!selectedEntry || !window.confirm(`Republish revision ${revision} as a new revision?`)) {
+    if (!selectedEntry || !window.confirm(translate(`Republish revision ${revision} as a new revision?`))) {
       return;
     }
     const rolledBack = await runMutation(
@@ -392,7 +394,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
   }
 
   async function changeStatus(record: ConfigEntryRecord, restore: boolean) {
-    if (!restore && !window.confirm(`Archive ${record.displayName}?`)) return;
+    if (!restore && !window.confirm(translate(`Archive ${record.displayName}?`))) return;
     const updated = await runMutation(
       `${restore ? "restore" : "archive"}-${record.id}`,
       () =>
@@ -421,9 +423,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
     setPending("preview");
     try {
       setPreview(await previewConfigValue(csrfToken, selectedEntry, buildContext(), useDraft));
-      toast.success(`${useDraft ? "Draft" : "Published"} effective value resolved.`);
+      toast.success(translate(`${useDraft ? "Draft" : "Published"} effective value resolved.`));
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -446,9 +448,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
         setRuntimeSnapshot(result);
       }
       setSnapshotMode(mode);
-      toast.success(result.notModified ? "Snapshot is unchanged (ETag match)." : "Snapshot loaded.");
+      toast.success(translate(result.notModified ? "Snapshot is unchanged (ETag match)." : "Snapshot loaded."));
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -465,9 +467,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
         Number(knownSnapshotVersion),
       );
       setUpdateResult(result);
-      toast.success(result.changed ? "A newer snapshot is available." : "Snapshot is current.");
+      toast.success(translate(result.changed ? "A newer snapshot is available." : "Snapshot is current."));
     } catch (error) {
-      toast.error(configErrorMessage(error));
+      toast.error(translate(configErrorMessage(error)));
     } finally {
       setPending("");
     }
@@ -480,20 +482,15 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
       data-hydrated={hydrated ? "true" : "false"}
     >
       <fieldset className="contents" disabled={!hydrated}>
-        <section className="overflow-hidden rounded-3xl border border-violet-300/10 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.16),transparent_38%),linear-gradient(135deg,rgba(91,33,182,0.10),rgba(15,23,42,0.88)_55%,rgba(2,6,23,0.97))] p-6 sm:p-8">
+        <section className="theme-hero-violet overflow-hidden rounded-3xl border border-violet-300/10 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.16),transparent_38%),linear-gradient(135deg,rgba(91,33,182,0.10),rgba(15,23,42,0.88)_55%,rgba(2,6,23,0.97))] p-6 sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Badge variant="info">
-                <DatabaseZap className="size-3" /> Immutable snapshots live
-              </Badge>
+                <DatabaseZap className="size-3" /> {translate("Immutable snapshots live")}</Badge>
               <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-                Dynamic configuration
-              </h1>
+                {translate("Dynamic configuration")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-                Author typed values and JSON Schema, preview targeting, inspect diffs, and
-                publish immutable environment snapshots. Client and server visibility are
-                separate runtime surfaces with ETag-aware delivery.
-              </p>
+                {translate("Author typed values and JSON Schema, preview targeting, inspect diffs, and publish immutable environment snapshots. Client and server visibility are separate runtime surfaces with ETag-aware delivery.")}</p>
             </div>
             <div className="text-right text-xs leading-6 text-slate-500">
               <p>{selectedTenant?.displayName ?? "Choose a tenant"}</p>
@@ -529,40 +526,37 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
         {!scope ? (
           <Card>
             <CardContent className="py-14 text-center text-sm text-slate-500">
-              Select a tenant, application, and environment to manage configuration.
-            </CardContent>
+              {translate("Select a tenant, application, and environment to manage configuration.")}</CardContent>
           </Card>
         ) : (
           <>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,.92fr)_minmax(0,1.08fr)]">
               <Card data-ui-action="list-config-entries">
                 <CardHeader>
-                  <CardTitle>Configuration entries</CardTitle>
+                  <CardTitle>{translate("Configuration entries")}</CardTitle>
                   <CardDescription>
-                    Search drafts and published entries in the selected environment.
-                  </CardDescription>
+                    {translate("Search drafts and published entries in the selected environment.")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <label className="relative flex-1">
                       <Search className="pointer-events-none absolute left-3 top-3 size-4 text-slate-600" />
                       <input
-                        aria-label="Search configuration entries"
+                        aria-label={translate("Search configuration entries")}
                         className={`${inputClassName} pl-9`}
                         onChange={(event) => changeFilter(event.target.value)}
-                        placeholder="Search key, name, or description"
+                        placeholder={translate("Search key, name, or description")}
                         value={query}
                       />
                     </label>
                     <label className="flex h-10 items-center gap-2 text-xs text-slate-400">
                       <input
-                        aria-label="Include archived configuration"
+                        aria-label={translate("Include archived configuration")}
                         checked={includeArchived}
                         onChange={(event) => changeFilter(query, event.target.checked)}
                         type="checkbox"
                       />
-                      Include archived
-                    </label>
+                      {translate("Include archived")}</label>
                   </div>
                   <div className="space-y-2">
                     {(entries.data?.entries ?? []).map((entry) => (
@@ -591,7 +585,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                             </p>
                           </button>
                           <Badge variant={entry.status === activeStatus ? "success" : "planned"}>
-                            {entry.status === activeStatus ? "Active" : "Archived"}
+                            {translate(entry.status === activeStatus ? "Active" : "Archived")}
                           </Badge>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
@@ -599,9 +593,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                           <span>·</span>
                           <span>{visibilityLabel(entry.visibility)}</span>
                           <span>·</span>
-                          <span>draft {entry.draftRevision}</span>
+                          <span>{translate("draft")}{" "}{entry.draftRevision}</span>
                           <span>·</span>
-                          <span>published {entry.publishedRevision || "—"}</span>
+                          <span>{translate("published")}{" "}{entry.publishedRevision || "—"}</span>
                         </div>
                         <div className="mt-3 flex gap-2">
                           {entry.status === activeStatus ? (
@@ -611,8 +605,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                               size="sm"
                               variant="ghost"
                             >
-                              <Archive className="size-3.5" /> Archive
-                            </Button>
+                              <Archive className="size-3.5" /> {translate("Archive")}</Button>
                           ) : (
                             <Button
                               data-ui-action="restore-config-entry"
@@ -620,14 +613,13 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                               size="sm"
                               variant="outline"
                             >
-                              <RotateCcw className="size-3.5" /> Restore
-                            </Button>
+                              <RotateCcw className="size-3.5" /> {translate("Restore")}</Button>
                           )}
                         </div>
                       </div>
                     ))}
                     {!entries.isLoading && (entries.data?.entries.length ?? 0) === 0 && (
-                      <EmptyState text="No configuration entries match this scope and filter." />
+                      <EmptyState text={translate("No configuration entries match this scope and filter.")} />
                     )}
                   </div>
                   <div className="flex items-center justify-between">
@@ -637,9 +629,8 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       size="sm"
                       variant="ghost"
                     >
-                      <ChevronLeft className="size-3.5" /> Previous
-                    </Button>
-                    <span className="text-xs text-slate-600">Page {pageIndex + 1}</span>
+                      <ChevronLeft className="size-3.5" /> {translate("Previous")}</Button>
+                    <span className="text-xs text-slate-600">{translate("Page")}{" "}{pageIndex + 1}</span>
                     <Button
                       disabled={!entries.data?.nextPageToken}
                       onClick={() => {
@@ -655,7 +646,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       size="sm"
                       variant="ghost"
                     >
-                      Next <ChevronRight className="size-3.5" />
+                      {translate("Next")}<ChevronRight className="size-3.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -663,23 +654,22 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
 
               <Card data-ui-action="create-config-entry">
                 <CardHeader>
-                  <CardTitle>Create a typed draft</CardTitle>
+                  <CardTitle>{translate("Create a typed draft")}</CardTitle>
                   <CardDescription>
-                    Values that resemble secrets are blocked from client visibility.
-                  </CardDescription>
+                    {translate("Values that resemble secrets are blocked from client visibility.")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form className="space-y-5" onSubmit={(event) => void submitCreate(event)}>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <TextField label="Key" name="createConfigKey" onChange={setCreateKey} value={createKey} />
+                      <TextField label={translate("Key")} name="createConfigKey" onChange={setCreateKey} value={createKey} />
                       <TextField
-                        label="Display name"
+                        label={translate("Display name")}
                         name="createConfigDisplayName"
                         onChange={setCreateName}
                         value={createName}
                       />
                       <SelectField
-                        label="Value type"
+                        label={translate("Value type")}
                         name="createConfigValueKind"
                         onChange={(value) => {
                           const kind = value as ConfigValueKind;
@@ -690,7 +680,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                         value={createKind}
                       />
                       <SelectField
-                        label="Visibility"
+                        label={translate("Visibility")}
                         name="createConfigVisibility"
                         onChange={(value) => setCreateVisibility(value as ConfigVisibility)}
                         options={visibilityOptions}
@@ -698,7 +688,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       />
                     </div>
                     <TextAreaField
-                      label="Description"
+                      label={translate("Description")}
                       name="createConfigDescription"
                       onChange={setCreateDescription}
                       value={createDescription}
@@ -716,8 +706,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       ) : (
                         <Plus className="size-4" />
                       )}
-                      Create configuration
-                    </Button>
+                      {translate("Create configuration")}</Button>
                   </form>
                 </CardContent>
               </Card>
@@ -736,42 +725,41 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                               selectedEntry.status === activeStatus ? "success" : "planned"
                             }
                           >
-                            {selectedEntry.status === activeStatus ? "Active" : "Archived"}
+                            {translate(selectedEntry.status === activeStatus ? "Active" : "Archived")}
                           </Badge>
                         </div>
                         <CardDescription className="mt-1 font-mono text-xs text-violet-300">
-                          {selectedEntry.key} · version {selectedEntry.version} · snapshot {" "}
-                          {selectedEntry.publishedSnapshotVersion || "unpublished"}
+                          {selectedEntry.key} {" "}{translate("· version")}{" "}{selectedEntry.version} {" "}{translate("· snapshot")}{" "}
+                          {selectedEntry.publishedSnapshotVersion || translate("unpublished")}
                         </CardDescription>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           data-ui-action="validate-config-draft"
+                          disabled={Boolean(pending) || selectedEntry.status !== activeStatus}
                           onClick={() => void validateDraft()}
                           size="sm"
                           type="button"
                           variant="outline"
                         >
-                          <CheckCircle2 className="size-3.5" /> Validate
-                        </Button>
+                          <CheckCircle2 className="size-3.5" /> {translate("Validate")}</Button>
                         <Button
                           data-ui-action="diff-config-draft"
+                          disabled={Boolean(pending)}
                           onClick={() => void inspectDiff()}
                           size="sm"
                           type="button"
                           variant="outline"
                         >
-                          <Diff className="size-3.5" /> Diff
-                        </Button>
+                          <Diff className="size-3.5" /> {translate("Diff")}</Button>
                         <Button
                           data-ui-action="publish-config-entry"
-                          disabled={selectedEntry.status !== activeStatus}
+                          disabled={Boolean(pending) || selectedEntry.status !== activeStatus}
                           onClick={() => void publishCurrent()}
                           size="sm"
                           type="button"
                         >
-                          <Send className="size-3.5" /> Publish snapshot
-                        </Button>
+                          <Send className="size-3.5" /> {translate("Publish snapshot")}</Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -779,27 +767,27 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                     <form className="space-y-5" onSubmit={(event) => void submitDraft(event)}>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <TextField
-                          label="Display name"
+                          label={translate("Display name")}
                           name="editConfigDisplayName"
                           onChange={setEditName}
                           value={editName}
                         />
                         <SelectField
-                          label="Visibility"
+                          label={translate("Visibility")}
                           name="editConfigVisibility"
                           onChange={(value) => setEditVisibility(value as ConfigVisibility)}
                           options={visibilityOptions}
                           value={editVisibility}
                         />
                         <div className="rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2">
-                          <span className={labelClassName}>Fixed value type</span>
+                          <span className={labelClassName}>{translate("Fixed value type")}</span>
                           <p className="text-sm text-slate-200">
                             {kindLabel(selectedEntry.valueKind)}
                           </p>
                         </div>
                       </div>
                       <TextAreaField
-                        label="Description"
+                        label={translate("Description")}
                         name="editConfigDescription"
                         onChange={setEditDescription}
                         value={editDescription}
@@ -812,11 +800,10 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                         valueKind={selectedEntry.valueKind}
                       />
                       <Button
-                        disabled={selectedEntry.status !== activeStatus || pending.startsWith("update")}
+                        disabled={Boolean(pending) || selectedEntry.status !== activeStatus}
                         type="submit"
                       >
-                        <Save className="size-4" /> Save draft
-                      </Button>
+                        <Save className="size-4" /> {translate("Save draft")}</Button>
                     </form>
                   </CardContent>
                 </Card>
@@ -824,19 +811,18 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                 <div className="grid gap-6 xl:grid-cols-2">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Validation & diff</CardTitle>
+                      <CardTitle>{translate("Validation & diff")}</CardTitle>
                       <CardDescription>
-                        Server-side schema, type, secret, and targeting checks are authoritative.
-                      </CardDescription>
+                        {translate("Server-side schema, type, secret, and targeting checks are authoritative.")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {validation ? (
                         <div>
                           <Badge variant={validation.valid ? "success" : "planned"}>
-                            {validation.valid ? "Draft is publishable" : "Draft is blocked"}
+                            {translate(validation.valid ? "Draft is publishable" : "Draft is blocked")}
                           </Badge>
                           <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
-                            SHA-256 {validation.definitionHash}
+                            {translate("SHA-256")} {validation.definitionHash}
                           </p>
                           <div className="mt-3 space-y-2">
                             {validation.issues.map((issue, index) => (
@@ -860,15 +846,15 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                           </div>
                         </div>
                       ) : (
-                        <EmptyState text="Run validation to see publish blockers and warnings." />
+                        <EmptyState text={translate("Run validation to see publish blockers and warnings.")} />
                       )}
                       {draftDiff && (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-xs text-slate-300">
                             <Diff className="size-4 text-violet-300" />
-                            {draftDiff.changed
+                            {translate(draftDiff.changed
                               ? `${draftDiff.changedPaths.length} changed path(s)`
-                              : "Draft matches the published definition"}
+                              : "Draft matches the published definition")}
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {draftDiff.changedPaths.map((path) => (
@@ -882,11 +868,10 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                           </div>
                           <details className="rounded-xl border border-white/8 bg-slate-950/70 p-3">
                             <summary className="cursor-pointer text-xs text-slate-400">
-                              Compare serialized definitions
-                            </summary>
+                              {translate("Compare serialized definitions")}</summary>
                             <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                              <JsonBlock label="Published" value={draftDiff.publishedJson} />
-                              <JsonBlock label="Draft" value={draftDiff.draftJson} />
+                              <JsonBlock label={translate("Published")} value={draftDiff.publishedJson} />
+                              <JsonBlock label={translate("Draft")} value={draftDiff.draftJson} />
                             </div>
                           </details>
                         </div>
@@ -896,10 +881,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
 
                   <Card data-ui-action="list-config-revisions">
                     <CardHeader>
-                      <CardTitle>Immutable revisions</CardTitle>
+                      <CardTitle>{translate("Immutable revisions")}</CardTitle>
                       <CardDescription>
-                        Rollback republishes a historical definition as a new revision and snapshot.
-                      </CardDescription>
+                        {translate("Rollback republishes a historical definition as a new revision and snapshot.")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {(revisions.data?.revisions ?? []).map((revision) => (
@@ -909,13 +893,13 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                         >
                           <div>
                             <p className="text-sm font-medium text-slate-200">
-                              Revision {revision.revision}
+                              {translate("Revision")} {revision.revision}
                             </p>
                             <p className="mt-1 text-[11px] text-slate-500">
-                              snapshot {revision.snapshotVersion}
-                              {revision.sourceRevision
+                              {translate("snapshot")} {revision.snapshotVersion}
+                              {translate(revision.sourceRevision
                                 ? ` · from revision ${revision.sourceRevision}`
-                                : ""}
+                                : "")}
                             </p>
                           </div>
                           <Button
@@ -925,12 +909,11 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                             size="sm"
                             variant="outline"
                           >
-                            <RotateCcw className="size-3.5" /> Roll back
-                          </Button>
+                            <RotateCcw className="size-3.5" /> {translate("Roll back")}</Button>
                         </div>
                       ))}
                       {!revisions.isLoading && (revisions.data?.revisions.length ?? 0) === 0 && (
-                        <EmptyState text="Publish the draft to create revision history." />
+                        <EmptyState text={translate("Publish the draft to create revision history.")} />
                       )}
                     </CardContent>
                   </Card>
@@ -938,28 +921,26 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Effective value lab</CardTitle>
+                    <CardTitle>{translate("Effective value lab")}</CardTitle>
                     <CardDescription>
-                      Exercise draft preview, client/server snapshots, conditional ETag requests,
-                      and update checks with one evaluation context.
-                    </CardDescription>
+                      {translate("Exercise draft preview, client/server snapshots, conditional ETag requests, and update checks with one evaluation context.")}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <TextField
-                        label="Targeting key"
+                        label={translate("Targeting key")}
                         name="configTargetingKey"
                         onChange={setTargetingKey}
                         value={targetingKey}
                       />
-                      <TextField label="User ID" name="configUserId" onChange={setUserId} value={userId} />
+                      <TextField label={translate("User ID")} name="configUserId" onChange={setUserId} value={userId} />
                       <TextField
-                        label="Client version"
+                        label={translate("Client version")}
                         name="configClientVersion"
                         onChange={setClientVersion}
                         value={clientVersion}
                       />
-                      <TextField label="Region" name="configRegion" onChange={setRegion} value={region} />
+                      <TextField label={translate("Region")} name="configRegion" onChange={setRegion} value={region} />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="mr-2 flex items-center gap-2 text-xs text-slate-400">
@@ -968,68 +949,63 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                           onChange={(event) => setUseDraft(event.target.checked)}
                           type="checkbox"
                         />
-                        Preview draft
-                      </label>
+                        {translate("Preview draft")}</label>
                       <Button
                         data-ui-action="preview-config-value"
                         onClick={() => void runPreview()}
                         size="sm"
                         variant="outline"
                       >
-                        <Eye className="size-3.5" /> Preview entry
-                      </Button>
+                        <Eye className="size-3.5" /> {translate("Preview entry")}</Button>
                       <Button
                         data-ui-action="get-config-snapshot"
                         onClick={() => void fetchRuntimeSnapshot(false)}
                         size="sm"
                         variant="outline"
                       >
-                        <Braces className="size-3.5" /> Client snapshot
-                      </Button>
+                        <Braces className="size-3.5" /> {translate("Client snapshot")}</Button>
                       <Button
                         data-ui-action="get-server-config-snapshot"
                         onClick={() => void fetchRuntimeSnapshot(true)}
                         size="sm"
                         variant="outline"
                       >
-                        <ServerCog className="size-3.5" /> Server snapshot
-                      </Button>
+                        <ServerCog className="size-3.5" /> {translate("Server snapshot")}</Button>
                       <Button
                         disabled={!runtimeSnapshot}
                         onClick={() => void fetchRuntimeSnapshot(snapshotMode === "server", true)}
                         size="sm"
                         variant="ghost"
                       >
-                        <RefreshCw className="size-3.5" /> Conditional refresh
-                      </Button>
+                        <RefreshCw className="size-3.5" /> {translate("Conditional refresh")}</Button>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
-                      <ResultPanel title="Entry preview">
+                      <ResultPanel title={translate("Entry preview")}>
                         {preview ? (
                           <EffectiveValue value={preview} />
                         ) : (
-                          <p>Preview an entry against this context.</p>
+                          <p>{translate("Preview an entry against this context.")}</p>
                         )}
                       </ResultPanel>
-                      <ResultPanel title={`${snapshotMode === "server" ? "Server" : "Client"} snapshot`}>
+                      <ResultPanel title={translate(`${snapshotMode === "server" ? "Server" : "Client"} snapshot`)}>
                         {runtimeSnapshot ? (
                           <div className="space-y-3">
                             <p className="break-all font-mono text-[10px] text-violet-300">
-                              v{runtimeSnapshot.snapshotVersion} · {runtimeSnapshot.etag}
+                              {translate("v")}{runtimeSnapshot.snapshotVersion} · {runtimeSnapshot.etag}
                             </p>
                             {runtimeSnapshot.values.map((value) => (
                               <EffectiveValue key={value.entryId} value={value} />
                             ))}
-                            {runtimeSnapshot.values.length === 0 && <p>No visible values.</p>}
+                            {runtimeSnapshot.values.length === 0 && <p>{translate("No visible values.")}</p>}
                           </div>
                         ) : (
-                          <p>Fetch the client-safe or privileged server snapshot.</p>
+                          <p>{translate("Fetch the client-safe or privileged server snapshot.")}</p>
                         )}
                       </ResultPanel>
                     </div>
                     <div className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-4 sm:flex-row sm:items-end">
                       <TextField
-                        label="Known snapshot version"
+                        label={translate("Known snapshot version")}
                         name="knownConfigSnapshotVersion"
                         onChange={setKnownSnapshotVersion}
                         value={knownSnapshotVersion}
@@ -1040,11 +1016,10 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                         type="button"
                         variant="outline"
                       >
-                        <RefreshCw className="size-4" /> Check updates
-                      </Button>
+                        <RefreshCw className="size-4" /> {translate("Check updates")}</Button>
                       {updateResult && (
                         <p className="pb-2 text-xs text-slate-400">
-                          {updateResult.changed ? "Update available" : "Current"} · latest {" "}
+                          {translate(updateResult.changed ? "Update available" : "Current")} {" "}{translate("· latest")} {" "}
                           {updateResult.currentSnapshotVersion}
                         </p>
                       )}
@@ -1056,10 +1031,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
 
             <Card data-ui-action="list-config-snapshots">
               <CardHeader>
-                <CardTitle>Environment snapshot history</CardTitle>
+                <CardTitle>{translate("Environment snapshot history")}</CardTitle>
                 <CardDescription>
-                  Every publish, rollback, archive, or restore creates one immutable snapshot.
-                </CardDescription>
+                  {translate("Every publish, rollback, archive, or restore creates one immutable snapshot.")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1071,19 +1045,18 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       <div className="flex items-center gap-2">
                         <History className="size-4 text-violet-300" />
                         <p className="text-sm font-semibold text-slate-200">
-                          Snapshot {snapshot.version}
+                          {translate("Snapshot")} {snapshot.version}
                         </p>
                       </div>
                       <p className="mt-2 text-xs text-slate-500">
-                        {snapshot.entryCount} published entries
-                      </p>
+                        {snapshot.entryCount} {translate("published entries")}</p>
                       <p className="mt-1 text-[10px] text-slate-600">
-                        {new Date(snapshot.createdAt).toLocaleString()}
+                        {formatDateTime(snapshot.createdAt)}
                       </p>
                     </div>
                   ))}
                   {!snapshots.isLoading && (snapshots.data?.snapshots.length ?? 0) === 0 && (
-                    <EmptyState text="No environment snapshots have been published." />
+                    <EmptyState text={translate("No environment snapshots have been published.")} />
                   )}
                 </div>
               </CardContent>
@@ -1124,7 +1097,7 @@ function ScopeSelector({
           disabled={false}
           onChange={onTenant}
           options={tenants}
-          placeholder="Select tenant"
+          placeholder={translate("Select tenant")}
           value={tenantId}
         />
         <ScopeSelect
@@ -1132,7 +1105,7 @@ function ScopeSelector({
           disabled={!tenantId}
           onChange={onApplication}
           options={applications}
-          placeholder="Select application"
+          placeholder={translate("Select application")}
           value={applicationId}
         />
         <ScopeSelect
@@ -1140,7 +1113,7 @@ function ScopeSelector({
           disabled={!applicationId}
           onChange={onEnvironment}
           options={environments}
-          placeholder="Select environment"
+          placeholder={translate("Select environment")}
           value={environmentId}
         />
       </CardContent>
@@ -1256,7 +1229,7 @@ function SelectField({
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {translate(option.label)}
           </option>
         ))}
       </select>
@@ -1279,7 +1252,7 @@ function EffectiveValue({ value }: { value: ConfigEffectiveValueRecord }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <code className="text-violet-200">{value.key}</code>
         <span className="text-[10px] uppercase tracking-wider text-slate-600">
-          {value.reason.replace("CONFIG_EVALUATION_REASON_", "")}
+          {translate(value.reason.replace("CONFIG_EVALUATION_REASON_", "").toLowerCase().replaceAll("_", " "))}
         </span>
       </div>
       <pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs text-slate-300">
@@ -1322,13 +1295,13 @@ function formatValue(value: ConfigValueInput): string {
 }
 
 function kindLabel(kind: ConfigValueKind): string {
-  return kind.replace("CONFIG_VALUE_KIND_", "").toLowerCase();
+  return translate(kind.replace("CONFIG_VALUE_KIND_", "").toLowerCase());
 }
 
 function visibilityLabel(visibility: ConfigVisibility): string {
   return visibility === ConfigVisibilityObject.CONFIG_VISIBILITY_SERVER
-    ? "server only"
-    : "client visible";
+    ? translate("server only")
+    : translate("client visible");
 }
 
 const valueKindOptions = [

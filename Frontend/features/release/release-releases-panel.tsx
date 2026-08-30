@@ -71,6 +71,7 @@ import {
   ReleaseLoadingState,
   ReleaseStatusBadge,
 } from "./release-ui";
+import { translate } from "@/lib/i18n/locale";
 
 const page = { pageSize: 100, pageToken: "", query: "" };
 
@@ -132,9 +133,9 @@ export function ReleaseReleasesPanel({
     setGettingId(release.id);
     try {
       setSelected(await getDesktopRelease(scope, release.id));
-      toast.success("Release details refreshed.");
+      toast.success(translate("Release details refreshed."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -155,11 +156,9 @@ export function ReleaseReleasesPanel({
         <div className="space-y-6">
           <Card data-ui-action="list-desktop-releases">
             <CardHeader>
-              <CardTitle>Desktop release inventory</CardTitle>
+              <CardTitle>{translate("Desktop release inventory")}</CardTitle>
               <CardDescription>
-                Draft, publish, pause, promote, and roll back signed manifests per
-                channel.
-              </CardDescription>
+                {translate("Draft, publish, pause, promote, and roll back signed manifests per channel.")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <form
@@ -171,7 +170,7 @@ export function ReleaseReleasesPanel({
                 }}
               >
                 <label className="relative flex-1">
-                  <span className="sr-only">Search desktop releases</span>
+                  <span className="sr-only">{translate("Search desktop releases")}</span>
                   <Search
                     aria-hidden="true"
                     className="absolute left-3 top-3 size-4 text-slate-600"
@@ -180,30 +179,28 @@ export function ReleaseReleasesPanel({
                     className={cn(releaseInputClassName, "pl-9")}
                     name="releaseSearch"
                     onChange={(event) => setQueryDraft(event.target.value)}
-                    placeholder="Search version or display name"
+                    placeholder={translate("Search version or display name")}
                     value={queryDraft}
                   />
                 </label>
                 <Button type="submit" variant="outline">
-                  Apply
-                </Button>
+                  {translate("Apply")}</Button>
               </form>
               <label className="flex items-center gap-2 text-xs text-slate-400">
                 <input
-                  aria-label="Include inactive desktop releases"
+                  aria-label={translate("Include inactive desktop releases")}
                   checked={includeInactive}
                   onChange={(event) => setIncludeInactive(event.target.checked)}
                   type="checkbox"
                 />
-                Include paused and rolled-back releases
-              </label>
+                {translate("Include paused and rolled-back releases")}</label>
 
               {releases.isLoading ? (
-                <ReleaseLoadingState label="Loading releases" />
+                <ReleaseLoadingState label={translate("Loading releases")} />
               ) : releases.error ? (
                 <ReleaseErrorState error={releases.error} />
               ) : (releases.data?.releases.length ?? 0) === 0 ? (
-                <ReleaseEmptyState message="No desktop releases match this view." />
+                <ReleaseEmptyState message={translate("No desktop releases match this view.")} />
               ) : (
                 <div className="space-y-2">
                   {releases.data?.releases.map((release) => {
@@ -241,8 +238,8 @@ export function ReleaseReleasesPanel({
                               {release.releaseVersion} · {channel?.key ?? "Unknown channel"}
                             </span>
                             <span className="mt-2 block text-xs text-slate-500">
-                              {(release.rolloutBasisPoints / 1_000).toFixed(2)}% rollout ·{" "}
-                              {release.artifactIds.length} artifact(s) · revision{" "}
+                              {(release.rolloutBasisPoints / 1_000).toFixed(2)}{translate("% rollout ·")}{" "}
+                              {release.artifactIds.length} {" "}{translate("artifact(s) · revision")}{" "}
                               {release.revision}
                             </span>
                           </button>
@@ -262,8 +259,7 @@ export function ReleaseReleasesPanel({
                             ) : (
                               <Eye aria-hidden="true" className="size-3.5" />
                             )}
-                            Inspect
-                          </Button>
+                            {translate("Inspect")}</Button>
                         </div>
                       </article>
                     );
@@ -296,7 +292,7 @@ export function ReleaseReleasesPanel({
             signingKeys={signingKeys.data?.signingKeys ?? []}
           />
         ) : (
-          <ReleaseEmptyState message="Select a release to edit, validate, sign, or control rollout." />
+          <ReleaseEmptyState message={translate("Select a release to edit, validate, sign, or control rollout.")} />
         )}
       </div>
 
@@ -359,9 +355,9 @@ function CreateReleaseCard({
       setReleaseNotes("");
       setArtifactIds([]);
       setTargetSegmentId("");
-      toast.success("Desktop release draft created.");
+      toast.success(translate("Desktop release draft created."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -370,24 +366,21 @@ function CreateReleaseCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create release draft</CardTitle>
+        <CardTitle>{translate("Create release draft")}</CardTitle>
         <CardDescription>
-          Attach verified artifacts for one Semantic Version and choose the initial
-          deterministic rollout.
-        </CardDescription>
+          {translate("Attach verified artifacts for one Semantic Version and choose the initial deterministic rollout.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
           <label className={releaseLabelClassName}>
-            Channel
-            <select
+            {translate("Channel")}<select
               className={releaseInputClassName}
               name="releaseChannel"
               onChange={(event) => setChannelId(event.target.value)}
               required
               value={channelId}
             >
-              <option value="">Choose a channel</option>
+              <option value="">{translate("Choose a channel")}</option>
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
                   {channel.displayName} ({channel.key})
@@ -396,8 +389,7 @@ function CreateReleaseCard({
             </select>
           </label>
           <label className={releaseLabelClassName}>
-            Semantic Version
-            <input
+            {translate("Semantic Version")}<input
               className={releaseInputClassName}
               name="releaseVersion"
               onChange={(event) => {
@@ -410,19 +402,17 @@ function CreateReleaseCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Display name
-            <input
+            {translate("Display name")}<input
               className={releaseInputClassName}
               name="releaseDisplayName"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Asterloom Desktop 1.0"
+              placeholder={translate("Asterloom Desktop 1.0")}
               required
               value={displayName}
             />
           </label>
           <label className={releaseLabelClassName}>
-            Minimum client version
-            <input
+            {translate("Minimum client version")}<input
               className={releaseInputClassName}
               name="releaseMinimumVersion"
               onChange={(event) => setMinimumVersion(event.target.value)}
@@ -431,8 +421,7 @@ function CreateReleaseCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Rollout basis points
-            <input
+            {translate("Rollout basis points")}<input
               className={releaseInputClassName}
               max="100000"
               min="1"
@@ -444,14 +433,13 @@ function CreateReleaseCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Target segment (optional)
-            <select
+            {translate("Target segment (optional)")}<select
               className={releaseInputClassName}
               name="releaseTargetSegment"
               onChange={(event) => setTargetSegmentId(event.target.value)}
               value={targetSegmentId}
             >
-              <option value="">All eligible clients</option>
+              <option value="">{translate("All eligible clients")}</option>
               {segments.map((segment) => (
                 <option key={segment.id} value={segment.id}>
                   {segment.displayName} ({segment.key})
@@ -460,8 +448,7 @@ function CreateReleaseCard({
             </select>
           </label>
           <label className={cn(releaseLabelClassName, "sm:col-span-2")}>
-            Release notes
-            <textarea
+            {translate("Release notes")}<textarea
               className={releaseTextAreaClassName}
               name="releaseNotes"
               onChange={(event) => setReleaseNotes(event.target.value)}
@@ -470,13 +457,11 @@ function CreateReleaseCard({
           </label>
           <fieldset className="sm:col-span-2 space-y-2 rounded-xl border border-white/8 p-4">
             <legend className="px-1 text-xs font-medium text-slate-400">
-              Verified artifacts for {releaseVersion || "this version"}
+              {translate("Verified artifacts for")} {releaseVersion || translate("this version")}
             </legend>
             {compatibleArtifacts.length === 0 ? (
               <p className="text-xs text-slate-600">
-                Upload and verify at least one full artifact with the same release
-                version.
-              </p>
+                {translate("Upload and verify at least one full artifact with the same release version.")}</p>
             ) : (
               compatibleArtifacts.map((artifact) => (
                 <label
@@ -484,7 +469,7 @@ function CreateReleaseCard({
                   key={artifact.id}
                 >
                   <input
-                    aria-label={`Create artifact ${artifact.fileName}`}
+                    aria-label={translate(`Create artifact ${artifact.fileName}`)}
                     checked={artifactIds.includes(artifact.id)}
                     onChange={(event) =>
                       setArtifactIds((current) =>
@@ -497,7 +482,7 @@ function CreateReleaseCard({
                   />
                   <span>
                     {artifact.targetRuntimeId} ·{" "}
-                    {artifact.artifactKind.endsWith("_DELTA") ? "delta" : "full"} ·{" "}
+                    {translate(artifact.artifactKind.endsWith("_DELTA") ? "delta" : "full")} ·{" "}
                     {artifact.fileName}
                   </span>
                 </label>
@@ -506,13 +491,12 @@ function CreateReleaseCard({
           </fieldset>
           <label className="flex items-center gap-2 text-xs text-slate-400 sm:col-span-2">
             <input
-              aria-label="Mandatory desktop release"
+              aria-label={translate("Mandatory desktop release")}
               checked={mandatory}
               onChange={(event) => setMandatory(event.target.checked)}
               type="checkbox"
             />
-            Mark this update as mandatory
-          </label>
+            {translate("Mark this update as mandatory")}</label>
           <div className="sm:col-span-2">
             <Button
               data-ui-action="create-desktop-release"
@@ -524,8 +508,7 @@ function CreateReleaseCard({
               ) : (
                 <Plus aria-hidden="true" className="size-4" />
               )}
-              Create draft
-            </Button>
+              {translate("Create draft")}</Button>
           </div>
         </form>
       </CardContent>
@@ -596,9 +579,9 @@ function ReleaseInspector({
     try {
       const updated = await action();
       await onChanged(updated);
-      toast.success(success);
+      toast.success(translate(success));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -613,7 +596,7 @@ function ReleaseInspector({
         result.valid ? "Release candidate is valid." : "Release validation found errors.",
       );
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -640,9 +623,9 @@ function ReleaseInspector({
     setBusy("manifest");
     try {
       setManifest(await getReleaseManifest(release));
-      toast.success("Signed release manifest loaded.");
+      toast.success(translate("Signed release manifest loaded."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -651,7 +634,7 @@ function ReleaseInspector({
   async function rollback() {
     const target = rollbackTargets.find((candidate) => candidate.id === rollbackTargetId);
     if (!target) {
-      toast.error("Choose a previously signed release in this channel.");
+      toast.error(translate("Choose a previously signed release in this channel."));
       return;
     }
     await perform(
@@ -681,17 +664,15 @@ function ReleaseInspector({
           <ReleaseStatusBadge status={release.status} />
         </div>
         <CardDescription className="font-mono">
-          {release.releaseVersion} · revision {release.revision}
+          {release.releaseVersion} {" "}{translate("· revision")}{" "}{release.revision}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <section className="space-y-4">
           <h3 className="text-xs font-semibold uppercase tracking-[0.13em] text-slate-500">
-            Draft definition
-          </h3>
+            {translate("Draft definition")}</h3>
           <label className={releaseLabelClassName}>
-            Display name
-            <input
+            {translate("Display name")}<input
               className={releaseInputClassName}
               disabled={!draft}
               name="editReleaseDisplayName"
@@ -700,8 +681,7 @@ function ReleaseInspector({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Release notes
-            <textarea
+            {translate("Release notes")}<textarea
               className={releaseTextAreaClassName}
               disabled={!draft}
               name="editReleaseNotes"
@@ -711,8 +691,7 @@ function ReleaseInspector({
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={releaseLabelClassName}>
-              Rollout basis points
-              <input
+              {translate("Rollout basis points")}<input
                 className={releaseInputClassName}
                 disabled={!draft}
                 max="100000"
@@ -724,8 +703,7 @@ function ReleaseInspector({
               />
             </label>
             <label className={releaseLabelClassName}>
-              Minimum version
-              <input
+              {translate("Minimum version")}<input
                 className={releaseInputClassName}
                 disabled={!draft}
                 name="editReleaseMinimumVersion"
@@ -735,15 +713,14 @@ function ReleaseInspector({
             </label>
           </div>
           <label className={releaseLabelClassName}>
-            Target segment
-            <select
+            {translate("Target segment")}<select
               className={releaseInputClassName}
               disabled={!draft}
               name="editReleaseTargetSegment"
               onChange={(event) => setTargetSegmentId(event.target.value)}
               value={targetSegmentId}
             >
-              <option value="">All eligible clients</option>
+              <option value="">{translate("All eligible clients")}</option>
               {segments.map((segment) => (
                 <option key={segment.id} value={segment.id}>
                   {segment.displayName} ({segment.key})
@@ -753,12 +730,11 @@ function ReleaseInspector({
           </label>
           <fieldset className="space-y-2 rounded-xl border border-white/8 p-4">
             <legend className="px-1 text-xs font-medium text-slate-400">
-              Release artifacts
-            </legend>
+              {translate("Release artifacts")}</legend>
             {compatibleArtifacts.map((artifact) => (
               <label className="flex items-center gap-2 text-xs text-slate-300" key={artifact.id}>
                 <input
-                  aria-label={`Edit artifact ${artifact.fileName}`}
+                  aria-label={translate(`Edit artifact ${artifact.fileName}`)}
                   checked={artifactIds.includes(artifact.id)}
                   disabled={!draft}
                   onChange={(event) =>
@@ -776,14 +752,13 @@ function ReleaseInspector({
           </fieldset>
           <label className="flex items-center gap-2 text-xs text-slate-400">
             <input
-              aria-label="Edit mandatory desktop release"
+              aria-label={translate("Edit mandatory desktop release")}
               checked={mandatory}
               disabled={!draft}
               onChange={(event) => setMandatory(event.target.checked)}
               type="checkbox"
             />
-            Mandatory update
-          </label>
+            {translate("Mandatory update")}</label>
           {draft && (
             <Button
               data-ui-action="update-desktop-release-draft"
@@ -811,15 +786,13 @@ function ReleaseInspector({
               ) : (
                 <Save aria-hidden="true" className="size-4" />
               )}
-              Save draft
-            </Button>
+              {translate("Save draft")}</Button>
           )}
         </section>
 
         <section className="space-y-4 border-t border-white/8 pt-5">
           <h3 className="text-xs font-semibold uppercase tracking-[0.13em] text-slate-500">
-            Validation and signed manifest
-          </h3>
+            {translate("Validation and signed manifest")}</h3>
           <Button
             data-ui-action="validate-desktop-release"
             disabled={Boolean(busy)}
@@ -828,8 +801,7 @@ function ReleaseInspector({
             variant="outline"
           >
             <ClipboardCheck aria-hidden="true" className="size-4" />
-            Validate release
-          </Button>
+            {translate("Validate release")}</Button>
           {validation && (
             <div
               className={cn(
@@ -845,7 +817,7 @@ function ReleaseInspector({
                 ) : (
                   <ShieldCheck aria-hidden="true" className="size-4" />
                 )}
-                {validation.valid ? "Candidate manifest is valid" : "Validation failed"}
+                {translate(validation.valid ? "Candidate manifest is valid" : "Validation failed")}
               </p>
               {validation.candidateManifest && (
                 <output
@@ -870,18 +842,15 @@ function ReleaseInspector({
           {draft && (
             <div className="space-y-4 rounded-xl border border-violet-400/15 bg-violet-400/[0.04] p-4">
               <p className="text-xs leading-5 text-slate-400">
-                Sign the validated manifest SHA-256 text with RSA-PSS/SHA-256 in your
-                external signer. Validation must be rerun after every draft change.
-              </p>
+                {translate("Sign the validated manifest SHA-256 text with RSA-PSS/SHA-256 in your external signer. Validation must be rerun after every draft change.")}</p>
               <label className={releaseLabelClassName}>
-                Manifest signing key
-                <select
+                {translate("Manifest signing key")}<select
                   className={releaseInputClassName}
                   name="manifestSigningKey"
                   onChange={(event) => setManifestSigningKeyId(event.target.value)}
                   value={manifestSigningKeyId}
                 >
-                  <option value="">Choose a key</option>
+                  <option value="">{translate("Choose a key")}</option>
                   {signingKeys.map((key) => (
                     <option key={key.id} value={key.id}>
                       {key.displayName} ({key.key})
@@ -890,8 +859,7 @@ function ReleaseInspector({
                 </select>
               </label>
               <label className={releaseLabelClassName}>
-                Detached manifest signature
-                <textarea
+                {translate("Detached manifest signature")}<textarea
                   className={cn(releaseTextAreaClassName, "font-mono text-xs")}
                   name="manifestSignature"
                   onChange={(event) => setManifestSignature(event.target.value)}
@@ -914,8 +882,7 @@ function ReleaseInspector({
                 ) : (
                   <Rocket aria-hidden="true" className="size-4" />
                 )}
-                Publish signed release
-              </Button>
+                {translate("Publish signed release")}</Button>
             </div>
           )}
 
@@ -929,8 +896,7 @@ function ReleaseInspector({
                 variant="outline"
               >
                 <Eye aria-hidden="true" className="size-4" />
-                View signed manifest
-              </Button>
+                {translate("View signed manifest")}</Button>
               {manifest && (
                 <div className="rounded-xl border border-white/8 bg-slate-950/70 p-4 text-xs">
                   <p className="font-medium text-white">
@@ -951,8 +917,7 @@ function ReleaseInspector({
         {(published || paused) && (
           <section className="space-y-4 border-t border-white/8 pt-5">
             <h3 className="text-xs font-semibold uppercase tracking-[0.13em] text-slate-500">
-              Rollout controls
-            </h3>
+              {translate("Rollout controls")}</h3>
             <div className="flex flex-wrap gap-2">
               {published && (
                 <Button
@@ -969,13 +934,12 @@ function ReleaseInspector({
                   variant="outline"
                 >
                   <Pause aria-hidden="true" className="size-4" />
-                  Pause
-                </Button>
+                  {translate("Pause")}</Button>
               )}
             </div>
             <div className="flex gap-2">
               <input
-                aria-label="Promotion rollout basis points"
+                aria-label={translate("Promotion rollout basis points")}
                 className={releaseInputClassName}
                 max="100000"
                 min={paused ? release.rolloutBasisPoints : release.rolloutBasisPoints + 1}
@@ -1002,19 +966,18 @@ function ReleaseInspector({
                 type="button"
               >
                 <Play aria-hidden="true" className="size-4" />
-                {paused ? "Resume" : "Promote"}
+                {translate(paused ? "Resume" : "Promote")}
               </Button>
             </div>
             <div className="space-y-2 rounded-xl border border-white/8 p-4">
               <label className={releaseLabelClassName}>
-                Rollback target
-                <select
+                {translate("Rollback target")}<select
                   className={releaseInputClassName}
                   name="rollbackTargetRelease"
                   onChange={(event) => setRollbackTargetId(event.target.value)}
                   value={rollbackTargetId}
                 >
-                  <option value="">Choose a previous signed release</option>
+                  <option value="">{translate("Choose a previous signed release")}</option>
                   {rollbackTargets.map((target) => (
                     <option key={target.id} value={target.id}>
                       {target.releaseVersion} · {target.displayName}
@@ -1030,8 +993,7 @@ function ReleaseInspector({
                 variant="outline"
               >
                 <RotateCcw aria-hidden="true" className="size-4" />
-                Roll back active release
-              </Button>
+                {translate("Roll back active release")}</Button>
             </div>
           </section>
         )}
@@ -1077,9 +1039,9 @@ function ReleaseSimulationCard({
         userId,
       });
       setDecision(result);
-      toast.success("Update decision simulated.");
+      toast.success(translate("Update decision simulated."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -1088,17 +1050,14 @@ function ReleaseSimulationCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Update decision simulator</CardTitle>
+        <CardTitle>{translate("Update decision simulator")}</CardTitle>
         <CardDescription>
-          Exercise channel state, Semantic Version comparison, targeting, stable
-          bucketing, and compatible artifact selection without changing rollout state.
-        </CardDescription>
+          {translate("Exercise channel state, Semantic Version comparison, targeting, stable bucketing, and compatible artifact selection without changing rollout state.")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.75fr)]">
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={simulate}>
           <label className={releaseLabelClassName}>
-            Channel key
-            <input
+            {translate("Channel key")}<input
               className={releaseInputClassName}
               list="release-channel-keys"
               name="simulationChannelKey"
@@ -1114,8 +1073,7 @@ function ReleaseSimulationCard({
             </datalist>
           </label>
           <label className={releaseLabelClassName}>
-            Current version
-            <input
+            {translate("Current version")}<input
               className={releaseInputClassName}
               name="simulationCurrentVersion"
               onChange={(event) => setCurrentVersion(event.target.value)}
@@ -1124,8 +1082,7 @@ function ReleaseSimulationCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Target runtime
-            <input
+            {translate("Target runtime")}<input
               className={releaseInputClassName}
               name="simulationRuntimeId"
               onChange={(event) => setTargetRuntimeId(event.target.value)}
@@ -1134,8 +1091,7 @@ function ReleaseSimulationCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Targeting key
-            <input
+            {translate("Targeting key")}<input
               className={releaseInputClassName}
               name="simulationTargetingKey"
               onChange={(event) => setTargetingKey(event.target.value)}
@@ -1144,8 +1100,7 @@ function ReleaseSimulationCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            User ID
-            <input
+            {translate("User ID")}<input
               className={releaseInputClassName}
               name="simulationUserId"
               onChange={(event) => setUserId(event.target.value)}
@@ -1153,8 +1108,7 @@ function ReleaseSimulationCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Client version attribute
-            <input
+            {translate("Client version attribute")}<input
               className={releaseInputClassName}
               name="simulationClientVersion"
               onChange={(event) => setClientVersion(event.target.value)}
@@ -1162,8 +1116,7 @@ function ReleaseSimulationCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Region
-            <input
+            {translate("Region")}<input
               className={releaseInputClassName}
               name="simulationRegion"
               onChange={(event) => setRegion(event.target.value)}
@@ -1181,8 +1134,7 @@ function ReleaseSimulationCard({
               ) : (
                 <FlaskConical aria-hidden="true" className="size-4" />
               )}
-              Simulate update
-            </Button>
+              {translate("Simulate update")}</Button>
           </div>
         </form>
 
@@ -1194,24 +1146,24 @@ function ReleaseSimulationCard({
               ) : (
                 <History aria-hidden="true" className="size-4 text-slate-500" />
               )}
-              {decision.updateAvailable ? "Update available" : "No update"}
+              {translate(decision.updateAvailable ? "Update available" : "No update")}
             </p>
-            <p className="mt-2 font-mono text-xs text-violet-300">{decision.reason}</p>
+            <p className="mt-2 font-mono text-xs text-violet-300">{translate(decision.reason)}</p>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
               <div>
-                <dt className="text-slate-600">Bucket</dt>
+                <dt className="text-slate-600">{translate("Bucket")}</dt>
                 <dd className="mt-1 text-slate-300">
                   {decision.bucketEvaluated ? decision.bucket : "Not evaluated"}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-600">Rollout</dt>
+                <dt className="text-slate-600">{translate("Rollout")}</dt>
                 <dd className="mt-1 text-slate-300">
                   {(decision.rolloutBasisPoints / 1_000).toFixed(2)}%
                 </dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-slate-600">Selected artifact</dt>
+                <dt className="text-slate-600">{translate("Selected artifact")}</dt>
                 <dd className="mt-1 text-slate-300">
                   {decision.selectedArtifact?.fileName ?? "None"}
                 </dd>
@@ -1227,8 +1179,7 @@ function ReleaseSimulationCard({
           </div>
         ) : (
           <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-white/10 text-sm text-slate-600">
-            Run a simulation to inspect the decision trace.
-          </div>
+            {translate("Run a simulation to inspect the decision trace.")}</div>
         )}
       </CardContent>
     </Card>

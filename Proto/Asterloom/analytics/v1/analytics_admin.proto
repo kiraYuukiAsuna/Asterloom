@@ -4,7 +4,7 @@ package asterloom.analytics.admin.v1;
 
 option csharp_namespace = "Asterloom.Protocol.Analytics.Admin.V1";
 
-import "asterloom/analytics/v1/analytics_types.proto";
+import "Asterloom/analytics/v1/analytics_types.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 

@@ -21,6 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getPlatformInfo } from "@/lib/api/platform";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 export type CapabilityView = {
   key: string;
@@ -70,7 +72,7 @@ export function CapabilityGrid({
               className="ml-auto shrink-0"
               variant={available ? "success" : "planned"}
             >
-              {available ? "Ready" : "Planned"}
+              {translate(available ? "Ready" : "Planned")}
             </Badge>
           </div>
         );
@@ -97,25 +99,23 @@ export function PlatformOverview() {
     return (
       <Card className="border-rose-400/15">
         <CardHeader>
-          <CardTitle>Server connection unavailable</CardTitle>
+          <CardTitle>{translate("Server connection unavailable")}</CardTitle>
           <CardDescription>
-            The Web Console could not reach Asterloom.Server through the BFF.
-          </CardDescription>
+            {translate("The Web Console could not reach Asterloom.Server through the BFF.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
             onClick={() => {
               toast.promise(mutate(), {
-                loading: "Retrying connection…",
-                success: "Asterloom.Server is reachable.",
-                error: "The server is still unavailable.",
+                loading: translate("Retrying connection…"),
+                success: translate("Asterloom.Server is reachable."),
+                error: translate("The server is still unavailable."),
               });
             }}
             type="button"
           >
             <RefreshCw aria-hidden="true" className="size-4" />
-            Retry
-          </Button>
+            {translate("Retry")}</Button>
         </CardContent>
       </Card>
     );
@@ -134,35 +134,30 @@ export function PlatformOverview() {
       capability.lifecycle === "CAPABILITY_LIFECYCLE_AVAILABLE",
   ).length;
   const serverTime = data.serverTime
-    ? new Intl.DateTimeFormat(undefined, {
+    ? formatDateTime(data.serverTime, {
         dateStyle: "medium",
         timeStyle: "medium",
-      }).format(new Date(data.serverTime))
-    : "Unavailable";
+      })
+    : translate("Unavailable");
 
   return (
     <div className="space-y-6" data-ui-action="view-platform-info">
-      <section className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.13),rgba(15,23,42,0.78)_45%,rgba(2,6,23,0.95))] p-6 shadow-[0_30px_100px_-55px_rgba(56,189,248,0.8)] sm:p-9">
+      <section className="theme-hero-sky relative overflow-hidden rounded-3xl border border-sky-300/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.13),rgba(15,23,42,0.78)_45%,rgba(2,6,23,0.95))] p-6 shadow-[0_30px_100px_-55px_rgba(56,189,248,0.8)] sm:p-9">
         <div className="absolute -right-24 -top-32 size-72 rounded-full bg-sky-400/10 blur-3xl" />
         <div className="relative max-w-3xl">
           <div className="flex items-center gap-2">
             <Badge variant="success">
               <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
-              Operational
-            </Badge>
+              {translate("Operational")}</Badge>
             <span className="font-mono text-xs text-slate-500">
-              v{data.version ?? "0.0.0"}
+              {translate("v")}{data.version ?? "0.0.0"}
             </span>
           </div>
           <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
-            One foundation,
-            <span className="block text-sky-300">every application.</span>
+            {translate("One foundation,")}<span className="block text-sky-300">{translate("every application.")}</span>
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
-            {data.name ?? "Asterloom"} exposes the same contract over native gRPC
-            and browser-ready JSON. This console is consuming the transcoded API
-            through the Next.js BFF.
-          </p>
+            {data.name ?? "Asterloom"} {translate("exposes the same contract over native gRPC and browser-ready JSON. This console is consuming the transcoded API through the Next.js BFF.")}</p>
         </div>
       </section>
 
@@ -170,7 +165,7 @@ export function PlatformOverview() {
         <MetricCard
           detail="Native gRPC + HTTP/JSON"
           icon={Server}
-          label="Transport"
+          label={translate("Transport")}
           value="Dual"
         />
         <MetricCard
@@ -179,13 +174,13 @@ export function PlatformOverview() {
             " queued in the roadmap"
           }
           icon={Sparkles}
-          label="Capabilities ready"
+          label={translate("Capabilities ready")}
           value={String(availableCount) + " / " + String(capabilities.length)}
         />
         <MetricCard
           detail={serverTime}
           icon={Activity}
-          label="Server clock"
+          label={translate("Server clock")}
           value="UTC"
         />
       </div>
@@ -193,17 +188,16 @@ export function PlatformOverview() {
       <Card>
         <CardHeader className="sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle>Capability catalog</CardTitle>
+            <CardTitle>{translate("Capability catalog")}</CardTitle>
             <CardDescription>
-              Live lifecycle data returned by PlatformAdminService.
-            </CardDescription>
+              {translate("Live lifecycle data returned by PlatformAdminService.")}</CardDescription>
           </div>
           <Button
             onClick={() => {
               toast.promise(mutate(), {
-                loading: "Refreshing capability catalog…",
-                success: "Capability catalog refreshed.",
-                error: "Refresh failed.",
+                loading: translate("Refreshing capability catalog…"),
+                success: translate("Capability catalog refreshed."),
+                error: translate("Refresh failed."),
               });
             }}
             size="sm"
@@ -211,8 +205,7 @@ export function PlatformOverview() {
             variant="outline"
           >
             <RefreshCw aria-hidden="true" className="size-3.5" />
-            Refresh
-          </Button>
+            {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent>
           <CapabilityGrid capabilities={capabilities} />
@@ -251,7 +244,7 @@ function MetricCard({
 
 function PlatformOverviewSkeleton() {
   return (
-    <div aria-label="Loading platform information" className="space-y-6">
+    <div aria-label={translate("Loading platform information")} className="space-y-6">
       <div className="h-72 animate-pulse rounded-3xl border border-white/8 bg-white/[0.03]" />
       <div className="grid gap-4 md:grid-cols-3">
         {[0, 1, 2].map((item) => (

@@ -183,10 +183,18 @@ const artifactSchema = z.object({
   verifiedAt: optionalTimestampSchema,
   version: positiveVersionSchema,
 });
-const wireHeadersSchema = z
-  .object({ additionalData: z.record(z.string(), z.string()).optional() })
-  .nullish()
-  .transform((value) => value?.additionalData ?? {});
+const wireHeadersSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) return {};
+  if (
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "additionalData" in value
+  ) {
+    return (value as { additionalData?: unknown }).additionalData ?? {};
+  }
+
+  return value;
+}, z.record(z.string(), z.string()));
 const transferTicketSchema = z.object({
   expiresAt: timestampSchema,
   method: z.enum(["GET", "PUT"]),

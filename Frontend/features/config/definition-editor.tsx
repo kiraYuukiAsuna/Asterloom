@@ -10,6 +10,7 @@ import {
   type ConfigValueInput,
   type ConfigValueKind,
 } from "@/lib/api/config-management";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -117,25 +118,23 @@ export function ConfigDefinitionEditor({
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-2">
         <ValueField
-          label="Default value"
+          label={translate("Default value")}
           name={`${idPrefix}DefaultValue`}
           onChange={(defaultRawValue) => onChange({ ...draft, defaultRawValue })}
           value={draft.defaultRawValue}
           valueKind={valueKind}
         />
         <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4 text-xs text-slate-400">
-          <p className="font-semibold text-slate-200">Typed as {prettyKind(valueKind)}</p>
+          <p className="font-semibold text-slate-200">{translate("Typed as")}{" "}{prettyKind(valueKind)}</p>
           <p className="mt-1 leading-5">
-            Every default and targeted value must keep this type. Published snapshots are
-            immutable.
-          </p>
+            {translate("Every default and targeted value must keep this type. Published snapshots are immutable.")}</p>
         </div>
       </div>
 
       <label>
-        <span className={labelClassName}>JSON Schema (supported subset)</span>
+        <span className={labelClassName}>{translate("JSON Schema (supported subset)")}</span>
         <textarea
-          aria-label={`${idPrefix} JSON Schema`}
+          aria-label={translate(`${idPrefix} JSON Schema`)}
           className={`${inputClassName} min-h-28 py-2 font-mono text-xs`}
           name={`${idPrefix}SchemaJson`}
           onChange={(event) => onChange({ ...draft, schemaJson: event.target.value })}
@@ -147,10 +146,9 @@ export function ConfigDefinitionEditor({
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-200">Targeting overrides</p>
+            <p className="text-sm font-semibold text-slate-200">{translate("Targeting overrides")}</p>
             <p className="mt-1 text-xs text-slate-500">
-              First matching segment wins; the segment rule is captured at publish time.
-            </p>
+              {translate("First matching segment wins; the segment rule is captured at publish time.")}</p>
           </div>
           <Button
             disabled={segments.length === 0 || draft.targetingRules.length >= 50}
@@ -171,13 +169,11 @@ export function ConfigDefinitionEditor({
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> Add segment override
-          </Button>
+            <Plus className="size-3.5" /> {translate("Add segment override")}</Button>
         </div>
         {draft.targetingRules.length === 0 ? (
           <div className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-center text-xs text-slate-500">
-            No override. Every context receives the default value.
-          </div>
+            {translate("No override. Every context receives the default value.")}</div>
         ) : (
           draft.targetingRules.map((rule, index) => (
             <div
@@ -186,15 +182,15 @@ export function ConfigDefinitionEditor({
               key={index}
             >
               <TextField
-                label="Rule ID"
+                label={translate("Rule ID")}
                 name={`${idPrefix}TargetingRuleId`}
                 onChange={(id) => updateRule(draft, index, { id }, onChange)}
                 value={rule.id}
               />
               <label>
-                <span className={labelClassName}>Segment</span>
+                <span className={labelClassName}>{translate("Segment")}</span>
                 <select
-                  aria-label={`${idPrefix} targeting segment ${index + 1}`}
+                  aria-label={translate(`${idPrefix} targeting segment ${index + 1}`)}
                   className={inputClassName}
                   name={`${idPrefix}TargetingSegment`}
                   onChange={(event) =>
@@ -210,14 +206,14 @@ export function ConfigDefinitionEditor({
                 </select>
               </label>
               <ValueField
-                label="Override value"
+                label={translate("Override value")}
                 name={`${idPrefix}TargetingValue`}
                 onChange={(rawValue) => updateRule(draft, index, { rawValue }, onChange)}
                 value={rule.rawValue}
                 valueKind={valueKind}
               />
               <Button
-                aria-label={`Remove targeting override ${index + 1}`}
+                aria-label={translate(`Remove targeting override ${index + 1}`)}
                 onClick={() =>
                   onChange({
                     ...draft,
@@ -345,5 +341,5 @@ function defaultSchema(valueKind: ConfigValueKind): string {
 }
 
 function prettyKind(valueKind: ConfigValueKind): string {
-  return valueKind.replace("CONFIG_VALUE_KIND_", "").toLowerCase();
+  return translate(valueKind.replace("CONFIG_VALUE_KIND_", "").toLowerCase());
 }

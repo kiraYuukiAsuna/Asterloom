@@ -1,24 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+import { adminEmail, signIn, webUrl } from "./support/environment";
+
 test("shows the platform API response through the BFF", async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(
-    page.locator('[data-ui-action="start-passport-login"]'),
-  ).toBeVisible();
-
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
-
-  await expect(page).toHaveURL("http://localhost:3000/");
+  await signIn(page, "/");
+  await expect(page).toHaveURL(webUrl("/"));
   const session = await page.request.get("/api/auth/session");
   expect(session.ok()).toBeTruthy();
-  expect((await session.json()).actor.email).toBe("admin@asterloom.test");
+  expect((await session.json()).actor.email).toBe(adminEmail);
   const cookies = await page.context().cookies();
   const sessionCookie = cookies.find((cookie) =>
     cookie.name.includes("asterloom_session"),
@@ -48,7 +37,7 @@ test("shows the platform API response through the BFF", async ({ page }) => {
   expect(rejectedMutation.body.code).toBe("CSRF_REJECTED");
 
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/login?loggedOut=1");
+  await expect(page).toHaveURL(webUrl("/login?loggedOut=1"));
   await expect(page.getByText("You have signed out successfully.")).toBeVisible();
 
   const signedOutSession = await page.request.get("/api/auth/session");

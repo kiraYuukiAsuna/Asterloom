@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages buckets and verified objects through every Storage admin API", async ({
   page,
 }) => {
@@ -19,9 +21,9 @@ test("manages buckets and verified objects through every Storage admin API", asy
   await createScope(page, tenantSlug, applicationSlug, environmentSlug);
 
   await page.getByRole("link", { name: "Storage" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/storage/objects");
+  await expect(page).toHaveURL(webUrl("/storage/objects"));
   await page.getByRole("link", { name: "Buckets", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/storage/buckets");
+  await expect(page).toHaveURL(webUrl("/storage/buckets"));
   await expect(page.locator("[data-storage-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -54,7 +56,7 @@ test("manages buckets and verified objects through every Storage admin API", asy
   await expect(bucketRow).toContainText("Storage E2E Bucket Updated");
 
   await page.getByRole("link", { name: "Objects", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/storage/objects");
+  await expect(page).toHaveURL(webUrl("/storage/objects"));
   await expect(page.locator('[data-ui-action="list-storage-objects"]')).toBeVisible();
   await page
     .getByLabel("Object bucket")
@@ -149,14 +151,4 @@ async function createScope(
   await form.getByLabel("Type").selectOption("Development");
   await form.locator('[data-ui-action="create-environment"]').click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page.locator('input[name="Password"]').fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

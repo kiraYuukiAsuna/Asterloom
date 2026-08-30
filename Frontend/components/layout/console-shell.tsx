@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Activity,
   Boxes,
@@ -15,10 +17,13 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { CommandMenu } from "@/components/layout/command-menu";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { LocaleToggle } from "@/components/i18n/locale-toggle";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 import type { Actor } from "@/lib/auth/types";
@@ -74,6 +79,12 @@ export function ConsoleShell({
   headerDescription?: string;
   headerTitle?: string;
 }) {
+  const { locale, t } = useLocale();
+
+  useEffect(() => {
+    document.title = `${t(headerTitle)} · Asterloom`;
+  }, [headerTitle, locale, t]);
+
   return (
     <div className="min-h-dvh">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/8 bg-slate-950/70 p-4 backdrop-blur-xl lg:flex lg:flex-col">
@@ -84,21 +95,21 @@ export function ConsoleShell({
           <div>
             <p className="font-semibold tracking-tight text-white">Asterloom</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              Control plane
+              {t("Control plane")}
             </p>
           </div>
         </div>
 
-        <nav aria-label="Primary navigation" className="mt-8 space-y-1">
+        <nav aria-label={t("Primary navigation")} className="mt-8 space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
             const content = (
               <>
                 <Icon aria-hidden="true" className="size-4 shrink-0" />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
                 {!item.available && (
                   <span className="ml-auto text-[9px] uppercase tracking-wider text-slate-600">
-                    Planned
+                    {t("Planned")}
                   </span>
                 )}
               </>
@@ -131,12 +142,11 @@ export function ConsoleShell({
 
         <div className="mt-auto rounded-xl border border-white/8 bg-white/[0.025] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-300">Control plane</span>
-            <Badge variant="success">Implemented</Badge>
+            <span className="text-xs font-medium text-slate-300">{t("Control plane")}</span>
+            <Badge variant="success">{t("Implemented")}</Badge>
           </div>
           <p className="mt-2 text-xs leading-5 text-slate-500">
-            All contract-first slices through Operations are live with complete
-            Web management coverage.
+            {t("All contract-first slices through Operations are live with complete Web management coverage.")}
           </p>
         </div>
       </aside>
@@ -145,20 +155,22 @@ export function ConsoleShell({
         <header className="sticky top-0 z-30 flex h-17 items-center justify-between border-b border-white/8 bg-slate-950/65 px-5 backdrop-blur-xl sm:px-8">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-sky-400">
-              {headerTitle}
+              {t(headerTitle)}
             </p>
             <p className="mt-0.5 text-sm text-slate-500">
-              {headerDescription}
+              {t(headerDescription)}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LocaleToggle />
+            <ThemeToggle />
             <CommandMenu />
             <AccountMenu actor={actor} csrfToken={csrfToken} />
           </div>
         </header>
 
         <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-          {children}
+          <div key={locale}>{children}</div>
         </main>
       </div>
     </div>

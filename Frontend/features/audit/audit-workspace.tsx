@@ -37,6 +37,8 @@ import {
 } from "@/lib/api/audit-management";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -87,7 +89,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
       setPageTokens([""]);
       setSelectedEvent(undefined);
     } catch (error) {
-      toast.error(auditErrorMessage(error));
+      toast.error(translate(auditErrorMessage(error)));
     }
   }
 
@@ -103,7 +105,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       setSelectedEvent(await getAuditEvent(auditEventId));
     } catch (error) {
-      toast.error(auditErrorMessage(error));
+      toast.error(translate(auditErrorMessage(error)));
     } finally {
       setDetailPending("");
     }
@@ -122,9 +124,9 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
       document.body.append(link);
       link.click();
       link.remove();
-      toast.success(`Exported ${result.exportedRows} audit events.`);
+      toast.success(translate(`Exported ${result.exportedRows} audit events.`));
     } catch (error) {
-      toast.error(auditErrorMessage(error));
+      toast.error(translate(auditErrorMessage(error)));
     } finally {
       setExportPending(false);
     }
@@ -140,21 +142,21 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
     >
       <section className="grid gap-4 md:grid-cols-3">
         <Metric
-          description="Immutable administrative outcomes"
+          description={translate("Immutable administrative outcomes")}
           icon={FileClock}
-          label="Events on this page"
+          label={translate("Events on this page")}
           value={page?.auditEvents.length.toString() ?? "—"}
         />
         <Metric
-          description="Use a request ID to correlate failures"
+          description={translate("Use a request ID to correlate failures")}
           icon={Search}
-          label="Request correlation"
+          label={translate("Request correlation")}
           value={filters.requestId ? "Filtered" : "Ready"}
         />
         <Metric
-          description="Values are redacted; only field names remain"
+          description={translate("Values are redacted; only field names remain")}
           icon={ShieldAlert}
-          label="Change summaries"
+          label={translate("Change summaries")}
           value="Redacted"
         />
       </section>
@@ -162,10 +164,9 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
       <Card data-ui-action="list-audit-events">
         <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <CardTitle>Audit trail</CardTitle>
+            <CardTitle>{translate("Audit trail")}</CardTitle>
             <CardDescription>
-              Search successful, denied, and failed administrative operations.
-            </CardDescription>
+              {translate("Search successful, denied, and failed administrative operations.")}</CardDescription>
           </div>
           <Button
             data-ui-action="export-audit-events"
@@ -179,15 +180,14 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
             ) : (
               <Download aria-hidden="true" className="size-4" />
             )}
-            Export current view
-          </Button>
+            {translate("Export current view")}</Button>
         </CardHeader>
         <CardContent className="space-y-5">
           <form
             className="grid gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 md:grid-cols-2 xl:grid-cols-4"
             onSubmit={applyFilters}
           >
-            <FilterField label="Actor" name="audit-actor">
+            <FilterField label={translate("Actor")} name="audit-actor">
               <input
                 className={inputClassName}
                 id="audit-actor"
@@ -195,11 +195,11 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, actorId: event.target.value }))
                 }
-                placeholder="Subject or client ID"
+                placeholder={translate("Subject or client ID")}
                 value={draft.actorId}
               />
             </FilterField>
-            <FilterField label="Operation" name="audit-operation">
+            <FilterField label={translate("Operation")} name="audit-operation">
               <input
                 className={inputClassName}
                 id="audit-operation"
@@ -207,11 +207,11 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, operation: event.target.value }))
                 }
-                placeholder="CreateTenant"
+                placeholder={translate("CreateTenant")}
                 value={draft.operation}
               />
             </FilterField>
-            <FilterField label="Request ID" name="audit-request-id">
+            <FilterField label={translate("Request ID")} name="audit-request-id">
               <input
                 className={inputClassName}
                 id="audit-request-id"
@@ -219,11 +219,11 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, requestId: event.target.value }))
                 }
-                placeholder="Trace or request identifier"
+                placeholder={translate("Trace or request identifier")}
                 value={draft.requestId}
               />
             </FilterField>
-            <FilterField label="Outcome" name="audit-outcome">
+            <FilterField label={translate("Outcome")} name="audit-outcome">
               <select
                 className={inputClassName}
                 id="audit-outcome"
@@ -236,13 +236,13 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 }
                 value={draft.outcome}
               >
-                <option value="">All outcomes</option>
-                <option value="AUDIT_OUTCOME_SUCCEEDED">Succeeded</option>
-                <option value="AUDIT_OUTCOME_DENIED">Denied</option>
-                <option value="AUDIT_OUTCOME_FAILED">Failed</option>
+                <option value="">{translate("All outcomes")}</option>
+                <option value="AUDIT_OUTCOME_SUCCEEDED">{translate("Succeeded")}</option>
+                <option value="AUDIT_OUTCOME_DENIED">{translate("Denied")}</option>
+                <option value="AUDIT_OUTCOME_FAILED">{translate("Failed")}</option>
               </select>
             </FilterField>
-            <FilterField label="From" name="audit-from">
+            <FilterField label={translate("From")} name="audit-from">
               <input
                 className={inputClassName}
                 id="audit-from"
@@ -254,7 +254,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 value={draft.fromAt}
               />
             </FilterField>
-            <FilterField label="To" name="audit-to">
+            <FilterField label={translate("To")} name="audit-to">
               <input
                 className={inputClassName}
                 id="audit-to"
@@ -269,8 +269,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
             <div className="flex items-end gap-2 md:col-span-2">
               <Button disabled={!hydrated} type="submit">
                 <Filter aria-hidden="true" className="size-4" />
-                Apply filters
-              </Button>
+                {translate("Apply filters")}</Button>
               <Button
                 disabled={!hydrated}
                 onClick={clearFilters}
@@ -278,8 +277,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 variant="ghost"
               >
                 <RotateCcw aria-hidden="true" className="size-4" />
-                Clear
-              </Button>
+                {translate("Clear")}</Button>
             </div>
           </form>
 
@@ -287,33 +285,33 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
             <StateMessage
               description={auditErrorMessage(events.error)}
               icon={CircleAlert}
-              title="Audit events could not be loaded"
+              title={translate("Audit events could not be loaded")}
             />
           ) : !page && events.isLoading ? (
             <StateMessage
-              description="Reading the immutable audit store."
+              description={translate("Reading the immutable audit store.")}
               icon={LoaderCircle}
               loading
-              title="Loading audit events"
+              title={translate("Loading audit events")}
             />
           ) : page?.auditEvents.length === 0 ? (
             <StateMessage
-              description="Adjust the filters or perform an administrative operation."
+              description={translate("Adjust the filters or perform an administrative operation.")}
               icon={FileClock}
-              title="No matching audit events"
+              title={translate("No matching audit events")}
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-white/8">
               <table className="w-full min-w-[62rem] text-left text-sm">
                 <thead className="bg-white/[0.035] text-[10px] uppercase tracking-[0.14em] text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Time</th>
-                    <th className="px-4 py-3 font-semibold">Outcome</th>
-                    <th className="px-4 py-3 font-semibold">Actor</th>
-                    <th className="px-4 py-3 font-semibold">Operation</th>
-                    <th className="px-4 py-3 font-semibold">Resource</th>
-                    <th className="px-4 py-3 font-semibold">Request</th>
-                    <th className="px-4 py-3 text-right font-semibold">Detail</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Time")}</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Outcome")}</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Actor")}</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Operation")}</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Resource")}</th>
+                    <th className="px-4 py-3 font-semibold">{translate("Request")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{translate("Detail")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6">
@@ -349,7 +347,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button
-                          aria-label={`View audit event ${auditEvent.id}`}
+                          aria-label={translate(`View audit event ${auditEvent.id}`)}
                           data-ui-action="get-audit-event"
                           disabled={detailPending !== ""}
                           onClick={() => void showDetail(auditEvent.id)}
@@ -362,8 +360,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                           ) : (
                             <Eye className="size-3.5" />
                           )}
-                          View
-                        </Button>
+                          {translate("View")}</Button>
                       </td>
                     </tr>
                   ))}
@@ -373,7 +370,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
           )}
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-600">Page {pageTokens.length}</p>
+            <p className="text-xs text-slate-600">{translate("Page")}{" "}{pageTokens.length}</p>
             <div className="flex gap-2">
               <Button
                 disabled={pageTokens.length === 1 || events.isLoading}
@@ -385,8 +382,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 variant="outline"
               >
                 <ChevronLeft className="size-3.5" />
-                Previous
-              </Button>
+                {translate("Previous")}</Button>
               <Button
                 disabled={!page?.nextPageToken || events.isLoading}
                 onClick={() =>
@@ -397,8 +393,7 @@ export function AuditWorkspace({ csrfToken }: { csrfToken: string }) {
                 type="button"
                 variant="outline"
               >
-                Next
-                <ChevronRight className="size-3.5" />
+                {translate("Next")}<ChevronRight className="size-3.5" />
               </Button>
             </div>
           </div>
@@ -425,49 +420,48 @@ function AuditDetail({
     <Card data-testid="audit-event-detail">
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <CardTitle>Event detail</CardTitle>
+          <CardTitle>{translate("Event detail")}</CardTitle>
           <CardDescription>
-            Full scope, correlation, result, and redacted change metadata.
-          </CardDescription>
+            {translate("Full scope, correlation, result, and redacted change metadata.")}</CardDescription>
         </div>
         {auditEvent && <OutcomeBadge outcome={auditEvent.outcome} />}
       </CardHeader>
       <CardContent>
         {!auditEvent ? (
           <StateMessage
-            description="Choose View on an event to load it through the detail API."
+            description={translate("Choose View on an event to load it through the detail API.")}
             icon={Eye}
-            title="No event selected"
+            title={translate("No event selected")}
           />
         ) : (
           <div className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
-            <Detail label="Event ID" value={auditEvent.id} mono />
-            <Detail label="Occurred at" value={formatTimestamp(auditEvent.createdAt)} />
-            <Detail label="Actor" value={auditEvent.actorId} mono />
-            <Detail label="Operation" value={auditEvent.operation} mono />
+            <Detail label={translate("Event ID")} value={auditEvent.id} mono />
+            <Detail label={translate("Occurred at")} value={formatTimestamp(auditEvent.createdAt)} />
+            <Detail label={translate("Actor")} value={auditEvent.actorId} mono />
+            <Detail label={translate("Operation")} value={auditEvent.operation} mono />
             <Detail
-              label="Resource"
+              label={translate("Resource")}
               value={`${auditEvent.resourceType}${auditEvent.resourceId ? ` · ${auditEvent.resourceId}` : ""}`}
               mono
             />
             <Detail
-              label="Error code"
+              label={translate("Error code")}
               value={auditEvent.errorCode || "No error"}
               mono
             />
-            <Detail label="Tenant scope" value={auditEvent.tenantId ?? "Global"} mono />
+            <Detail label={translate("Tenant scope")} value={auditEvent.tenantId ?? "Global"} mono />
             <Detail
-              label="Application scope"
+              label={translate("Application scope")}
               value={auditEvent.applicationId ?? "All applications"}
               mono
             />
             <Detail
-              label="Environment scope"
+              label={translate("Environment scope")}
               value={auditEvent.environmentId ?? "All environments"}
               mono
             />
             <div className="md:col-span-2 xl:col-span-3">
-              <p className={labelClassName}>Request correlation</p>
+              <p className={labelClassName}>{translate("Request correlation")}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <code className="rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-xs text-slate-300">
                   {auditEvent.requestId}
@@ -479,12 +473,11 @@ function AuditDetail({
                   variant="outline"
                 >
                   <Search className="size-3.5" />
-                  Show correlated events
-                </Button>
+                  {translate("Show correlated events")}</Button>
               </div>
             </div>
             <div className="md:col-span-2 xl:col-span-3">
-              <p className={labelClassName}>Redacted change summary</p>
+              <p className={labelClassName}>{translate("Redacted change summary")}</p>
               <code className="block overflow-x-auto rounded-xl border border-white/8 bg-black/25 p-4 text-xs leading-6 text-slate-300">
                 {auditEvent.changeSummary}
               </code>
@@ -566,7 +559,7 @@ function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
       )}
       variant={succeeded ? "success" : "planned"}
     >
-      {succeeded ? "Succeeded" : denied ? "Denied" : "Failed"}
+      {translate(succeeded ? "Succeeded" : denied ? "Denied" : "Failed")}
     </Badge>
   );
 }
@@ -588,8 +581,8 @@ function StateMessage({
         <Icon
           className={cn("mx-auto size-5 text-slate-500", loading && "animate-spin")}
         />
-        <p className="mt-3 text-sm font-medium text-slate-300">{title}</p>
-        <p className="mt-1 text-xs text-slate-500">{description}</p>
+        <p className="mt-3 text-sm font-medium text-slate-300">{translate(title)}</p>
+        <p className="mt-1 text-xs text-slate-500">{translate(description)}</p>
       </div>
     </div>
   );
@@ -600,10 +593,10 @@ function operationName(operation: string) {
 }
 
 function formatTimestamp(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+  return formatDateTime(value, {
     dateStyle: "medium",
     timeStyle: "medium",
-  }).format(new Date(value));
+  });
 }
 
 function toIsoTimestamp(value: string) {

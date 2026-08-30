@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Asterloom.Modules.Identity.Controllers;
 
@@ -35,9 +36,10 @@ public sealed class PassportController(
         if (string.IsNullOrWhiteSpace(input.Email)
             || string.IsNullOrEmpty(input.Password))
         {
+            var copy = PassportCopy.For(IsChinese(input.ReturnUrl));
             return LoginPage(
                 input.ReturnUrl,
-                "请输入邮箱和密码。",
+                copy.RequiredCredentials,
                 input.Email);
         }
 
@@ -47,7 +49,10 @@ public sealed class PassportController(
             || user.ArchivedAt is not null)
         {
             await DelayFailedLoginAsync(cancellationToken);
-            return LoginPage(input.ReturnUrl, "邮箱或密码不正确。", input.Email);
+            return LoginPage(
+                input.ReturnUrl,
+                PassportCopy.For(IsChinese(input.ReturnUrl)).InvalidCredentials,
+                input.Email);
         }
 
         var result = await signInManager.CheckPasswordSignInAsync(
@@ -56,7 +61,10 @@ public sealed class PassportController(
             lockoutOnFailure: true);
         if (!result.Succeeded)
         {
-            return LoginPage(input.ReturnUrl, "邮箱或密码不正确。", input.Email);
+            return LoginPage(
+                input.ReturnUrl,
+                PassportCopy.For(IsChinese(input.ReturnUrl)).InvalidCredentials,
+                input.Email);
         }
 
         await signInManager.SignInAsync(user, input.RememberMe);
@@ -64,15 +72,22 @@ public sealed class PassportController(
     }
 
     [HttpGet("/passport/denied")]
-    public IActionResult AccessDenied() => Content(
-        RenderMessagePage(
-            "访问被拒绝",
-            "当前账户没有完成此操作所需的权限。",
-            "/"),
-        "text/html; charset=utf-8");
+    public IActionResult AccessDenied()
+    {
+        var copy = PassportCopy.For(IsChinese(returnUrl: null));
+        return Content(
+            RenderMessagePage(
+                copy.Language,
+                copy.AccessDeniedTitle,
+                copy.AccessDeniedMessage,
+                "/",
+                copy.Back),
+            "text/html; charset=utf-8");
+    }
 
     private ContentResult LoginPage(string? returnUrl, string? error, string? email)
     {
+        var copy = PassportCopy.For(IsChinese(returnUrl));
         Response.Headers.CacheControl = "no-store";
         Response.Headers.Pragma = "no-cache";
         Response.Headers.XFrameOptions = "DENY";
@@ -88,11 +103,11 @@ public sealed class PassportController(
             : $"<div class=\"error\" role=\"alert\">{WebUtility.HtmlEncode(error)}</div>";
         var html = $$"""
             <!doctype html>
-            <html lang="zh-CN">
+            <html lang="{{copy.Language}}">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>登录 · Asterloom Passport</title>
+              <title>{{copy.LoginTitle}} · Asterloom Passport</title>
               <style>{{Styles}}</style>
             </head>
             <body>
@@ -100,21 +115,21 @@ public sealed class PassportController(
                 <section class="brand" aria-label="Asterloom Passport">
                   <div class="mark">A</div>
                   <p class="eyebrow">ASTERLOOM PASSPORT</p>
-                  <h1>回到你的控制台</h1>
-                  <p class="intro">一套身份，安全访问 Asterloom 的平台能力。</p>
+                  <h1>{{copy.HeroTitle}}</h1>
+                  <p class="intro">{{copy.HeroDescription}}</p>
                 </section>
                 <section class="card">
-                  <div><p class="eyebrow">SIGN IN</p><h2>账户登录</h2></div>
+                  <div><p class="eyebrow">SIGN IN</p><h2>{{copy.AccountSignIn}}</h2></div>
                   {{errorMarkup}}
                   <form method="post" action="/passport/login">
                     <input type="hidden" name="__RequestVerificationToken" value="{{HtmlEncoder.Default.Encode(tokens.RequestToken ?? string.Empty)}}">
                     <input type="hidden" name="ReturnUrl" value="{{encodedReturnUrl}}">
-                    <label>邮箱<input name="Email" type="email" autocomplete="username" required autofocus value="{{encodedEmail}}"></label>
-                    <label>密码<input name="Password" type="password" autocomplete="current-password" required></label>
-                    <label class="remember"><input name="RememberMe" type="checkbox" value="true"><span>在此设备保持登录</span></label>
-                    <button type="submit">继续</button>
+                    <label>{{copy.Email}}<input name="Email" type="email" autocomplete="username" required autofocus value="{{encodedEmail}}"></label>
+                    <label>{{copy.Password}}<input name="Password" type="password" autocomplete="current-password" required></label>
+                    <label class="remember"><input name="RememberMe" type="checkbox" value="true"><span>{{copy.RememberMe}}</span></label>
+                    <button type="submit">{{copy.Continue}}</button>
                   </form>
-                  <p class="help">账户由你的 Asterloom 管理员创建或邀请。</p>
+                  <p class="help">{{copy.Help}}</p>
                 </section>
               </main>
             </body>
@@ -126,6 +141,7 @@ public sealed class PassportController(
 
     private ContentResult LoginCompletedPage(string returnUrl)
     {
+        var copy = PassportCopy.For(IsChinese(returnUrl));
         Response.Headers.CacheControl = "no-store";
         Response.Headers.Pragma = "no-cache";
         Response.Headers.XFrameOptions = "DENY";
@@ -136,20 +152,20 @@ public sealed class PassportController(
         var encodedReturnUrl = WebUtility.HtmlEncode(returnUrl);
         var html = $$"""
             <!doctype html>
-            <html lang="zh-CN">
+            <html lang="{{copy.Language}}">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <meta http-equiv="refresh" content="0;url={{encodedReturnUrl}}">
-              <title>正在继续 · Asterloom Passport</title>
+              <title>{{copy.ContinuingTitle}} · Asterloom Passport</title>
               <style>{{Styles}}</style>
             </head>
             <body>
               <main><section class="card message">
                 <div class="mark">A</div>
-                <h1>登录成功</h1>
-                <p class="intro">正在安全返回你的应用。</p>
-                <a class="button" href="{{encodedReturnUrl}}">继续</a>
+                <h1>{{copy.SuccessTitle}}</h1>
+                <p class="intro">{{copy.ReturningToApplication}}</p>
+                <a class="button" href="{{encodedReturnUrl}}">{{copy.Continue}}</a>
               </section></main>
             </body>
             </html>
@@ -163,20 +179,43 @@ public sealed class PassportController(
             ? returnUrl
             : "/";
 
+    private bool IsChinese(string? returnUrl)
+    {
+        string? requestedLocale = null;
+        if (!string.IsNullOrWhiteSpace(returnUrl))
+        {
+            var queryStart = returnUrl.IndexOf('?', StringComparison.Ordinal);
+            if (queryStart >= 0)
+            {
+                var query = QueryHelpers.ParseQuery(returnUrl[queryStart..]);
+                requestedLocale = query["ui_locales"].FirstOrDefault();
+            }
+        }
+
+        requestedLocale ??= Request.Cookies["asterloom-locale"];
+        requestedLocale ??= Request.Headers.AcceptLanguage.FirstOrDefault();
+        return requestedLocale?.Trim().StartsWith("zh", StringComparison.OrdinalIgnoreCase) is true;
+    }
+
     private static async Task DelayFailedLoginAsync(CancellationToken cancellationToken)
     {
         await Task.Delay(Random.Shared.Next(80, 161), cancellationToken);
     }
 
-    private static string RenderMessagePage(string title, string message, string returnUrl) =>
+    private static string RenderMessagePage(
+        string language,
+        string title,
+        string message,
+        string returnUrl,
+        string backLabel) =>
         $$"""
-          <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+          <!doctype html><html lang="{{WebUtility.HtmlEncode(language)}}"><head><meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>{{WebUtility.HtmlEncode(title)}} · Asterloom Passport</title>
           <style>{{Styles}}</style></head><body><main><section class="card message">
           <div class="mark">A</div><h1>{{WebUtility.HtmlEncode(title)}}</h1>
           <p class="intro">{{WebUtility.HtmlEncode(message)}}</p>
-          <a class="button" href="{{WebUtility.HtmlEncode(returnUrl)}}">返回</a>
+          <a class="button" href="{{WebUtility.HtmlEncode(returnUrl)}}">{{WebUtility.HtmlEncode(backLabel)}}</a>
           </section></main></body></html>
           """;
 
@@ -189,4 +228,65 @@ public sealed class PassportController(
         string Password,
         bool RememberMe,
         string? ReturnUrl);
+
+    private sealed record PassportCopy(
+        string Language,
+        string LoginTitle,
+        string HeroTitle,
+        string HeroDescription,
+        string AccountSignIn,
+        string Email,
+        string Password,
+        string RememberMe,
+        string Continue,
+        string Help,
+        string RequiredCredentials,
+        string InvalidCredentials,
+        string ContinuingTitle,
+        string SuccessTitle,
+        string ReturningToApplication,
+        string AccessDeniedTitle,
+        string AccessDeniedMessage,
+        string Back)
+    {
+        public static PassportCopy For(bool chinese) => chinese
+            ? new(
+                "zh-CN",
+                "登录",
+                "回到你的控制台",
+                "一套身份，安全访问 Asterloom 的平台能力。",
+                "账户登录",
+                "邮箱",
+                "密码",
+                "在此设备保持登录",
+                "继续",
+                "账户由你的 Asterloom 管理员创建或邀请。",
+                "请输入邮箱和密码。",
+                "邮箱或密码不正确。",
+                "正在继续",
+                "登录成功",
+                "正在安全返回你的应用。",
+                "访问被拒绝",
+                "当前账户没有完成此操作所需的权限。",
+                "返回")
+            : new(
+                "en",
+                "Sign in",
+                "Return to your console",
+                "One identity for secure access to Asterloom platform capabilities.",
+                "Account sign in",
+                "Email",
+                "Password",
+                "Keep me signed in on this device",
+                "Continue",
+                "Your Asterloom administrator creates or invites accounts.",
+                "Enter your email and password.",
+                "The email or password is incorrect.",
+                "Continuing",
+                "Signed in",
+                "Securely returning to your application.",
+                "Access denied",
+                "Your account does not have permission to complete this operation.",
+                "Back");
+    }
 }

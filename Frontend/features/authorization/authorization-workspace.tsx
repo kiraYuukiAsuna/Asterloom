@@ -61,6 +61,7 @@ import {
 } from "@/lib/api/authorization-management";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -178,14 +179,14 @@ export function AuthorizationWorkspace({
     try {
       await work();
       await Promise.all(refresh.map((reload) => reload()));
-      toast.success(message);
+      toast.success(translate(message));
       return true;
     } catch (error) {
       await Promise.allSettled(refresh.map((reload) => reload()));
       toast.error(
-        isAuthorizationVersionConflict(error)
+        translate(isAuthorizationVersionConflict(error)
           ? "This policy resource changed elsewhere. Latest data loaded; review it and retry."
-          : authorizationErrorMessage(error),
+          : authorizationErrorMessage(error)),
       );
       return false;
     } finally {
@@ -207,23 +208,18 @@ export function AuthorizationWorkspace({
       data-authorization-workspace
       data-hydrated={hydrated}
     >
-      <section className="overflow-hidden rounded-3xl border border-violet-300/10 bg-[linear-gradient(135deg,rgba(139,92,246,0.14),rgba(15,23,42,0.84)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
+      <section className="theme-hero-violet overflow-hidden rounded-3xl border border-violet-300/10 bg-[linear-gradient(135deg,rgba(139,92,246,0.14),rgba(15,23,42,0.84)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
         <Badge className="border-violet-400/20 bg-violet-400/10 text-violet-300">
           <KeyRound aria-hidden="true" className="size-3" />
-          Casbin policy plane
-        </Badge>
+          {translate("Casbin policy plane")}</Badge>
         <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-          Authorization control center
-        </h1>
+          {translate("Authorization control center")}</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-          Compose immutable platform permissions into roles, bind them to actors at an
-          exact scope, add explicit policy exceptions, and inspect every revision before
-          testing the resulting decision.
-        </p>
+          {translate("Compose immutable platform permissions into roles, bind them to actors at an exact scope, add explicit policy exceptions, and inspect every revision before testing the resulting decision.")}</p>
       </section>
 
       <nav
-        aria-label="Authorization workspace"
+        aria-label={translate("Authorization workspace")}
         className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2 xl:grid-cols-4"
       >
         {tabs.map((tab) => {
@@ -242,7 +238,7 @@ export function AuthorizationWorkspace({
               type="button"
             >
               <Icon aria-hidden="true" className="size-4" />
-              {tab.label}
+              {translate(tab.label)}
             </button>
           );
         })}
@@ -415,10 +411,9 @@ function RolesPanel({
       <div className="space-y-5">
         <Card data-ui-action="list-roles">
           <CardHeader>
-            <CardTitle>Roles</CardTitle>
+            <CardTitle>{translate("Roles")}</CardTitle>
             <CardDescription>
-              System roles are immutable; custom roles have optimistic versions.
-            </CardDescription>
+              {translate("System roles are immutable; custom roles have optimistic versions.")}</CardDescription>
           </CardHeader>
           <CardContent>
             <FilterBar
@@ -441,11 +436,11 @@ function RolesPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium text-slate-100">{role.displayName}</p>
                         <StatusBadge active={role.status === activeStatus} />
-                        {role.isSystem && <Badge variant="planned">System</Badge>}
+                        {role.isSystem && <Badge variant="planned">{translate("System")}</Badge>}
                       </div>
                       <p className="mt-1 font-mono text-xs text-violet-300">{role.key}</p>
                       <p className="mt-2 text-xs leading-5 text-slate-500">
-                        {role.description || "No description"} · v{role.version}
+                        {role.description || translate("No description")} {" "}{translate("· v")} {role.version}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {role.permissions.map((permission) => (
@@ -466,14 +461,13 @@ function RolesPanel({
                           type="button"
                           variant="ghost"
                         >
-                          <Pencil className="size-3.5" /> Edit
-                        </Button>
+                          <Pencil className="size-3.5" /> {translate("Edit")}</Button>
                         {role.status === activeStatus ? (
                           <Button
                             data-ui-action="archive-role"
                             disabled={pending !== ""}
                             onClick={() => {
-                              if (!window.confirm(`Archive role ${role.displayName}?`)) return;
+                              if (!window.confirm(translate(`Archive role ${role.displayName}?`))) return;
                               void runMutation(
                                 `archive-role-${role.id}`,
                                 () => archiveRole(csrfToken, role),
@@ -485,8 +479,7 @@ function RolesPanel({
                             type="button"
                             variant="ghost"
                           >
-                            <Archive className="size-3.5" /> Archive
-                          </Button>
+                            <Archive className="size-3.5" /> {translate("Archive")}</Button>
                         ) : (
                           <Button
                             data-ui-action="restore-role"
@@ -503,8 +496,7 @@ function RolesPanel({
                             type="button"
                             variant="ghost"
                           >
-                            <RotateCcw className="size-3.5" /> Restore
-                          </Button>
+                            <RotateCcw className="size-3.5" /> {translate("Restore")}</Button>
                         )}
                       </div>
                     )}
@@ -515,7 +507,7 @@ function RolesPanel({
                       data-ui-action="update-role"
                       onSubmit={submitEdit}
                     >
-                      <Field label="Display name">
+                      <Field label={translate("Display name")}>
                         <input
                           className={inputClassName}
                           name="editRoleDisplayName"
@@ -523,7 +515,7 @@ function RolesPanel({
                           value={editDisplayName}
                         />
                       </Field>
-                      <Field label="Description">
+                      <Field label={translate("Description")}>
                         <textarea
                           className={textAreaClassName}
                           name="editRoleDescription"
@@ -531,7 +523,7 @@ function RolesPanel({
                           value={editDescription}
                         />
                       </Field>
-                      <Field label="Permission keys (comma separated)">
+                      <Field label={translate("Permission keys (comma separated)")}>
                         <textarea
                           className={textAreaClassName}
                           name="editRolePermissions"
@@ -541,47 +533,45 @@ function RolesPanel({
                       </Field>
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => setEditing(undefined)} type="button" variant="ghost">
-                          Cancel
-                        </Button>
+                          {translate("Cancel")}</Button>
                         <Button disabled={pending !== ""} type="submit">
-                          Save role
-                        </Button>
+                          {translate("Save role")}</Button>
                       </div>
                     </form>
                   )}
                 </div>
               ))}
-              {roles.length === 0 && <EmptyState text="No roles match this view." />}
+              {roles.length === 0 && <EmptyState text={translate("No roles match this view.")} />}
             </div>
           </CardContent>
         </Card>
 
         <Card data-ui-action="create-role">
           <CardHeader>
-            <CardTitle>Create custom role</CardTitle>
-            <CardDescription>Keys are stable; permission sets remain editable.</CardDescription>
+            <CardTitle>{translate("Create custom role")}</CardTitle>
+            <CardDescription>{translate("Keys are stable; permission sets remain editable.")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={submitCreate}>
-              <Field label="Role key">
+              <Field label={translate("Role key")}>
                 <input
                   className={inputClassName}
                   name="roleKey"
                   onChange={(event) => setKey(event.target.value)}
-                  placeholder="release-operator"
+                  placeholder={translate("release-operator")}
                   value={key}
                 />
               </Field>
-              <Field label="Display name">
+              <Field label={translate("Display name")}>
                 <input
                   className={inputClassName}
                   name="roleDisplayName"
                   onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="Release operator"
+                  placeholder={translate("Release operator")}
                   value={displayName}
                 />
               </Field>
-              <Field className="sm:col-span-2" label="Description">
+              <Field className="sm:col-span-2" label={translate("Description")}>
                 <textarea
                   className={textAreaClassName}
                   name="roleDescription"
@@ -589,12 +579,12 @@ function RolesPanel({
                   value={description}
                 />
               </Field>
-              <Field className="sm:col-span-2" label="Permission keys (comma separated)">
+              <Field className="sm:col-span-2" label={translate("Permission keys (comma separated)")}>
                 <textarea
                   className={textAreaClassName}
                   name="rolePermissions"
                   onChange={(event) => setPermissionKeys(event.target.value)}
-                  placeholder="platform.environment.read, platform.environment.update"
+                  placeholder={translate("platform.environment.read, platform.environment.update")}
                   value={permissionKeys}
                 />
               </Field>
@@ -605,8 +595,7 @@ function RolesPanel({
                   ) : (
                     <Plus className="size-4" />
                   )}
-                  Create role
-                </Button>
+                  {translate("Create role")}</Button>
               </div>
             </form>
           </CardContent>
@@ -615,13 +604,13 @@ function RolesPanel({
 
       <Card data-ui-action="list-permissions">
         <CardHeader>
-          <CardTitle>Permission catalog</CardTitle>
-          <CardDescription>Contract-owned keys available to roles and policies.</CardDescription>
+          <CardTitle>{translate("Permission catalog")}</CardTitle>
+          <CardDescription>{translate("Contract-owned keys available to roles and policies.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <SearchInput
             onChange={onPermissionQueryChange}
-            placeholder="Search permission keys"
+            placeholder={translate("Search permission keys")}
             value={permissionQuery}
           />
           <ResourceError error={permissionsError} />
@@ -723,30 +712,29 @@ function BindingsPanel({
     <div className="grid items-start gap-5 xl:grid-cols-[0.72fr_1.28fr]">
       <Card data-ui-action="set-role-binding">
         <CardHeader>
-          <CardTitle>{editing ? "Edit role binding" : "Bind role to actor"}</CardTitle>
+          <CardTitle>{translate(editing ? "Edit role binding" : "Bind role to actor")}</CardTitle>
           <CardDescription>
-            Empty scope means global. Application and environment scopes must remain nested.
-          </CardDescription>
+            {translate("Empty scope means global. Application and environment scopes must remain nested.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            <Field label="Actor ID">
+            <Field label={translate("Actor ID")}>
               <input
                 className={inputClassName}
                 name="bindingActorId"
                 onChange={(event) => setActorId(event.target.value)}
-                placeholder="user UUID or service client ID"
+                placeholder={translate("user UUID or service client ID")}
                 value={actorId}
               />
             </Field>
-            <Field label="Role">
+            <Field label={translate("Role")}>
               <select
                 className={inputClassName}
                 name="bindingRoleId"
                 onChange={(event) => setRoleId(event.target.value)}
                 value={roleId}
               >
-                <option value="">Select a role</option>
+                <option value="">{translate("Select a role")}</option>
                 {roles
                   .filter((role) => role.status === activeStatus)
                   .map((role) => (
@@ -760,12 +748,11 @@ function BindingsPanel({
             <div className="flex justify-end gap-2">
               {editing && (
                 <Button onClick={resetForm} type="button" variant="ghost">
-                  Cancel
-                </Button>
+                  {translate("Cancel")}</Button>
               )}
               <Button disabled={pending !== ""} type="submit">
                 <UserRoundCog className="size-4" />
-                {editing ? "Save binding" : "Create binding"}
+                {translate(editing ? "Save binding" : "Create binding")}
               </Button>
             </div>
           </form>
@@ -774,21 +761,21 @@ function BindingsPanel({
 
       <Card data-ui-action="list-role-bindings">
         <CardHeader>
-          <CardTitle>Role bindings</CardTitle>
-          <CardDescription>Search actors or constrain the view to one tenant.</CardDescription>
+          <CardTitle>{translate("Role bindings")}</CardTitle>
+          <CardDescription>{translate("Search actors or constrain the view to one tenant.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
             <SearchInput
               onChange={onActorQueryChange}
-              placeholder="Filter actor IDs"
+              placeholder={translate("Filter actor IDs")}
               value={actorQuery}
             />
             <input
               className={inputClassName}
               name="bindingTenantFilter"
               onChange={(event) => onTenantQueryChange(event.target.value)}
-              placeholder="Tenant UUID filter (optional)"
+              placeholder={translate("Tenant UUID filter (optional)")}
               value={tenantQuery}
             />
           </div>
@@ -799,8 +786,7 @@ function BindingsPanel({
               onChange={(event) => onIncludeArchivedChange(event.target.checked)}
               type="checkbox"
             />
-            Include removed bindings
-          </label>
+            {translate("Include removed bindings")}</label>
           <ResourceError error={error} />
           <div className="mt-4 space-y-3">
             {bindings.map((binding) => (
@@ -819,7 +805,7 @@ function BindingsPanel({
                       {binding.roleKey}
                     </p>
                     <ScopeSummary scope={binding.scope} />
-                    <p className="mt-2 text-[11px] text-slate-600">v{binding.version}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">{translate("v")}{binding.version}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button onClick={() => beginEdit(binding)} size="sm" type="button" variant="ghost">
@@ -828,14 +814,14 @@ function BindingsPanel({
                       ) : (
                         <RotateCcw className="size-3.5" />
                       )}
-                      {binding.status === activeStatus ? "Edit" : "Reactivate"}
+                      {translate(binding.status === activeStatus ? "Edit" : "Reactivate")}
                     </Button>
                     {binding.status === activeStatus && (
                       <Button
                         data-ui-action="remove-role-binding"
                         disabled={pending !== ""}
                         onClick={() => {
-                          if (!window.confirm(`Remove ${binding.roleKey} from ${binding.actorId}?`)) {
+                          if (!window.confirm(translate(`Remove ${binding.roleKey} from ${binding.actorId}?`))) {
                             return;
                           }
                           void runMutation(
@@ -849,14 +835,13 @@ function BindingsPanel({
                         type="button"
                         variant="ghost"
                       >
-                        <Trash2 className="size-3.5" /> Remove
-                      </Button>
+                        <Trash2 className="size-3.5" /> {translate("Remove")}</Button>
                     )}
                   </div>
                 </div>
               </div>
             ))}
-            {bindings.length === 0 && <EmptyState text="No role bindings match this view." />}
+            {bindings.length === 0 && <EmptyState text={translate("No role bindings match this view.")} />}
           </div>
         </CardContent>
       </Card>
@@ -949,14 +934,13 @@ function PoliciesPanel({
     <div className="grid items-start gap-5 xl:grid-cols-[0.72fr_1.28fr]">
       <Card data-ui-action="create-policy-rule">
         <CardHeader>
-          <CardTitle>{editing ? "Edit policy rule" : "Create policy rule"}</CardTitle>
+          <CardTitle>{translate(editing ? "Edit policy rule" : "Create policy rule")}</CardTitle>
           <CardDescription>
-            Explicit denies override every matching grant at the same or broader scope.
-          </CardDescription>
+            {translate("Explicit denies override every matching grant at the same or broader scope.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            <Field label="Policy name">
+            <Field label={translate("Policy name")}>
               <input
                 className={inputClassName}
                 name="policyName"
@@ -965,18 +949,18 @@ function PoliciesPanel({
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Effect">
+              <Field label={translate("Effect")}>
                 <select
                   className={inputClassName}
                   name="policyEffect"
                   onChange={(event) => setEffect(event.target.value as PolicyEffect)}
                   value={effect}
                 >
-                  <option value={allowEffect}>Allow</option>
-                  <option value={denyEffect}>Deny</option>
+                  <option value={allowEffect}>{translate("Allow")}</option>
+                  <option value={denyEffect}>{translate("Deny")}</option>
                 </select>
               </Field>
-              <Field label="Subject type">
+              <Field label={translate("Subject type")}>
                 <select
                   className={inputClassName}
                   name="policySubjectType"
@@ -985,23 +969,23 @@ function PoliciesPanel({
                   }
                   value={subjectType}
                 >
-                  <option value={actorSubject}>Actor</option>
-                  <option value={roleSubject}>Role key or ID</option>
-                  <option value={anySubject}>Any actor</option>
+                  <option value={actorSubject}>{translate("Actor")}</option>
+                  <option value={roleSubject}>{translate("Role key or ID")}</option>
+                  <option value={anySubject}>{translate("Any actor")}</option>
                 </select>
               </Field>
             </div>
-            <Field label="Subject">
+            <Field label={translate("Subject")}>
               <input
                 className={inputClassName}
                 disabled={subjectType === anySubject}
                 name="policySubject"
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder={subjectType === anySubject ? "*" : "actor ID or role key"}
+                placeholder={translate(subjectType === anySubject ? "*" : "actor ID or role key")}
                 value={subjectType === anySubject ? "*" : subject}
               />
             </Field>
-            <Field label="Permission">
+            <Field label={translate("Permission")}>
               <input
                 className={inputClassName}
                 list="policy-permission-keys"
@@ -1019,12 +1003,11 @@ function PoliciesPanel({
             <div className="flex justify-end gap-2">
               {editing && (
                 <Button onClick={resetForm} type="button" variant="ghost">
-                  Cancel
-                </Button>
+                  {translate("Cancel")}</Button>
               )}
               <Button disabled={pending !== ""} type="submit">
                 <ShieldCheck className="size-4" />
-                {editing ? "Save policy" : "Create policy"}
+                {translate(editing ? "Save policy" : "Create policy")}
               </Button>
             </div>
           </form>
@@ -1033,17 +1016,17 @@ function PoliciesPanel({
 
       <Card data-ui-action="list-policy-rules">
         <CardHeader>
-          <CardTitle>Policy rules</CardTitle>
-          <CardDescription>Fine-grained exceptions layered over role grants.</CardDescription>
+          <CardTitle>{translate("Policy rules")}</CardTitle>
+          <CardDescription>{translate("Fine-grained exceptions layered over role grants.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
-            <SearchInput onChange={onQueryChange} placeholder="Search name or permission" value={query} />
+            <SearchInput onChange={onQueryChange} placeholder={translate("Search name or permission")} value={query} />
             <input
               className={inputClassName}
               name="policyTenantFilter"
               onChange={(event) => onTenantQueryChange(event.target.value)}
-              placeholder="Tenant UUID filter (optional)"
+              placeholder={translate("Tenant UUID filter (optional)")}
               value={tenantQuery}
             />
           </div>
@@ -1054,8 +1037,7 @@ function PoliciesPanel({
               onChange={(event) => onIncludeArchivedChange(event.target.checked)}
               type="checkbox"
             />
-            Include archived policies
-          </label>
+            {translate("Include archived policies")}</label>
           <ResourceError error={error} />
           <div className="mt-4 space-y-3">
             {policies.map((policy) => (
@@ -1076,7 +1058,7 @@ function PoliciesPanel({
                             : "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
                         )}
                       >
-                        {policy.effect === denyEffect ? "Deny" : "Allow"}
+                        {translate(policy.effect === denyEffect ? "Deny" : "Allow")}
                       </Badge>
                     </div>
                     <p className="mt-2 break-all font-mono text-xs text-violet-300">
@@ -1086,7 +1068,7 @@ function PoliciesPanel({
                       {friendlySubjectType(policy.subjectType)}: {policy.subject}
                     </p>
                     <ScopeSummary scope={policy.scope} />
-                    <p className="mt-2 text-[11px] text-slate-600">v{policy.version}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">{translate("v")}{policy.version}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button
@@ -1096,14 +1078,13 @@ function PoliciesPanel({
                       type="button"
                       variant="ghost"
                     >
-                      <Pencil className="size-3.5" /> Edit
-                    </Button>
+                      <Pencil className="size-3.5" /> {translate("Edit")}</Button>
                     {policy.status === activeStatus ? (
                       <Button
                         data-ui-action="archive-policy-rule"
                         disabled={pending !== ""}
                         onClick={() => {
-                          if (!window.confirm(`Archive policy ${policy.name}?`)) return;
+                          if (!window.confirm(translate(`Archive policy ${policy.name}?`))) return;
                           void runMutation(
                             `archive-policy-${policy.id}`,
                             () => archivePolicyRule(csrfToken, policy),
@@ -1115,8 +1096,7 @@ function PoliciesPanel({
                         type="button"
                         variant="ghost"
                       >
-                        <Archive className="size-3.5" /> Archive
-                      </Button>
+                        <Archive className="size-3.5" /> {translate("Archive")}</Button>
                     ) : (
                       <Button
                         data-ui-action="restore-policy-rule"
@@ -1133,14 +1113,13 @@ function PoliciesPanel({
                         type="button"
                         variant="ghost"
                       >
-                        <RotateCcw className="size-3.5" /> Restore
-                      </Button>
+                        <RotateCcw className="size-3.5" /> {translate("Restore")}</Button>
                     )}
                   </div>
                 </div>
               </div>
             ))}
-            {policies.length === 0 && <EmptyState text="No policy rules match this view." />}
+            {policies.length === 0 && <EmptyState text={translate("No policy rules match this view.")} />}
           </div>
         </CardContent>
       </Card>
@@ -1230,14 +1209,13 @@ function SimulatorPanel({
     <div className="grid items-start gap-5 xl:grid-cols-2">
       <Card data-ui-action="simulate-authorization">
         <CardHeader>
-          <CardTitle>Decision simulator</CardTitle>
+          <CardTitle>{translate("Decision simulator")}</CardTitle>
           <CardDescription>
-            Test any actor and optional trusted Passport role without changing policy.
-          </CardDescription>
+            {translate("Test any actor and optional trusted Passport role without changing policy.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submitSimulation}>
-            <Field label="Actor ID">
+            <Field label={translate("Actor ID")}>
               <input
                 className={inputClassName}
                 name="simulationActorId"
@@ -1245,7 +1223,7 @@ function SimulatorPanel({
                 value={simulatedActor}
               />
             </Field>
-            <Field label="Permission">
+            <Field label={translate("Permission")}>
               <input
                 className={inputClassName}
                 list="simulation-permission-keys"
@@ -1259,12 +1237,12 @@ function SimulatorPanel({
                 ))}
               </datalist>
             </Field>
-            <Field label="Trusted roles (simulation only, comma separated)">
+            <Field label={translate("Trusted roles (simulation only, comma separated)")}>
               <input
                 className={inputClassName}
                 name="simulationTrustedRoles"
                 onChange={(event) => setTrustedRoles(event.target.value)}
-                placeholder="SuperAdministrator"
+                placeholder={translate("SuperAdministrator")}
                 value={trustedRoles}
               />
             </Field>
@@ -1277,24 +1255,22 @@ function SimulatorPanel({
                 type="button"
                 variant="outline"
               >
-                <KeyRound className="size-4" /> Check my access
-              </Button>
+                <KeyRound className="size-4" /> {translate("Check my access")}</Button>
               <Button disabled={pending !== ""} type="submit">
-                <Play className="size-4" /> Simulate
-              </Button>
+                <Play className="size-4" /> {translate("Simulate")}</Button>
             </div>
           </form>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <DecisionCard decision={simulation} label="Simulation" />
-            <DecisionCard decision={currentDecision} label="Current actor" />
+            <DecisionCard decision={simulation} label={translate("Simulation")} />
+            <DecisionCard decision={currentDecision} label={translate("Current actor")} />
           </div>
         </CardContent>
       </Card>
 
       <Card data-ui-action="list-policy-revisions">
         <CardHeader>
-          <CardTitle>Policy revisions</CardTitle>
-          <CardDescription>Immutable history for roles, bindings, and policy rules.</CardDescription>
+          <CardTitle>{translate("Policy revisions")}</CardTitle>
+          <CardDescription>{translate("Immutable history for roles, bindings, and policy rules.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -1304,16 +1280,16 @@ function SimulatorPanel({
               onChange={(event) => onRevisionResourceTypeChange(event.target.value)}
               value={revisionResourceType}
             >
-              <option value="">All resource types</option>
-              <option value="role">Role</option>
-              <option value="role_binding">Role binding</option>
-              <option value="policy_rule">Policy rule</option>
+              <option value="">{translate("All resource types")}</option>
+              <option value="role">{translate("Role")}</option>
+              <option value="role_binding">{translate("Role binding")}</option>
+              <option value="policy_rule">{translate("Policy rule")}</option>
             </select>
             <input
               className={inputClassName}
               name="revisionResourceId"
               onChange={(event) => onRevisionResourceIdChange(event.target.value)}
-              placeholder="Resource ID (optional)"
+              placeholder={translate("Resource ID (optional)")}
               value={revisionResourceId}
             />
           </div>
@@ -1325,7 +1301,7 @@ function SimulatorPanel({
                   <div className="flex items-center gap-2">
                     <FileClock className="size-4 text-violet-300" />
                     <p className="text-sm font-medium text-slate-200">
-                      Revision {revision.revisionNumber}
+                      {translate("Revision")} {revision.revisionNumber}
                     </p>
                   </div>
                   <Badge variant="planned">{revision.changeType}</Badge>
@@ -1339,7 +1315,7 @@ function SimulatorPanel({
                 </p>
               </div>
             ))}
-            {revisions.length === 0 && <EmptyState text="No policy revisions match this view." />}
+            {revisions.length === 0 && <EmptyState text={translate("No policy revisions match this view.")} />}
           </div>
         </CardContent>
       </Card>
@@ -1359,10 +1335,9 @@ function ScopeFields({
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
       <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-        Scope (optional)
-      </legend>
+        {translate("Scope (optional)")}</legend>
       <div className="grid gap-3">
-        <Field label="Tenant UUID">
+        <Field label={translate("Tenant UUID")}>
           <input
             className={inputClassName}
             name={`${prefix}TenantId`}
@@ -1370,7 +1345,7 @@ function ScopeFields({
             value={value.tenantId}
           />
         </Field>
-        <Field label="Application UUID">
+        <Field label={translate("Application UUID")}>
           <input
             className={inputClassName}
             name={`${prefix}ApplicationId`}
@@ -1378,7 +1353,7 @@ function ScopeFields({
             value={value.applicationId}
           />
         </Field>
-        <Field label="Environment UUID">
+        <Field label={translate("Environment UUID")}>
           <input
             className={inputClassName}
             name={`${prefix}EnvironmentId`}
@@ -1411,7 +1386,7 @@ function DecisionCard({
     <div className="rounded-xl border border-white/8 bg-slate-950/55 p-4">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">{label}</p>
       {!decision ? (
-        <p className="mt-3 text-xs text-slate-600">No decision yet.</p>
+        <p className="mt-3 text-xs text-slate-600">{translate("No decision yet.")}</p>
       ) : (
         <>
           <div className="mt-3 flex items-center gap-2">
@@ -1426,10 +1401,10 @@ function DecisionCard({
                 decision.allowed ? "text-emerald-300" : "text-rose-300",
               )}
             >
-              {decision.allowed ? "Allowed" : "Denied"}
+              {translate(decision.allowed ? "Allowed" : "Denied")}
             </p>
           </div>
-          <p className="mt-2 text-xs leading-5 text-slate-500">{decision.reason}</p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{translate(decision.reason)}</p>
           {decision.matchedRoleKeys.length > 0 && (
             <p className="mt-2 font-mono text-[10px] text-violet-300">
               {decision.matchedRoleKeys.join(", ")}
@@ -1466,8 +1441,7 @@ function FilterBar({
           onChange={(event) => onIncludeArchivedChange(event.target.checked)}
           type="checkbox"
         />
-        Include archived
-      </label>
+        {translate("Include archived")}</label>
     </div>
   );
 }
@@ -1514,7 +1488,7 @@ function Field({
 
 function StatusBadge({ active }: { active: boolean }) {
   return (
-    <Badge variant={active ? "success" : "planned"}>{active ? "Active" : "Archived"}</Badge>
+    <Badge variant={active ? "success" : "planned"}>{translate(active ? "Active" : "Archived")}</Badge>
   );
 }
 
@@ -1523,7 +1497,7 @@ function ResourceError({ error }: { error: unknown }) {
   return (
     <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.06] p-3 text-xs text-rose-300">
       <CircleAlert className="mt-0.5 size-4 shrink-0" />
-      {authorizationErrorMessage(error)}
+      {translate(authorizationErrorMessage(error))}
     </div>
   );
 }

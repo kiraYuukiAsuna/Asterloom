@@ -54,6 +54,8 @@ import {
   analyticsLabelClassName,
   analyticsTextAreaClassName,
 } from "./analytics-ui";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 const defaultSchema = JSON.stringify(
   {
@@ -92,9 +94,9 @@ export function AnalyticsSchemasPanel({
     setGettingId(schema.id);
     try {
       setSelected(await getAnalyticsSchema(scope, schema.id));
-      toast.success("Event schema refreshed.");
+      toast.success(translate("Event schema refreshed."));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -112,28 +114,26 @@ export function AnalyticsSchemasPanel({
           <Card data-ui-action="list-analytics-schemas">
             <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle>Event contracts</CardTitle>
+                <CardTitle>{translate("Event contracts")}</CardTitle>
                 <CardDescription>
-                  JSON Schema controls accepted fields, types, required values, and redaction.
-                </CardDescription>
+                  {translate("JSON Schema controls accepted fields, types, required values, and redaction.")}</CardDescription>
               </div>
               <label className="flex items-center gap-2 text-xs text-slate-400">
                 <input
-                  aria-label="Include archived analytics schemas"
+                  aria-label={translate("Include archived analytics schemas")}
                   checked={includeArchived}
                   onChange={(event) => setIncludeArchived(event.target.checked)}
                   type="checkbox"
                 />
-                Include archived
-              </label>
+                {translate("Include archived")}</label>
             </CardHeader>
             <CardContent>
               {schemas.isLoading ? (
-                <AnalyticsLoading label="Loading event schemas" />
+                <AnalyticsLoading label={translate("Loading event schemas")} />
               ) : schemas.error ? (
                 <AnalyticsError error={schemas.error} />
               ) : (schemas.data?.eventSchemas.length ?? 0) === 0 ? (
-                <AnalyticsEmpty message="No event schemas exist in this environment." />
+                <AnalyticsEmpty message={translate("No event schemas exist in this environment.")} />
               ) : (
                 <div className="space-y-2">
                   {schemas.data?.eventSchemas.map((schema) => (
@@ -154,7 +154,7 @@ export function AnalyticsSchemasPanel({
                         </span>
                         <span className="mt-1 block font-mono text-xs text-cyan-300">{schema.key}</span>
                         <span className="mt-1 block text-xs text-slate-500">
-                          {schema.retentionDays} day retention · version {schema.version}
+                          {schema.retentionDays} {" "}{translate("day retention · version")}{" "}{schema.version}
                         </span>
                       </button>
                       <Button
@@ -166,8 +166,7 @@ export function AnalyticsSchemasPanel({
                         variant="outline"
                       >
                         {gettingId === schema.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                     </article>
                   ))}
                 </div>
@@ -185,7 +184,7 @@ export function AnalyticsSchemasPanel({
             schema={selected}
           />
         ) : (
-          <AnalyticsEmpty message="Select a schema to edit its contract, lifecycle, or retention." />
+          <AnalyticsEmpty message={translate("Select a schema to edit its contract, lifecycle, or retention.")} />
         )}
       </div>
 
@@ -232,9 +231,9 @@ function CreateSchemaCard({
       setKey("");
       setDisplayName("");
       setDescription("");
-      toast.success("Event schema created.");
+      toast.success(translate("Event schema created."));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -243,23 +242,21 @@ function CreateSchemaCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create event schema</CardTitle>
+        <CardTitle>{translate("Create event schema")}</CardTitle>
         <CardDescription>
-          Mark fields with x-asterloom-sensitive to replace their stored values with [REDACTED].
-        </CardDescription>
+          {translate("Mark fields with x-asterloom-sensitive to replace their stored values with [REDACTED].")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
-          <label className={analyticsLabelClassName}>Event name<input className={analyticsInputClassName} name="schemaKey" onChange={(event) => setKey(event.target.value)} placeholder="checkout.completed" required value={key} /></label>
-          <label className={analyticsLabelClassName}>Display name<input className={analyticsInputClassName} name="schemaDisplayName" onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
-          <label className={analyticsLabelClassName}>Retention days<input className={analyticsInputClassName} min={1} max={3650} name="schemaRetention" onChange={(event) => setRetentionDays(event.target.valueAsNumber)} type="number" value={retentionDays} /></label>
-          <label className={analyticsLabelClassName}>Description<input className={analyticsInputClassName} name="schemaDescription" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
-          <label className={cn(analyticsLabelClassName, "sm:col-span-2")}>JSON Schema<textarea className={cn(analyticsTextAreaClassName, "h-64")} name="schemaJson" onChange={(event) => setSchemaJson(event.target.value)} value={schemaJson} /></label>
+          <label className={analyticsLabelClassName}>{translate("Event name")}<input className={analyticsInputClassName} name="schemaKey" onChange={(event) => setKey(event.target.value)} placeholder={translate("checkout.completed")} required value={key} /></label>
+          <label className={analyticsLabelClassName}>{translate("Display name")}<input className={analyticsInputClassName} name="schemaDisplayName" onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
+          <label className={analyticsLabelClassName}>{translate("Retention days")}<input className={analyticsInputClassName} min={1} max={3650} name="schemaRetention" onChange={(event) => setRetentionDays(event.target.valueAsNumber)} type="number" value={retentionDays} /></label>
+          <label className={analyticsLabelClassName}>{translate("Description")}<input className={analyticsInputClassName} name="schemaDescription" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
+          <label className={cn(analyticsLabelClassName, "sm:col-span-2")}>{translate("JSON Schema")}<textarea className={cn(analyticsTextAreaClassName, "h-64")} name="schemaJson" onChange={(event) => setSchemaJson(event.target.value)} value={schemaJson} /></label>
           <div className="sm:col-span-2">
             <Button data-ui-action="create-analytics-schema" disabled={busy} type="submit">
               {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
-              Create schema
-            </Button>
+              {translate("Create schema")}</Button>
           </div>
         </form>
       </CardContent>
@@ -287,9 +284,9 @@ function SchemaInspector({
     setBusy(name);
     try {
       await onChanged(await action());
-      toast.success(message);
+      toast.success(translate(message));
     } catch (error) {
-      toast.error(analyticsErrorMessage(error));
+      toast.error(translate(analyticsErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -305,9 +302,9 @@ function SchemaInspector({
         <CardDescription className="font-mono">{schema.key}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label className={analyticsLabelClassName}>Display name<input className={analyticsInputClassName} disabled={!active} name="editAnalyticsSchemaDisplayName" onChange={(event) => setDisplayName(event.target.value)} value={displayName} /></label>
-        <label className={analyticsLabelClassName}>Description<textarea className={cn(analyticsTextAreaClassName, "h-20 font-sans")} disabled={!active} name="editAnalyticsSchemaDescription" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
-        <label className={analyticsLabelClassName}>JSON Schema<textarea className={cn(analyticsTextAreaClassName, "h-64")} disabled={!active} name="editAnalyticsSchemaJson" onChange={(event) => setSchemaJson(event.target.value)} value={schemaJson} /></label>
+        <label className={analyticsLabelClassName}>{translate("Display name")}<input className={analyticsInputClassName} disabled={!active} name="editAnalyticsSchemaDisplayName" onChange={(event) => setDisplayName(event.target.value)} value={displayName} /></label>
+        <label className={analyticsLabelClassName}>{translate("Description")}<textarea className={cn(analyticsTextAreaClassName, "h-20 font-sans")} disabled={!active} name="editAnalyticsSchemaDescription" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
+        <label className={analyticsLabelClassName}>{translate("JSON Schema")}<textarea className={cn(analyticsTextAreaClassName, "h-64")} disabled={!active} name="editAnalyticsSchemaJson" onChange={(event) => setSchemaJson(event.target.value)} value={schemaJson} /></label>
         {active ? (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -316,8 +313,7 @@ function SchemaInspector({
               onClick={() => void perform("save", () => updateAnalyticsSchema(csrfToken, schema, { displayName, description, schemaJson }), "Event schema updated.")}
               type="button"
             >
-              <Save className="size-4" /> Save contract
-            </Button>
+              <Save className="size-4" /> {translate("Save contract")}</Button>
             <Button
               data-ui-action="archive-analytics-schema"
               disabled={Boolean(busy)}
@@ -325,8 +321,7 @@ function SchemaInspector({
               type="button"
               variant="outline"
             >
-              <Archive className="size-4" /> Archive
-            </Button>
+              <Archive className="size-4" /> {translate("Archive")}</Button>
           </div>
         ) : (
           <Button
@@ -335,13 +330,11 @@ function SchemaInspector({
             onClick={() => void perform("restore", () => restoreAnalyticsSchema(csrfToken, schema), "Event schema restored.")}
             type="button"
           >
-            <RotateCcw className="size-4" /> Restore schema
-          </Button>
+            <RotateCcw className="size-4" /> {translate("Restore schema")}</Button>
         )}
         <div className="border-t border-white/8 pt-4">
           <label className={analyticsLabelClassName}>
-            Retention days
-            <div className="flex gap-2">
+            {translate("Retention days")}<div className="flex gap-2">
               <input className={analyticsInputClassName} max={3650} min={1} name="editAnalyticsRetention" onChange={(event) => setRetentionDays(event.target.valueAsNumber)} type="number" value={retentionDays} />
               <Button
                 data-ui-action="update-analytics-retention"
@@ -350,8 +343,7 @@ function SchemaInspector({
                 type="button"
                 variant="outline"
               >
-                Apply
-              </Button>
+                {translate("Apply")}</Button>
             </div>
           </label>
         </div>
@@ -386,9 +378,9 @@ function WriteKeysCard({
       setCredential(await createAnalyticsWriteKey(csrfToken, scope, name));
       setName("");
       await onChanged();
-      toast.success("Analytics write key created. Copy it now.");
+      toast.success(translate("Analytics write key created. Copy it now."));
     } catch (caught) {
-      toast.error(analyticsErrorMessage(caught));
+      toast.error(translate(analyticsErrorMessage(caught)));
     } finally {
       setBusy("");
     }
@@ -399,14 +391,14 @@ function WriteKeysCard({
     try {
       if (operation === "rotate") {
         setCredential(await rotateAnalyticsWriteKey(csrfToken, key));
-        toast.success("Write key rotated. Copy the replacement now.");
+        toast.success(translate("Write key rotated. Copy the replacement now."));
       } else {
         await revokeAnalyticsWriteKey(csrfToken, key);
-        toast.success("Write key revoked.");
+        toast.success(translate("Write key revoked."));
       }
       await onChanged();
     } catch (caught) {
-      toast.error(analyticsErrorMessage(caught));
+      toast.error(translate(analyticsErrorMessage(caught)));
     } finally {
       setBusy("");
     }
@@ -415,20 +407,19 @@ function WriteKeysCard({
   return (
     <Card data-ui-action="list-analytics-write-keys">
       <CardHeader>
-        <CardTitle>Environment write keys</CardTitle>
+        <CardTitle>{translate("Environment write keys")}</CardTitle>
         <CardDescription>
-          Secrets authenticate ingestion only. A newly created or rotated secret is shown once.
-        </CardDescription>
+          {translate("Secrets authenticate ingestion only. A newly created or rotated secret is shown once.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {credential && (
           <div className="rounded-xl border border-amber-300/25 bg-amber-300/[0.07] p-4">
-            <p className="text-xs font-medium text-amber-200">Copy this secret now</p>
+            <p className="text-xs font-medium text-amber-200">{translate("Copy this secret now")}</p>
             <div className="mt-2 flex gap-2">
               <code className="min-w-0 flex-1 break-all rounded-lg bg-black/25 p-3 text-xs text-amber-100" data-testid="analytics-write-key-secret">{credential.secret}</code>
               <Button
-                aria-label="Copy analytics write key"
-                onClick={() => void navigator.clipboard.writeText(credential.secret).then(() => toast.success("Write key copied."))}
+                aria-label={translate("Copy analytics write key")}
+                onClick={() => void navigator.clipboard.writeText(credential.secret).then(() => toast.success(translate("Write key copied.")))}
                 size="sm"
                 type="button"
                 variant="outline"
@@ -440,19 +431,17 @@ function WriteKeysCard({
         )}
         <form className="flex flex-col gap-3 sm:flex-row" onSubmit={create}>
           <label className={cn(analyticsLabelClassName, "flex-1")}>
-            Key name
-            <input className={analyticsInputClassName} onChange={(event) => setName(event.target.value)} placeholder="Production .NET SDK" required value={name} />
+            {translate("Key name")}<input className={analyticsInputClassName} onChange={(event) => setName(event.target.value)} placeholder={translate("Production .NET SDK")} required value={name} />
           </label>
           <Button className="sm:mt-[22px]" data-ui-action="create-analytics-write-key" disabled={Boolean(busy)} type="submit">
-            <KeyRound className="size-4" /> Create write key
-          </Button>
+            <KeyRound className="size-4" /> {translate("Create write key")}</Button>
         </form>
         {isLoading ? (
-          <AnalyticsLoading label="Loading write keys" />
+          <AnalyticsLoading label={translate("Loading write keys")} />
         ) : error ? (
           <AnalyticsError error={error} />
         ) : writeKeys.length === 0 ? (
-          <AnalyticsEmpty message="No analytics write keys exist." />
+          <AnalyticsEmpty message={translate("No analytics write keys exist.")} />
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
             {writeKeys.map((key) => {
@@ -467,16 +456,14 @@ function WriteKeysCard({
                     <AnalyticsStatusBadge status={key.status} />
                   </div>
                   <p className="mt-3 text-xs text-slate-500">
-                    Last used {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "never"}
+                    {translate("Last used")} {key.lastUsedAt ? formatDateTime(key.lastUsedAt) : translate("never")}
                   </p>
                   {active && (
                     <div className="mt-4 flex gap-2">
                       <Button data-ui-action="rotate-analytics-write-key" disabled={Boolean(busy)} onClick={() => void perform(key, "rotate")} size="sm" type="button" variant="outline">
-                        <RefreshCw className="size-3.5" /> Rotate
-                      </Button>
+                        <RefreshCw className="size-3.5" /> {translate("Rotate")}</Button>
                       <Button data-ui-action="revoke-analytics-write-key" disabled={Boolean(busy)} onClick={() => void perform(key, "revoke")} size="sm" type="button" variant="outline">
-                        <ShieldOff className="size-3.5" /> Revoke
-                      </Button>
+                        <ShieldOff className="size-3.5" /> {translate("Revoke")}</Button>
                     </div>
                   )}
                 </article>

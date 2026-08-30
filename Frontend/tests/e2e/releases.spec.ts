@@ -2,6 +2,8 @@ import { constants, generateKeyPairSync, sign } from "node:crypto";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages every signed Release API through the Web Console", async ({ page }) => {
   test.setTimeout(240_000);
   page.setDefaultTimeout(25_000);
@@ -26,7 +28,7 @@ test("manages every signed Release API through the Web Console", async ({ page }
     .getByLabel("Primary navigation")
     .getByRole("link", { name: "Releases", exact: true })
     .click();
-  await expect(page).toHaveURL("http://localhost:3000/releases");
+  await expect(page).toHaveURL(webUrl("/releases"));
   await expect(page.locator("[data-release-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -34,7 +36,7 @@ test("manages every signed Release API through the Web Console", async ({ page }
   await selectScope(page, tenantSlug, applicationSlug, environmentSlug);
 
   await page.getByRole("link", { name: "Channels", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/channels");
+  await expect(page).toHaveURL(webUrl("/channels"));
   await expect(page.locator('[data-ui-action="list-release-channels"]')).toBeVisible();
 
   await createChannel(page, channelKey, "Stable E2E");
@@ -59,7 +61,7 @@ test("manages every signed Release API through the Web Console", async ({ page }
   await expect(unusedChannel).toContainText("active", { ignoreCase: true });
 
   await page.getByRole("link", { name: "Artifacts & keys", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/artifacts");
+  await expect(page).toHaveURL(webUrl("/artifacts"));
   await expect(
     page.locator('[data-ui-action="list-release-signing-keys"]'),
   ).toBeVisible();
@@ -101,7 +103,7 @@ test("manages every signed Release API through the Web Console", async ({ page }
     .getByLabel("Release views")
     .getByRole("link", { name: "Releases", exact: true })
     .click();
-  await expect(page).toHaveURL("http://localhost:3000/releases");
+  await expect(page).toHaveURL(webUrl("/releases"));
   await expect(page.locator('[data-ui-action="list-desktop-releases"]')).toBeVisible();
   await createReleaseDraft(
     page,
@@ -306,14 +308,4 @@ async function createScope(
   await form.getByLabel("Type").selectOption("Development");
   await form.locator('[data-ui-action="create-environment"]').click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page.locator('input[name="Password"]').fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

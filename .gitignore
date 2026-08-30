@@ -15,6 +15,7 @@ Frontend/.next/
 Frontend/out/
 Frontend/coverage/
 Frontend/playwright-report/
+Frontend/playwright-report-production/
 Frontend/test-results/
 Frontend/lib/api/generated/.kiota.log
 Frontend/.env
@@ -34,6 +35,8 @@ Thumbs.db
 # Local deployment data and secrets
 .data/
 Deploy/Secrets/
+Backend/Samples/Asterloom.ReferenceApp.Client/reference-state.json
+Backend/Samples/Asterloom.ReferenceApp.Client/analytics-queue.jsonl
 *.pfx
 *.key
 *.pem

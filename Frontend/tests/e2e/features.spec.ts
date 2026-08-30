@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages feature flags through every admin and runtime API", async ({
   page,
 }) => {
@@ -26,7 +28,7 @@ test("manages feature flags through every admin and runtime API", async ({
   );
 
   await page.getByRole("link", { name: "Feature flags" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/features");
+  await expect(page).toHaveURL(webUrl("/features"));
   await expect(page.locator("[data-feature-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -128,7 +130,7 @@ async function createFeatureSegment(
   segmentKey: string,
 ) {
   await page.getByRole("link", { name: "Targeting" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/targeting/segments");
+  await expect(page).toHaveURL(webUrl("/targeting/segments"));
   await page
     .getByLabel("Targeting tenant")
     .selectOption({ label: `Feature E2E Tenant (${tenantSlug})` });
@@ -188,16 +190,4 @@ async function createFeatureScope(
     .locator('[data-ui-action="create-environment"]')
     .click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

@@ -45,6 +45,7 @@ import {
   ReleaseLoadingState,
   ReleaseStatusBadge,
 } from "./release-ui";
+import { translate } from "@/lib/i18n/locale";
 
 export function ReleaseChannelsPanel({
   csrfToken,
@@ -88,9 +89,9 @@ export function ReleaseChannelsPanel({
     setGettingId(channel.id);
     try {
       setSelected(await getReleaseChannel(scope, channel.id));
-      toast.success("Channel details refreshed.");
+      toast.success(translate("Channel details refreshed."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -116,15 +117,14 @@ export function ReleaseChannelsPanel({
       <div className="space-y-6">
         <Card data-ui-action="list-release-channels">
           <CardHeader>
-            <CardTitle>Channel inventory</CardTitle>
+            <CardTitle>{translate("Channel inventory")}</CardTitle>
             <CardDescription>
-              Stable channel keys route desktop clients to one active signed release.
-            </CardDescription>
+              {translate("Stable channel keys route desktop clients to one active signed release.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="flex gap-3" onSubmit={applySearch}>
               <label className="relative flex-1">
-                <span className="sr-only">Search release channels</span>
+                <span className="sr-only">{translate("Search release channels")}</span>
                 <Search
                   aria-hidden="true"
                   className="absolute left-3 top-3 size-4 text-slate-600"
@@ -133,30 +133,28 @@ export function ReleaseChannelsPanel({
                   className={cn(releaseInputClassName, "pl-9")}
                   name="channelSearch"
                   onChange={(event) => setQueryDraft(event.target.value)}
-                  placeholder="Search channel key or name"
+                  placeholder={translate("Search channel key or name")}
                   value={queryDraft}
                 />
               </label>
               <Button type="submit" variant="outline">
-                Apply
-              </Button>
+                {translate("Apply")}</Button>
             </form>
             <label className="flex items-center gap-2 text-xs text-slate-400">
               <input
-                aria-label="Include archived release channels"
+                aria-label={translate("Include archived release channels")}
                 checked={includeArchived}
                 onChange={(event) => setIncludeArchived(event.target.checked)}
                 type="checkbox"
               />
-              Include archived channels
-            </label>
+              {translate("Include archived channels")}</label>
 
             {channels.isLoading ? (
-              <ReleaseLoadingState label="Loading channels" />
+              <ReleaseLoadingState label={translate("Loading channels")} />
             ) : channels.error ? (
               <ReleaseErrorState error={channels.error} />
             ) : (channels.data?.channels.length ?? 0) === 0 ? (
-              <ReleaseEmptyState message="No release channels match this view." />
+              <ReleaseEmptyState message={translate("No release channels match this view.")} />
             ) : (
               <div className="space-y-2">
                 {channels.data?.channels.map((channel) => (
@@ -187,9 +185,9 @@ export function ReleaseChannelsPanel({
                           {channel.key}
                         </span>
                         <span className="mt-2 block text-xs text-slate-500">
-                          {channel.activeReleaseId
+                          {translate(channel.activeReleaseId
                             ? `Active release ${channel.activeReleaseId.slice(0, 8)}`
-                            : "No active release"}
+                            : "No active release")}
                         </span>
                       </button>
                       <Button
@@ -205,8 +203,7 @@ export function ReleaseChannelsPanel({
                         ) : (
                           <Eye aria-hidden="true" className="size-3.5" />
                         )}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                     </div>
                   </article>
                 ))}
@@ -230,7 +227,7 @@ export function ReleaseChannelsPanel({
           onChanged={changed}
         />
       ) : (
-        <ReleaseEmptyState message="Select a channel to edit its description or lifecycle." />
+        <ReleaseEmptyState message={translate("Select a channel to edit its description or lifecycle.")} />
       )}
     </div>
   );
@@ -263,9 +260,9 @@ function CreateChannelCard({
       setKey("");
       setDisplayName("");
       setDescription("");
-      toast.success("Release channel created.");
+      toast.success(translate("Release channel created."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -274,38 +271,34 @@ function CreateChannelCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create channel</CardTitle>
+        <CardTitle>{translate("Create channel")}</CardTitle>
         <CardDescription>
-          Channel keys are immutable client-facing routing identifiers.
-        </CardDescription>
+          {translate("Channel keys are immutable client-facing routing identifiers.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
           <label className={releaseLabelClassName}>
-            Channel key
-            <input
+            {translate("Channel key")}<input
               className={releaseInputClassName}
               name="channelKey"
               onChange={(event) => setKey(event.target.value)}
-              placeholder="stable"
+              placeholder={translate("stable")}
               required
               value={key}
             />
           </label>
           <label className={releaseLabelClassName}>
-            Display name
-            <input
+            {translate("Display name")}<input
               className={releaseInputClassName}
               name="channelDisplayName"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Stable"
+              placeholder={translate("Stable")}
               required
               value={displayName}
             />
           </label>
           <label className={cn(releaseLabelClassName, "sm:col-span-2")}>
-            Description
-            <textarea
+            {translate("Description")}<textarea
               className={releaseTextAreaClassName}
               name="channelDescription"
               onChange={(event) => setDescription(event.target.value)}
@@ -323,8 +316,7 @@ function CreateChannelCard({
               ) : (
                 <Plus aria-hidden="true" className="size-4" />
               )}
-              Create channel
-            </Button>
+              {translate("Create channel")}</Button>
           </div>
         </form>
       </CardContent>
@@ -356,9 +348,9 @@ function ChannelInspector({
     try {
       const updated = await action();
       await onChanged(updated);
-      toast.success(success);
+      toast.success(translate(success));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -376,19 +368,18 @@ function ChannelInspector({
       <CardContent className="space-y-5">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
           <div>
-            <dt className="text-slate-600">Version</dt>
+            <dt className="text-slate-600">{translate("Version")}</dt>
             <dd className="mt-1 text-slate-300">{channel.version}</dd>
           </div>
           <div>
-            <dt className="text-slate-600">Active release</dt>
+            <dt className="text-slate-600">{translate("Active release")}</dt>
             <dd className="mt-1 truncate font-mono text-slate-300">
               {channel.activeReleaseId ?? "None"}
             </dd>
           </div>
         </dl>
         <label className={releaseLabelClassName}>
-          Display name
-          <input
+          {translate("Display name")}<input
             className={releaseInputClassName}
             disabled={!active}
             name="editChannelDisplayName"
@@ -397,8 +388,7 @@ function ChannelInspector({
           />
         </label>
         <label className={releaseLabelClassName}>
-          Description
-          <textarea
+          {translate("Description")}<textarea
             className={releaseTextAreaClassName}
             disabled={!active}
             name="editChannelDescription"
@@ -429,8 +419,7 @@ function ChannelInspector({
               ) : (
                 <Save aria-hidden="true" className="size-4" />
               )}
-              Save
-            </Button>
+              {translate("Save")}</Button>
             <Button
               data-ui-action="archive-release-channel"
               disabled={Boolean(busy) || Boolean(channel.activeReleaseId)}
@@ -450,8 +439,7 @@ function ChannelInspector({
               variant="outline"
             >
               <Archive aria-hidden="true" className="size-4" />
-              Archive
-            </Button>
+              {translate("Archive")}</Button>
           </div>
         ) : (
           <Button
@@ -467,8 +455,7 @@ function ChannelInspector({
             type="button"
           >
             <RotateCcw aria-hidden="true" className="size-4" />
-            Restore channel
-          </Button>
+            {translate("Restore channel")}</Button>
         )}
       </CardContent>
     </Card>

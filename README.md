@@ -1,11 +1,18 @@
 # Asterloom
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Asterloom is a unified foundation platform for identity, authorization, feature
 flags, targeting, dynamic configuration, desktop releases, analytics,
 telemetry, RPC/HTTP, object storage, and persistence.
 
-The implementation baseline is defined in
-[Docs/Architecture.md](Docs/Architecture.md).
+## Documentation
+
+- [Architecture and implementation baseline](Docs/Architecture.md)
+- [Feature usage guide](Docs/Feature-Guide.md)
+- [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)
+- [Full-capability reference application](Docs/Reference-Application.md)
+- [Standard protocol endpoints](Docs/Protocol/standard-endpoints.md)
 
 ## Repository
 

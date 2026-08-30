@@ -60,6 +60,7 @@ import {
 } from "@/lib/api/platform-management";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -187,14 +188,14 @@ export function PlatformWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       await work();
       await Promise.all(refresh.map((reload) => reload()));
-      toast.success(successMessage);
+      toast.success(translate(successMessage));
       return true;
     } catch (error) {
       await Promise.allSettled(refresh.map((reload) => reload()));
       toast.error(
-        isVersionConflict(error)
+        translate(isVersionConflict(error)
           ? "This resource changed in another session. Latest data loaded; review it and retry."
-          : platformErrorMessage(error),
+          : platformErrorMessage(error)),
       );
       return false;
     } finally {
@@ -225,24 +226,19 @@ export function PlatformWorkspace({ csrfToken }: { csrfToken: string }) {
       data-platform-workspace
     >
       <fieldset className="contents" disabled={!hydrated}>
-      <section className="overflow-hidden rounded-3xl border border-sky-300/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.82)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
+      <section className="theme-hero-sky overflow-hidden rounded-3xl border border-sky-300/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.82)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <Badge variant="info">
               <CloudCog aria-hidden="true" className="size-3" />
-              Foundation live
-            </Badge>
+              {translate("Foundation live")}</Badge>
             <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-              Platform resource workspace
-            </h1>
+              {translate("Platform resource workspace")}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-              Model each product from tenant to application and environment, then
-              control who can operate inside that boundary. Every action below is
-              backed by the versioned PlatformAdminService contract.
-            </p>
+              {translate("Model each product from tenant to application and environment, then control who can operate inside that boundary. Every action below is backed by the versioned PlatformAdminService contract.")}</p>
           </div>
           <div className="flex gap-2 text-xs text-slate-500">
-            <ScopeCrumb active={!selectedTenant}>Tenants</ScopeCrumb>
+            <ScopeCrumb active={!selectedTenant}>{translate("Tenants")}</ScopeCrumb>
             <span>/</span>
             <ScopeCrumb active={Boolean(selectedTenant && !selectedApplication)}>
               {selectedTenant?.slug ?? "Application"}
@@ -395,6 +391,7 @@ function TenantPanel({
     if (ok && created) {
       setSlug("");
       setDisplayName("");
+      onQueryChange(created.slug);
       onSelect(created);
     }
   }
@@ -413,9 +410,9 @@ function TenantPanel({
   return (
     <Card className="min-w-0" data-ui-action="list-tenants">
       <PanelHeader
-        description="Top-level isolation and ownership boundary."
+        description={translate("Top-level isolation and ownership boundary.")}
         icon={Building2}
-        title="Tenants"
+        title={translate("Tenants")}
       />
       <CardContent className="space-y-4">
         <FilterBar
@@ -424,11 +421,11 @@ function TenantPanel({
           checkboxName="include-archived-tenants"
           onCheckedChange={onIncludeArchivedChange}
           onQueryChange={onQueryChange}
-          placeholder="Search tenants…"
+          placeholder={translate("Search tenants…")}
           query={query}
         />
         <ResourceListState
-          emptyMessage="No tenants match this view."
+          emptyMessage={translate("No tenants match this view.")}
           error={state.error}
           isLoading={state.isLoading}
           items={page?.tenants}
@@ -449,8 +446,7 @@ function TenantPanel({
                   onSubmit={(event) => submitEdit(event, tenant)}
                 >
                   <label className="sr-only" htmlFor={"tenant-name-" + tenant.id}>
-                    Tenant display name
-                  </label>
+                    {translate("Tenant display name")}</label>
                   <input
                     autoFocus
                     className={inputClassName}
@@ -464,8 +460,7 @@ function TenantPanel({
                     size="sm"
                     type="submit"
                   >
-                    Save
-                  </Button>
+                    {translate("Save")}</Button>
                 </form>
               ) : (
                 <RowActions>
@@ -480,15 +475,14 @@ function TenantPanel({
                     variant="ghost"
                   >
                     <Edit3 aria-hidden="true" className="size-3.5" />
-                    Edit
-                  </Button>
+                    {translate("Edit")}</Button>
                   {tenant.status === activeStatus ? (
                     <Button
                       className="text-rose-300 hover:text-rose-200"
                       data-ui-action="archive-tenant"
                       disabled={pending !== ""}
                       onClick={() => {
-                        if (!window.confirm(`Archive tenant ${tenant.displayName}?`)) return;
+                        if (!window.confirm(translate(`Archive tenant ${tenant.displayName}?`))) return;
                         void runMutation(
                           "tenant-archive-" + tenant.id,
                           () => archiveTenant(csrfToken, tenant),
@@ -501,8 +495,7 @@ function TenantPanel({
                       variant="ghost"
                     >
                       <Archive aria-hidden="true" className="size-3.5" />
-                      Archive
-                    </Button>
+                      {translate("Archive")}</Button>
                   ) : (
                     <Button
                       data-ui-action="restore-tenant"
@@ -520,8 +513,7 @@ function TenantPanel({
                       variant="ghost"
                     >
                       <RotateCcw aria-hidden="true" className="size-3.5" />
-                      Restore
-                    </Button>
+                      {translate("Restore")}</Button>
                   )}
                 </RowActions>
               )}
@@ -532,24 +524,24 @@ function TenantPanel({
           cursor={cursor}
           nextPageToken={page?.nextPageToken}
         />
-        <CreateFormShell onSubmit={submitCreate} title="Create tenant">
-          <FormField label="Slug" name="tenant-slug">
+        <CreateFormShell onSubmit={submitCreate} title={translate("Create tenant")}>
+          <FormField label={translate("Slug")} name="tenant-slug">
             <input
               className={inputClassName}
               id="tenant-slug"
               name="tenant-slug"
               onChange={(event) => setSlug(event.target.value)}
-              placeholder="acme-labs"
+              placeholder={translate("acme-labs")}
               value={slug}
             />
           </FormField>
-          <FormField label="Display name" name="tenant-display-name">
+          <FormField label={translate("Display name")} name="tenant-display-name">
             <input
               className={inputClassName}
               id="tenant-display-name"
               name="tenant-display-name"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Acme Labs"
+              placeholder={translate("Acme Labs")}
               value={displayName}
             />
           </FormField>
@@ -560,8 +552,7 @@ function TenantPanel({
             type="submit"
           >
             <PendingIcon pending={pending === "tenant-create"} />
-            Create tenant
-          </Button>
+            {translate("Create tenant")}</Button>
         </CreateFormShell>
       </CardContent>
     </Card>
@@ -605,9 +596,9 @@ function ApplicationPanel({
   if (!tenant) {
     return (
       <SelectionPlaceholder
-        description="Choose a tenant to load its application catalog."
+        description={translate("Choose a tenant to load its application catalog.")}
         icon={Boxes}
-        title="Applications"
+        title={translate("Applications")}
       />
     );
   }
@@ -630,6 +621,7 @@ function ApplicationPanel({
     if (ok && created) {
       setSlug("");
       setDisplayName("");
+      onQueryChange(created.slug);
       onSelect(created);
     }
   }
@@ -648,9 +640,9 @@ function ApplicationPanel({
   return (
     <Card className="min-w-0" data-ui-action="list-applications">
       <PanelHeader
-        description={`Application catalog inside ${tenant.displayName}.`}
+        description={translate(`Application catalog inside ${tenant.displayName}.`)}
         icon={Boxes}
-        title="Applications"
+        title={translate("Applications")}
       />
       <CardContent className="space-y-4">
         <FilterBar
@@ -659,11 +651,11 @@ function ApplicationPanel({
           checkboxName="include-archived-applications"
           onCheckedChange={onIncludeArchivedChange}
           onQueryChange={onQueryChange}
-          placeholder="Search applications…"
+          placeholder={translate("Search applications…")}
           query={query}
         />
         <ResourceListState
-          emptyMessage="No applications match this view."
+          emptyMessage={translate("No applications match this view.")}
           isLoading={!page}
           items={page?.applications}
         >
@@ -686,8 +678,7 @@ function ApplicationPanel({
                     className="sr-only"
                     htmlFor={"application-name-" + application.id}
                   >
-                    Application display name
-                  </label>
+                    {translate("Application display name")}</label>
                   <input
                     autoFocus
                     className={inputClassName}
@@ -701,8 +692,7 @@ function ApplicationPanel({
                     size="sm"
                     type="submit"
                   >
-                    Save
-                  </Button>
+                    {translate("Save")}</Button>
                 </form>
               ) : (
                 <RowActions>
@@ -717,15 +707,14 @@ function ApplicationPanel({
                     variant="ghost"
                   >
                     <Edit3 aria-hidden="true" className="size-3.5" />
-                    Edit
-                  </Button>
+                    {translate("Edit")}</Button>
                   {application.status === activeStatus ? (
                     <Button
                       className="text-rose-300 hover:text-rose-200"
                       data-ui-action="archive-application"
                       disabled={pending !== ""}
                       onClick={() => {
-                        if (!window.confirm(`Archive application ${application.displayName}?`)) return;
+                        if (!window.confirm(translate(`Archive application ${application.displayName}?`))) return;
                         void runMutation(
                           "application-archive-" + application.id,
                           () => archiveApplication(csrfToken, application),
@@ -738,8 +727,7 @@ function ApplicationPanel({
                       variant="ghost"
                     >
                       <Archive aria-hidden="true" className="size-3.5" />
-                      Archive
-                    </Button>
+                      {translate("Archive")}</Button>
                   ) : (
                     <Button
                       data-ui-action="restore-application"
@@ -757,8 +745,7 @@ function ApplicationPanel({
                       variant="ghost"
                     >
                       <RotateCcw aria-hidden="true" className="size-3.5" />
-                      Restore
-                    </Button>
+                      {translate("Restore")}</Button>
                   )}
                 </RowActions>
               )}
@@ -766,26 +753,26 @@ function ApplicationPanel({
           ))}
         </ResourceListState>
         <Pagination cursor={cursor} nextPageToken={page?.nextPageToken} />
-        <CreateFormShell onSubmit={submitCreate} title="Create application">
-          <FormField label="Slug" name="application-slug">
+        <CreateFormShell onSubmit={submitCreate} title={translate("Create application")}>
+          <FormField label={translate("Slug")} name="application-slug">
             <input
               className={inputClassName}
               disabled={tenant.status !== activeStatus}
               id="application-slug"
               name="application-slug"
               onChange={(event) => setSlug(event.target.value)}
-              placeholder="desktop-client"
+              placeholder={translate("desktop-client")}
               value={slug}
             />
           </FormField>
-          <FormField label="Display name" name="application-display-name">
+          <FormField label={translate("Display name")} name="application-display-name">
             <input
               className={inputClassName}
               disabled={tenant.status !== activeStatus}
               id="application-display-name"
               name="application-display-name"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Desktop Client"
+              placeholder={translate("Desktop Client")}
               value={displayName}
             />
           </FormField>
@@ -796,8 +783,7 @@ function ApplicationPanel({
             type="submit"
           >
             <PendingIcon pending={pending === "application-create"} />
-            Create application
-          </Button>
+            {translate("Create application")}</Button>
         </CreateFormShell>
       </CardContent>
     </Card>
@@ -847,9 +833,9 @@ function EnvironmentPanel({
   if (!tenant || !application) {
     return (
       <SelectionPlaceholder
-        description="Choose an application to configure its runtime environments."
+        description={translate("Choose an application to configure its runtime environments.")}
         icon={CloudCog}
-        title="Environments"
+        title={translate("Environments")}
       />
     );
   }
@@ -858,28 +844,31 @@ function EnvironmentPanel({
 
   async function submitCreate(event: FormEvent) {
     event.preventDefault();
+    let created: EnvironmentRecord | undefined;
     const ok = await runMutation(
       "environment-create",
-      () =>
-        createEnvironment(
+      async () => {
+        created = await createEnvironment(
           csrfToken,
           selectedTenant.id,
           selectedApplication.id,
           {
-          displayName,
-          environmentType,
-          isProtected,
-          slug,
+            displayName,
+            environmentType,
+            isProtected,
+            slug,
           },
-        ),
+        );
+      },
       [reload],
       "Environment created.",
     );
-    if (ok) {
+    if (ok && created) {
       setSlug("");
       setDisplayName("");
       setEnvironmentType("ENVIRONMENT_TYPE_DEVELOPMENT");
       setIsProtected(false);
+      onQueryChange(created.slug);
     }
   }
 
@@ -905,9 +894,9 @@ function EnvironmentPanel({
   return (
     <Card className="min-w-0" data-ui-action="list-environments">
       <PanelHeader
-        description={`Runtime boundaries for ${application.displayName}.`}
+        description={translate(`Runtime boundaries for ${application.displayName}.`)}
         icon={CloudCog}
-        title="Environments"
+        title={translate("Environments")}
       />
       <CardContent className="space-y-4">
         <FilterBar
@@ -916,11 +905,11 @@ function EnvironmentPanel({
           checkboxName="include-archived-environments"
           onCheckedChange={onIncludeArchivedChange}
           onQueryChange={onQueryChange}
-          placeholder="Search environments…"
+          placeholder={translate("Search environments…")}
           query={query}
         />
         <ResourceListState
-          emptyMessage="No environments match this view."
+          emptyMessage={translate("No environments match this view.")}
           isLoading={!page}
           items={page?.environments}
         >
@@ -937,8 +926,7 @@ function EnvironmentPanel({
                 {environment.isProtected && (
                   <span className="inline-flex items-center gap-1 text-amber-300">
                     <LockKeyhole aria-hidden="true" className="size-3" />
-                    Protected
-                  </span>
+                    {translate("Protected")}</span>
                 )}
               </div>
               {editingId === environment.id ? (
@@ -947,7 +935,7 @@ function EnvironmentPanel({
                   onSubmit={(event) => submitEdit(event, environment)}
                 >
                   <FormField
-                    label="Display name"
+                    label={translate("Display name")}
                     name={"environment-name-" + environment.id}
                   >
                     <input
@@ -958,7 +946,7 @@ function EnvironmentPanel({
                     />
                   </FormField>
                   <FormField
-                    label="Type"
+                    label={translate("Type")}
                     name={"environment-type-" + environment.id}
                   >
                     <EnvironmentTypeSelect
@@ -969,7 +957,7 @@ function EnvironmentPanel({
                   </FormField>
                   <Checkbox
                     checked={editingProtected}
-                    label="Protect from archival"
+                    label={translate("Protect from archival")}
                     name={"environment-protected-" + environment.id}
                     onChange={setEditingProtected}
                   />
@@ -980,16 +968,14 @@ function EnvironmentPanel({
                       size="sm"
                       type="submit"
                     >
-                      Save changes
-                    </Button>
+                      {translate("Save changes")}</Button>
                     <Button
                       onClick={() => setEditingId("")}
                       size="sm"
                       type="button"
                       variant="ghost"
                     >
-                      Cancel
-                    </Button>
+                      {translate("Cancel")}</Button>
                   </div>
                 </form>
               ) : (
@@ -1007,15 +993,14 @@ function EnvironmentPanel({
                     variant="ghost"
                   >
                     <Edit3 aria-hidden="true" className="size-3.5" />
-                    Edit
-                  </Button>
+                    {translate("Edit")}</Button>
                   {environment.status === activeStatus ? (
                     <Button
                       className="text-rose-300 hover:text-rose-200"
                       data-ui-action="archive-environment"
                       disabled={pending !== "" || environment.isProtected}
                       onClick={() => {
-                        if (!window.confirm(`Archive environment ${environment.displayName}?`)) return;
+                        if (!window.confirm(translate(`Archive environment ${environment.displayName}?`))) return;
                         void runMutation(
                           "environment-archive-" + environment.id,
                           () => archiveEnvironment(csrfToken, environment),
@@ -1025,16 +1010,15 @@ function EnvironmentPanel({
                       }}
                       size="sm"
                       title={
-                        environment.isProtected
+                        translate(environment.isProtected
                           ? "Remove protection before archiving."
-                          : "Archive environment"
+                          : "Archive environment")
                       }
                       type="button"
                       variant="ghost"
                     >
                       <Archive aria-hidden="true" className="size-3.5" />
-                      Archive
-                    </Button>
+                      {translate("Archive")}</Button>
                   ) : (
                     <Button
                       data-ui-action="restore-environment"
@@ -1052,8 +1036,7 @@ function EnvironmentPanel({
                       variant="ghost"
                     >
                       <RotateCcw aria-hidden="true" className="size-3.5" />
-                      Restore
-                    </Button>
+                      {translate("Restore")}</Button>
                   )}
                 </RowActions>
               )}
@@ -1061,30 +1044,30 @@ function EnvironmentPanel({
           ))}
         </ResourceListState>
         <Pagination cursor={cursor} nextPageToken={page?.nextPageToken} />
-        <CreateFormShell onSubmit={submitCreate} title="Create environment">
-          <FormField label="Slug" name="environment-slug">
+        <CreateFormShell onSubmit={submitCreate} title={translate("Create environment")}>
+          <FormField label={translate("Slug")} name="environment-slug">
             <input
               className={inputClassName}
               disabled={!canCreate}
               id="environment-slug"
               name="environment-slug"
               onChange={(event) => setSlug(event.target.value)}
-              placeholder="production"
+              placeholder={translate("production")}
               value={slug}
             />
           </FormField>
-          <FormField label="Display name" name="environment-display-name">
+          <FormField label={translate("Display name")} name="environment-display-name">
             <input
               className={inputClassName}
               disabled={!canCreate}
               id="environment-display-name"
               name="environment-display-name"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Production"
+              placeholder={translate("Production")}
               value={displayName}
             />
           </FormField>
-          <FormField label="Type" name="environment-type">
+          <FormField label={translate("Type")} name="environment-type">
             <EnvironmentTypeSelect
               disabled={!canCreate}
               id="environment-type"
@@ -1095,7 +1078,7 @@ function EnvironmentPanel({
           <Checkbox
             checked={isProtected}
             disabled={!canCreate}
-            label="Protect from archival"
+            label={translate("Protect from archival")}
             name="environment-protected"
             onChange={setIsProtected}
           />
@@ -1106,8 +1089,7 @@ function EnvironmentPanel({
             type="submit"
           >
             <PendingIcon pending={pending === "environment-create"} />
-            Create environment
-          </Button>
+            {translate("Create environment")}</Button>
         </CreateFormShell>
       </CardContent>
     </Card>
@@ -1140,9 +1122,9 @@ function MembershipPanel({
   if (!tenant) {
     return (
       <SelectionPlaceholder
-        description="Choose a tenant to review and manage its direct memberships."
+        description={translate("Choose a tenant to review and manage its direct memberships.")}
         icon={Users}
-        title="Tenant memberships"
+        title={translate("Tenant memberships")}
       />
     );
   }
@@ -1176,15 +1158,15 @@ function MembershipPanel({
             <Users aria-hidden="true" className="size-4" />
           </div>
           <div>
-            <CardTitle>Tenant memberships</CardTitle>
+            <CardTitle>{translate("Tenant memberships")}</CardTitle>
             <CardDescription>
-              Direct actors allowed to operate within {tenant.displayName}.
+              {translate("Direct actors allowed to operate within")} {tenant.displayName}.
             </CardDescription>
           </div>
         </div>
         <Checkbox
           checked={includeRemoved}
-          label="Show removed memberships"
+          label={translate("Show removed memberships")}
           name="include-removed-memberships"
           onChange={onIncludeRemovedChange}
         />
@@ -1205,7 +1187,7 @@ function MembershipPanel({
                         {membership.actorId}
                       </p>
                       <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-600">
-                        Version {membership.version}
+                        {translate("Version")} {membership.version}
                       </p>
                     </div>
                     <Badge
@@ -1215,7 +1197,7 @@ function MembershipPanel({
                           : "planned"
                       }
                     >
-                      {membership.status === activeMembership ? "Active" : "Removed"}
+                      {translate(membership.status === activeMembership ? "Active" : "Removed")}
                     </Badge>
                   </div>
                   <div className="mt-4">
@@ -1225,7 +1207,7 @@ function MembershipPanel({
                         data-ui-action="remove-tenant-membership"
                         disabled={pending !== ""}
                         onClick={() => {
-                          if (!window.confirm(`Remove membership ${membership.actorId}?`)) return;
+                          if (!window.confirm(translate(`Remove membership ${membership.actorId}?`))) return;
                           void runMutation(
                             "membership-remove-" + membership.actorId,
                             () => removeTenantMembership(csrfToken, membership),
@@ -1238,8 +1220,7 @@ function MembershipPanel({
                         variant="ghost"
                       >
                         <Trash2 aria-hidden="true" className="size-3.5" />
-                        Remove
-                      </Button>
+                        {translate("Remove")}</Button>
                     ) : (
                       <Button
                         data-ui-action="set-tenant-membership"
@@ -1263,20 +1244,19 @@ function MembershipPanel({
                         variant="ghost"
                       >
                         <RotateCcw aria-hidden="true" className="size-3.5" />
-                        Reactivate
-                      </Button>
+                        {translate("Reactivate")}</Button>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyMessage>No memberships match this view.</EmptyMessage>
+            <EmptyMessage>{translate("No memberships match this view.")}</EmptyMessage>
           )}
           <Pagination cursor={cursor} nextPageToken={page?.nextPageToken} />
         </div>
-        <CreateFormShell onSubmit={submitMembership} title="Add membership">
-          <FormField label="Actor ID" name="membership-actor-id">
+        <CreateFormShell onSubmit={submitMembership} title={translate("Add membership")}>
+          <FormField label={translate("Actor ID")} name="membership-actor-id">
             <input
               className={inputClassName}
               disabled={tenant.status !== activeStatus}
@@ -1288,9 +1268,7 @@ function MembershipPanel({
             />
           </FormField>
           <p className="text-xs leading-5 text-slate-500">
-            Use the immutable Passport subject identifier. Removed members are
-            reactivated without losing history.
-          </p>
+            {translate("Use the immutable Passport subject identifier. Removed members are reactivated without losing history.")}</p>
           <Button
             className="w-full"
             data-ui-action="set-tenant-membership"
@@ -1298,8 +1276,7 @@ function MembershipPanel({
             type="submit"
           >
             <UserPlus aria-hidden="true" className="size-4" />
-            Add or reactivate
-          </Button>
+            {translate("Add or reactivate")}</Button>
         </CreateFormShell>
       </CardContent>
     </Card>
@@ -1416,7 +1393,7 @@ function ResourceRow({
           </span>
         </button>
         <Badge variant={status === activeStatus ? "success" : "planned"}>
-          {status === activeStatus ? "Active" : "Archived"}
+          {translate(status === activeStatus ? "Active" : "Archived")}
         </Badge>
       </div>
       {children}
@@ -1448,7 +1425,7 @@ function ResourceListState({
     return (
       <div className="flex items-start gap-2 rounded-xl border border-rose-400/15 bg-rose-400/5 p-3 text-xs leading-5 text-rose-200">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-        {platformErrorMessage(error)}
+        {translate(platformErrorMessage(error))}
       </div>
     );
   }
@@ -1583,9 +1560,9 @@ function EnvironmentTypeSelect({
       onChange={(event) => onChange(event.target.value as EnvironmentType)}
       value={value}
     >
-      <option value="ENVIRONMENT_TYPE_DEVELOPMENT">Development</option>
-      <option value="ENVIRONMENT_TYPE_STAGING">Staging</option>
-      <option value="ENVIRONMENT_TYPE_PRODUCTION">Production</option>
+      <option value="ENVIRONMENT_TYPE_DEVELOPMENT">{translate("Development")}</option>
+      <option value="ENVIRONMENT_TYPE_STAGING">{translate("Staging")}</option>
+      <option value="ENVIRONMENT_TYPE_PRODUCTION">{translate("Production")}</option>
     </select>
   );
 }
@@ -1605,7 +1582,7 @@ function Pagination({
   return (
     <div className="flex items-center justify-end gap-2 pt-1">
       <Button
-        aria-label="Previous page"
+        aria-label={translate("Previous page")}
         disabled={!cursor.hasPrevious}
         onClick={cursor.previous}
         size="sm"
@@ -1613,18 +1590,16 @@ function Pagination({
         variant="ghost"
       >
         <ChevronLeft aria-hidden="true" className="size-3.5" />
-        Previous
-      </Button>
+        {translate("Previous")}</Button>
       <Button
-        aria-label="Next page"
+        aria-label={translate("Next page")}
         disabled={!nextPageToken}
         onClick={() => nextPageToken && cursor.next(nextPageToken)}
         size="sm"
         type="button"
         variant="ghost"
       >
-        Next
-        <ChevronRight aria-hidden="true" className="size-3.5" />
+        {translate("Next")}<ChevronRight aria-hidden="true" className="size-3.5" />
       </Button>
     </div>
   );
@@ -1655,11 +1630,11 @@ function ScopeCrumb({
 function environmentLabel(type: EnvironmentType) {
   switch (type) {
     case "ENVIRONMENT_TYPE_PRODUCTION":
-      return "Production";
+      return translate("Production");
     case "ENVIRONMENT_TYPE_STAGING":
-      return "Staging";
+      return translate("Staging");
     default:
-      return "Development";
+      return translate("Development");
   }
 }
 

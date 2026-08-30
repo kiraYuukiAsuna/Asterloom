@@ -4,7 +4,7 @@ package asterloom.operations.admin.v1;
 
 option csharp_namespace = "Asterloom.Protocol.Operations.Admin.V1";
 
-import "asterloom/operations/v1/operations_types.proto";
+import "Asterloom/operations/v1/operations_types.proto";
 import "google/api/annotations.proto";
 
 service OperationsAdminService {

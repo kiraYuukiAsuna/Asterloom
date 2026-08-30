@@ -70,6 +70,7 @@ import {
 } from "@/lib/api/identity-management";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { cn } from "@/lib/utils/cn";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-400/45 focus:ring-2 focus:ring-cyan-400/15 disabled:opacity-50";
@@ -158,11 +159,11 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
     try {
       const result = await work();
       await Promise.all(refresh.map((reload) => reload()));
-      toast.success(successMessage);
+      toast.success(translate(successMessage));
       return result;
     } catch (error) {
       await Promise.allSettled(refresh.map((reload) => reload()));
-      toast.error(identityErrorMessage(error));
+      toast.error(translate(identityErrorMessage(error)));
       return undefined;
     } finally {
       setPending("");
@@ -182,18 +183,14 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
       data-hydrated={hydrated ? "true" : "false"}
       data-identity-workspace
     >
-      <section className="overflow-hidden rounded-3xl border border-cyan-300/10 bg-[linear-gradient(135deg,rgba(6,182,212,0.14),rgba(15,23,42,0.86)_55%,rgba(2,6,23,0.97))] p-6 sm:p-8">
+      <section className="theme-hero-cyan overflow-hidden rounded-3xl border border-cyan-300/10 bg-[linear-gradient(135deg,rgba(6,182,212,0.14),rgba(15,23,42,0.86)_55%,rgba(2,6,23,0.97))] p-6 sm:p-8">
         <Badge className="border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
           <ShieldCheck aria-hidden="true" className="size-3" />
-          Passport administration
-        </Badge>
+          {translate("Passport administration")}</Badge>
         <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-          Identity control center
-        </h1>
+          {translate("Identity control center")}</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-          Invite and govern users, terminate durable OIDC sessions, and manage every
-          client, grant, redirect URI, scope, and secret exposed by Passport.
-        </p>
+          {translate("Invite and govern users, terminate durable OIDC sessions, and manage every client, grant, redirect URI, scope, and secret exposed by Passport.")}</p>
       </section>
 
       {reveal && (
@@ -201,7 +198,7 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
       )}
 
       <nav
-        aria-label="Identity workspace"
+        aria-label={translate("Identity workspace")}
         className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-3"
       >
         {tabs.map((tab) => {
@@ -219,7 +216,7 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
               onClick={() => setActiveTab(tab.id)}
               type="button"
             >
-              <Icon aria-hidden="true" className="size-4" /> {tab.label}
+              <Icon aria-hidden="true" className="size-4" /> {translate(tab.label)}
             </button>
           );
         })}
@@ -328,12 +325,12 @@ function UsersPanel({
         />
         <Card data-ui-action="list-users">
           <CardHeader>
-            <CardTitle>Passport users</CardTitle>
-            <CardDescription>Search active, invited, suspended, and archived accounts.</CardDescription>
+            <CardTitle>{translate("Passport users")}</CardTitle>
+            <CardDescription>{translate("Search active, invited, suspended, and archived accounts.")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <SearchInput onChange={onQueryChange} placeholder="Name or email" value={query} />
+              <SearchInput onChange={onQueryChange} placeholder={translate("Name or email")} value={query} />
               <label className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
                 <input
                   checked={includeArchived}
@@ -341,8 +338,7 @@ function UsersPanel({
                   onChange={(event) => onIncludeArchivedChange(event.target.checked)}
                   type="checkbox"
                 />
-                Include archived
-              </label>
+                {translate("Include archived")}</label>
             </div>
             <ResourceError error={error} />
             <div className="mt-4 max-h-[48rem] space-y-2 overflow-y-auto pr-1">
@@ -364,7 +360,7 @@ function UsersPanel({
                   <UserStatusBadge status={user.status} />
                 </button>
               ))}
-              {users.length === 0 && <EmptyState text="No users match this view." />}
+              {users.length === 0 && <EmptyState text={translate("No users match this view.")} />}
             </div>
           </CardContent>
         </Card>
@@ -384,7 +380,7 @@ function UsersPanel({
           user={selectedUser}
         />
       ) : (
-        <SelectionPlaceholder text="Select a user to load its authoritative detail and sessions." />
+        <SelectionPlaceholder text={translate("Select a user to load its authoritative detail and sessions.")} />
       )}
     </div>
   );
@@ -429,12 +425,12 @@ function InviteUserCard({
   return (
     <Card data-ui-action="invite-user">
       <CardHeader>
-        <CardTitle>Invite user</CardTitle>
-        <CardDescription>The activation URL is displayed once for secure delivery.</CardDescription>
+        <CardTitle>{translate("Invite user")}</CardTitle>
+        <CardDescription>{translate("The activation URL is displayed once for secure delivery.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={submit}>
-          <Field label="Email">
+          <Field label={translate("Email")}>
             <input
               className={inputClassName}
               name="inviteEmail"
@@ -444,7 +440,7 @@ function InviteUserCard({
               value={email}
             />
           </Field>
-          <Field label="Display name">
+          <Field label={translate("Display name")}>
             <input
               className={inputClassName}
               name="inviteDisplayName"
@@ -461,8 +457,7 @@ function InviteUserCard({
               ) : (
                 <UserPlus className="size-4" />
               )}
-              Send invitation
-            </Button>
+              {translate("Send invitation")}</Button>
           </div>
         </form>
       </CardContent>
@@ -515,7 +510,7 @@ function UserInspector({
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Display name">
+            <Field label={translate("Display name")}>
               <input
                 className={inputClassName}
                 name="userDisplayName"
@@ -537,8 +532,7 @@ function UserInspector({
                 type="button"
                 variant="outline"
               >
-                <Pencil className="size-4" /> Save profile
-              </Button>
+                <Pencil className="size-4" /> {translate("Save profile")}</Button>
             </div>
           </div>
 
@@ -558,8 +552,7 @@ function UserInspector({
               type="button"
               variant="outline"
             >
-              <ShieldCheck className="size-3.5" /> Save roles
-            </Button>
+              <ShieldCheck className="size-3.5" /> {translate("Save roles")}</Button>
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
@@ -586,15 +579,14 @@ function UserInspector({
                 type="button"
                 variant="outline"
               >
-                <RefreshCcw className="size-3.5" /> Resend invite
-              </Button>
+                <RefreshCcw className="size-3.5" /> {translate("Resend invite")}</Button>
             )}
             {user.status === activeStatus && (
               <Button
                 data-ui-action="suspend-user"
                 disabled={pending !== ""}
                 onClick={() => {
-                  if (!window.confirm(`Suspend ${user.email} and revoke all sessions?`)) return;
+                  if (!window.confirm(translate(`Suspend ${user.email} and revoke all sessions?`))) return;
                   void lifecycle(
                     `suspend-user-${user.id}`,
                     () => suspendUser(csrfToken, user),
@@ -605,8 +597,7 @@ function UserInspector({
                 type="button"
                 variant="outline"
               >
-                <Ban className="size-3.5" /> Suspend
-              </Button>
+                <Ban className="size-3.5" /> {translate("Suspend")}</Button>
             )}
             {user.status === suspendedStatus && (
               <Button
@@ -623,15 +614,14 @@ function UserInspector({
                 type="button"
                 variant="outline"
               >
-                <Check className="size-3.5" /> Reactivate
-              </Button>
+                <Check className="size-3.5" /> {translate("Reactivate")}</Button>
             )}
             {user.status !== archivedStatus ? (
               <Button
                 data-ui-action="archive-user"
                 disabled={pending !== ""}
                 onClick={() => {
-                  if (!window.confirm(`Archive ${user.email}?`)) return;
+                  if (!window.confirm(translate(`Archive ${user.email}?`))) return;
                   void lifecycle(
                     `archive-user-${user.id}`,
                     () => archiveUser(csrfToken, user),
@@ -642,8 +632,7 @@ function UserInspector({
                 type="button"
                 variant="ghost"
               >
-                <Archive className="size-3.5" /> Archive
-              </Button>
+                <Archive className="size-3.5" /> {translate("Archive")}</Button>
             ) : (
               <Button
                 data-ui-action="restore-user"
@@ -659,12 +648,11 @@ function UserInspector({
                 type="button"
                 variant="outline"
               >
-                <RotateCcw className="size-3.5" /> Restore
-              </Button>
+                <RotateCcw className="size-3.5" /> {translate("Restore")}</Button>
             )}
           </div>
           <p className="break-all font-mono text-[10px] text-slate-600">
-            {user.id} · version {user.version} · updated {formatTime(user.updatedAt)}
+            {user.id} {" "}{translate("· version")}{" "}{user.version} {" "}{translate("· updated")}{" "}{formatTime(user.updatedAt)}
           </p>
         </CardContent>
       </Card>
@@ -672,14 +660,14 @@ function UserInspector({
       <Card data-ui-action="list-user-sessions">
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>OIDC sessions</CardTitle>
-            <CardDescription>Durable grants and consent records for this subject.</CardDescription>
+            <CardTitle>{translate("OIDC sessions")}</CardTitle>
+            <CardDescription>{translate("Durable grants and consent records for this subject.")}</CardDescription>
           </div>
           <Button
             data-ui-action="revoke-all-user-sessions"
             disabled={pending !== "" || sessions.every((session) => session.status !== validSession)}
             onClick={() => {
-              if (!window.confirm("Revoke every active session for this user?")) return;
+              if (!window.confirm(translate("Revoke every active session for this user?"))) return;
               void runMutation(
                 `revoke-all-sessions-${user.id}`,
                 () => revokeAllUserSessions(csrfToken, user.id),
@@ -691,8 +679,7 @@ function UserInspector({
             type="button"
             variant="outline"
           >
-            <Ban className="size-3.5" /> Revoke all
-          </Button>
+            <Ban className="size-3.5" /> {translate("Revoke all")}</Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {sessions.map((session) => (
@@ -722,16 +709,15 @@ function UserInspector({
                     type="button"
                     variant="ghost"
                   >
-                    Revoke
-                  </Button>
+                    {translate("Revoke")}</Button>
                 ) : (
-                  <Badge variant="planned">Revoked</Badge>
+                  <Badge variant="planned">{translate("Revoked")}</Badge>
                 )}
               </div>
               <p className="mt-2 break-all font-mono text-[10px] text-slate-700">{session.id}</p>
             </div>
           ))}
-          {sessions.length === 0 && <EmptyState text="No OIDC sessions for this user." />}
+          {sessions.length === 0 && <EmptyState text={translate("No OIDC sessions for this user.")} />}
         </CardContent>
       </Card>
     </div>
@@ -780,11 +766,11 @@ function ClientsPanel({
         />
         <Card data-ui-action="list-clients">
           <CardHeader>
-            <CardTitle>Registered clients</CardTitle>
-            <CardDescription>Public desktop/browser apps and confidential services.</CardDescription>
+            <CardTitle>{translate("Registered clients")}</CardTitle>
+            <CardDescription>{translate("Public desktop/browser apps and confidential services.")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <SearchInput onChange={onQueryChange} placeholder="Client ID or name" value={query} />
+            <SearchInput onChange={onQueryChange} placeholder={translate("Client ID or name")} value={query} />
             <ResourceError error={error} />
             <div className="mt-4 space-y-2">
               {clients.map((client) => (
@@ -802,15 +788,15 @@ function ClientsPanel({
                   </div>
                   <div className="flex shrink-0 gap-1.5">
                     <Badge variant="planned">
-                      {client.applicationType === nativeApplication ? "Native" : "Web"}
+                      {translate(client.applicationType === nativeApplication ? "Native" : "Web")}
                     </Badge>
                     <Badge variant={client.clientType === confidentialClient ? "info" : "planned"}>
-                      {client.clientType === confidentialClient ? "Confidential" : "Public"}
+                      {translate(client.clientType === confidentialClient ? "Confidential" : "Public")}
                     </Badge>
                   </div>
                 </button>
               ))}
-              {clients.length === 0 && <EmptyState text="No clients match this view." />}
+              {clients.length === 0 && <EmptyState text={translate("No clients match this view.")} />}
             </div>
           </CardContent>
         </Card>
@@ -828,7 +814,7 @@ function ClientsPanel({
           scopeNames={scopeNames}
         />
       ) : (
-        <SelectionPlaceholder text="Select a client to call the detail API and edit its grants." />
+        <SelectionPlaceholder text={translate("Select a client to call the detail API and edit its grants.")} />
       )}
     </div>
   );
@@ -885,21 +871,21 @@ function CreateClientCard({
   return (
     <Card data-ui-action="create-client">
       <CardHeader>
-        <CardTitle>Register OIDC client</CardTitle>
-        <CardDescription>Confidential secrets are generated server-side and shown once.</CardDescription>
+        <CardTitle>{translate("Register OIDC client")}</CardTitle>
+        <CardDescription>{translate("Confidential secrets are generated server-side and shown once.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={submit}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Client ID">
+            <Field label={translate("Client ID")}>
               <input className={inputClassName} onChange={(e) => setClientId(e.target.value)} required value={clientId} />
             </Field>
-            <Field label="Display name">
+            <Field label={translate("Display name")}>
               <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} required value={displayName} />
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Application type">
+            <Field label={translate("Application type")}>
               <select
                 className={inputClassName}
                 onChange={(event) => {
@@ -913,19 +899,19 @@ function CreateClientCard({
                 }}
                 value={applicationType}
               >
-                <option value={webApplication}>Web / service</option>
-                <option value={nativeApplication}>Native desktop / mobile</option>
+                <option value={webApplication}>{translate("Web / service")}</option>
+                <option value={nativeApplication}>{translate("Native desktop / mobile")}</option>
               </select>
             </Field>
-            <Field label="Client type">
+            <Field label={translate("Client type")}>
               <select
                 className={inputClassName}
                 disabled={applicationType === nativeApplication}
                 onChange={(event) => setClientType(event.target.value as OidcClientType)}
                 value={clientType}
               >
-                <option value={publicClient}>Public (PKCE)</option>
-                <option value={confidentialClient}>Confidential</option>
+                <option value={publicClient}>{translate("Public (PKCE)")}</option>
+                <option value={confidentialClient}>{translate("Confidential")}</option>
               </select>
             </Field>
           </div>
@@ -941,8 +927,7 @@ function CreateClientCard({
           />
           <div className="flex justify-end">
             <Button disabled={pending !== ""} type="submit">
-              <Plus className="size-4" /> Register client
-            </Button>
+              <Plus className="size-4" /> {translate("Register client")}</Button>
           </div>
         </form>
       </CardContent>
@@ -987,15 +972,15 @@ function ClientInspector({
         </div>
         <div className="flex gap-1.5">
           <Badge variant="planned">
-            {client.applicationType === nativeApplication ? "Native" : "Web"}
+            {translate(client.applicationType === nativeApplication ? "Native" : "Web")}
           </Badge>
           <Badge variant={client.clientType === confidentialClient ? "info" : "planned"}>
-            {client.clientType === confidentialClient ? "Confidential" : "Public"}
+            {translate(client.clientType === confidentialClient ? "Confidential" : "Public")}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Field label="Display name">
+        <Field label={translate("Display name")}>
           <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
         </Field>
         <GrantChecks grants={grants} onChange={setGrants} />
@@ -1014,7 +999,7 @@ function ClientInspector({
               data-ui-action="rotate-client-secret"
               disabled={pending !== ""}
               onClick={async () => {
-                if (!window.confirm(`Rotate the secret for ${client.clientId}?`)) return;
+                if (!window.confirm(translate(`Rotate the secret for ${client.clientId}?`))) return;
                 const credential = await runMutation(
                   `rotate-client-${client.id}`,
                   () => rotateClientSecret(csrfToken, client),
@@ -1028,8 +1013,7 @@ function ClientInspector({
               type="button"
               variant="outline"
             >
-              <RefreshCcw className="size-4" /> Rotate secret
-            </Button>
+              <RefreshCcw className="size-4" /> {translate("Rotate secret")}</Button>
           )}
           <Button
             disabled={pending !== ""}
@@ -1050,13 +1034,12 @@ function ClientInspector({
             }
             type="button"
           >
-            <Pencil className="size-4" /> Save client
-          </Button>
+            <Pencil className="size-4" /> {translate("Save client")}</Button>
           <Button
             data-ui-action="delete-client"
             disabled={pending !== ""}
             onClick={() => {
-              if (!window.confirm(`Permanently delete ${client.clientId}?`)) return;
+              if (!window.confirm(translate(`Permanently delete ${client.clientId}?`))) return;
               void runMutation(
                 `delete-client-${client.id}`,
                 () => deleteClient(csrfToken, client),
@@ -1067,11 +1050,10 @@ function ClientInspector({
             type="button"
             variant="ghost"
           >
-            <Trash2 className="size-4" /> Delete
-          </Button>
+            <Trash2 className="size-4" /> {translate("Delete")}</Button>
         </div>
         <p className="break-all font-mono text-[10px] text-slate-600">
-          {client.id} · version {client.version}
+          {client.id} {" "}{translate("· version")}{" "}{client.version}
         </p>
       </CardContent>
     </Card>
@@ -1109,11 +1091,11 @@ function ScopesPanel({
         <CreateScopeCard csrfToken={csrfToken} pending={pending} reloadScopes={reloadScopes} runMutation={runMutation} />
         <Card data-ui-action="list-scopes">
           <CardHeader>
-            <CardTitle>OIDC scopes</CardTitle>
-            <CardDescription>Named access boundaries and their target API resources.</CardDescription>
+            <CardTitle>{translate("OIDC scopes")}</CardTitle>
+            <CardDescription>{translate("Named access boundaries and their target API resources.")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <SearchInput onChange={onQueryChange} placeholder="Scope name" value={query} />
+            <SearchInput onChange={onQueryChange} placeholder={translate("Scope name")} value={query} />
             <ResourceError error={error} />
             <div className="mt-4 space-y-2">
               {scopes.map((scope) => (
@@ -1129,10 +1111,10 @@ function ScopesPanel({
                     <p className="truncate font-mono text-xs text-slate-200">{scope.name}</p>
                     <p className="truncate text-xs text-slate-500">{scope.displayName}</p>
                   </div>
-                  <Badge variant="planned">{scope.resources.length} resources</Badge>
+                  <Badge variant="planned">{scope.resources.length} {" "}{translate("resources")}</Badge>
                 </button>
               ))}
-              {scopes.length === 0 && <EmptyState text="No scopes match this view." />}
+              {scopes.length === 0 && <EmptyState text={translate("No scopes match this view.")} />}
             </div>
           </CardContent>
         </Card>
@@ -1148,7 +1130,7 @@ function ScopesPanel({
           scope={selectedScope}
         />
       ) : (
-        <SelectionPlaceholder text="Select a scope to load its authoritative detail." />
+        <SelectionPlaceholder text={translate("Select a scope to load its authoritative detail.")} />
       )}
     </div>
   );
@@ -1172,8 +1154,8 @@ function CreateScopeCard({
   return (
     <Card data-ui-action="create-scope">
       <CardHeader>
-        <CardTitle>Create API scope</CardTitle>
-        <CardDescription>Scopes can be assigned to clients after creation.</CardDescription>
+        <CardTitle>{translate("Create API scope")}</CardTitle>
+        <CardDescription>{translate("Scopes can be assigned to clients after creation.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -1189,21 +1171,21 @@ function CreateScopeCard({
           }}
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Scope name">
+            <Field label={translate("Scope name")}>
               <input className={inputClassName} onChange={(e) => setName(e.target.value)} required value={name} />
             </Field>
-            <Field label="Display name">
+            <Field label={translate("Display name")}>
               <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} required value={displayName} />
             </Field>
           </div>
-          <Field label="Description">
+          <Field label={translate("Description")}>
             <input className={inputClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
           </Field>
-          <Field label="Resources (comma separated)">
-            <input className={inputClassName} onChange={(e) => setResources(e.target.value)} placeholder="my-api, my-worker" value={resources} />
+          <Field label={translate("Resources (comma separated)")}>
+            <input className={inputClassName} onChange={(e) => setResources(e.target.value)} placeholder={translate("my-api, my-worker")} value={resources} />
           </Field>
           <div className="flex justify-end">
-            <Button disabled={pending !== ""} type="submit"><Plus className="size-4" /> Create scope</Button>
+            <Button disabled={pending !== ""} type="submit"><Plus className="size-4" /> {" "}{translate("Create scope")}</Button>
           </div>
         </form>
       </CardContent>
@@ -1237,13 +1219,13 @@ function ScopeInspector({
         <CardDescription>{scope.name}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Field label="Display name">
+        <Field label={translate("Display name")}>
           <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
         </Field>
-        <Field label="Description">
+        <Field label={translate("Description")}>
           <textarea className={textAreaClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
         </Field>
-        <Field label="Resources (comma separated)">
+        <Field label={translate("Resources (comma separated)")}>
           <input className={inputClassName} onChange={(e) => setResources(e.target.value)} value={resources} />
         </Field>
         <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
@@ -1258,12 +1240,12 @@ function ScopeInspector({
               )
             }
             type="button"
-          ><Pencil className="size-4" /> Save scope</Button>
+          ><Pencil className="size-4" /> {" "}{translate("Save scope")}</Button>
           <Button
             data-ui-action="delete-scope"
             disabled={pending !== ""}
             onClick={() => {
-              if (!window.confirm(`Delete scope ${scope.name}?`)) return;
+              if (!window.confirm(translate(`Delete scope ${scope.name}?`))) return;
               void runMutation(
                 `delete-scope-${scope.id}`,
                 () => deleteScope(csrfToken, scope),
@@ -1273,9 +1255,9 @@ function ScopeInspector({
             }}
             type="button"
             variant="ghost"
-          ><Trash2 className="size-4" /> Delete</Button>
+          ><Trash2 className="size-4" /> {" "}{translate("Delete")}</Button>
         </div>
-        <p className="break-all font-mono text-[10px] text-slate-600">{scope.id} · version {scope.version}</p>
+        <p className="break-all font-mono text-[10px] text-slate-600">{scope.id} {" "}{translate("· version")}{" "}{scope.version}</p>
       </CardContent>
     </Card>
   );
@@ -1291,8 +1273,7 @@ function RoleChecks({
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
       <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-        Trusted Passport roles
-      </legend>
+        {translate("Trusted Passport roles")}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {passportRoles.map((role) => (
           <label className="flex items-center gap-2 text-xs text-slate-400" key={role}>
@@ -1330,7 +1311,7 @@ function GrantChecks({
   ];
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
-      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Grant types</legend>
+      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">{translate("Grant types")}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(([value, label]) => (
           <label className="flex items-center gap-2 text-xs text-slate-400" key={value}>
@@ -1369,13 +1350,13 @@ function ClientTextFields({
 }) {
   return (
     <>
-      <Field label="Redirect URIs (one per line)">
+      <Field label={translate("Redirect URIs (one per line)")}>
         <textarea className={textAreaClassName} onChange={(e) => onRedirectsChange(e.target.value)} value={redirects} />
       </Field>
-      <Field label="Post-logout redirect URIs (one per line)">
+      <Field label={translate("Post-logout redirect URIs (one per line)")}>
         <textarea className={textAreaClassName} onChange={(e) => onPostLogoutRedirectsChange(e.target.value)} value={postLogoutRedirects} />
       </Field>
-      <Field label="Scopes (comma separated)">
+      <Field label={translate("Scopes (comma separated)")}>
         <input className={inputClassName} list="identity-scope-names" onChange={(e) => onScopesChange(e.target.value)} value={scopes} />
         <datalist id="identity-scope-names">{scopeNames.map((name) => <option key={name} value={name} />)}</datalist>
       </Field>
@@ -1386,24 +1367,23 @@ function ClientTextFields({
 function CredentialReveal({ onClose, reveal }: { onClose: () => void; reveal: Reveal }) {
   async function copy() {
     await navigator.clipboard.writeText(reveal.value);
-    toast.success("Copied to clipboard.");
+    toast.success(translate("Copied to clipboard."));
   }
   return (
     <Card className="border-amber-300/20 bg-amber-300/[0.055]" data-testid="identity-credential-reveal">
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <CardTitle>{reveal.label}</CardTitle>
+          <CardTitle>{translate(reveal.label)}</CardTitle>
           <CardDescription>
-            This value is returned once. Copy it now and store it in an approved secret channel.
-            {reveal.expiresAt ? ` Expires ${formatTime(reveal.expiresAt)}.` : ""}
+            {translate("This value is returned once. Copy it now and store it in an approved secret channel.")} {translate(reveal.expiresAt ? `Expires ${formatTime(reveal.expiresAt)}.` : "")}
           </CardDescription>
         </div>
-        <Button onClick={onClose} size="sm" type="button" variant="ghost">Dismiss</Button>
+        <Button onClick={onClose} size="sm" type="button" variant="ghost">{translate("Dismiss")}</Button>
       </CardHeader>
       <CardContent>
         <div className="flex items-start gap-2 rounded-xl border border-amber-300/15 bg-slate-950/70 p-3">
           <code className="min-w-0 flex-1 break-all text-xs leading-5 text-amber-200">{reveal.value}</code>
-          <Button aria-label="Copy credential" onClick={() => void copy()} size="icon" type="button" variant="outline">
+          <Button aria-label={translate("Copy credential")} onClick={() => void copy()} size="icon" type="button" variant="outline">
             <Clipboard className="size-4" />
           </Button>
         </div>
@@ -1434,7 +1414,7 @@ function ResourceError({ error }: { error: unknown }) {
   if (!error) return null;
   return (
     <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.06] p-3 text-xs text-rose-300">
-      <CircleAlert className="mt-0.5 size-4 shrink-0" /> {identityErrorMessage(error)}
+      <CircleAlert className="mt-0.5 size-4 shrink-0" /> {translate(identityErrorMessage(error))}
     </div>
   );
 }

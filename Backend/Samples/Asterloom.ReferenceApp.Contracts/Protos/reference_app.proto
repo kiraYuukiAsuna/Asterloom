@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package asterloom.reference.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.ReferenceApp.Protocol.V1";
+
+service ReferenceAppService {
+  rpc RecordHeartbeat(RecordHeartbeatRequest) returns (ClientHeartbeat) {
+    option (google.api.http) = {
+      post: "/api/reference/v1/heartbeats"
+      body: "*"
+    };
+  }
+
+  rpc GetStatus(GetStatusRequest) returns (ReferenceAppStatus) {
+    option (google.api.http) = { get: "/api/reference/v1/status" };
+  }
+
+  rpc ListHeartbeats(ListHeartbeatsRequest) returns (ListHeartbeatsResponse) {
+    option (google.api.http) = { get: "/api/reference/v1/heartbeats" };
+  }
+}
+
+message RecordHeartbeatRequest {
+  string client_instance_id = 1;
+  string client_version = 2;
+  string platform = 3;
+  map<string, string> attributes = 4;
+}
+
+message GetStatusRequest {}
+
+message ListHeartbeatsRequest { int32 page_size = 1; }
+
+message ClientHeartbeat {
+  string id = 1;
+  string client_instance_id = 2;
+  string client_version = 3;
+  string platform = 4;
+  map<string, string> attributes = 5;
+  google.protobuf.Timestamp recorded_at = 6;
+}
+
+message ReferenceAppStatus {
+  string service = 1;
+  string version = 2;
+  bool persistence_ready = 3;
+  int64 heartbeat_count = 4;
+  google.protobuf.Timestamp last_heartbeat_at = 5;
+}
+
+message ListHeartbeatsResponse {
+  repeated ClientHeartbeat heartbeats = 1;
+}

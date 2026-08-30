@@ -12,9 +12,9 @@ public sealed class AuthorizationInitialMigration : IAsterloomModuleMigration
 
     public string Sql =>
         """
-        CREATE SCHEMA IF NOT EXISTS authorization;
+        CREATE SCHEMA IF NOT EXISTS "authorization";
 
-        CREATE TABLE authorization.roles (
+        CREATE TABLE "authorization".roles (
             id uuid PRIMARY KEY,
             key text NOT NULL,
             display_name text NOT NULL,
@@ -34,9 +34,9 @@ public sealed class AuthorizationInitialMigration : IAsterloomModuleMigration
         );
 
         CREATE INDEX authorization_roles_status_name_idx
-            ON authorization.roles (status, lower(display_name), id);
+            ON "authorization".roles (status, lower(display_name), id);
 
-        CREATE TABLE authorization.role_bindings (
+        CREATE TABLE "authorization".role_bindings (
             id uuid PRIMARY KEY,
             actor_id text NOT NULL,
             role_id uuid NOT NULL,
@@ -60,11 +60,11 @@ public sealed class AuthorizationInitialMigration : IAsterloomModuleMigration
         );
 
         CREATE INDEX authorization_role_bindings_actor_status_idx
-            ON authorization.role_bindings (actor_id, status, tenant_id);
+            ON "authorization".role_bindings (actor_id, status, tenant_id);
         CREATE INDEX authorization_role_bindings_role_status_idx
-            ON authorization.role_bindings (role_id, status);
+            ON "authorization".role_bindings (role_id, status);
 
-        CREATE TABLE authorization.policy_rules (
+        CREATE TABLE "authorization".policy_rules (
             id uuid PRIMARY KEY,
             name text NOT NULL,
             effect smallint NOT NULL,
@@ -89,13 +89,13 @@ public sealed class AuthorizationInitialMigration : IAsterloomModuleMigration
         );
 
         CREATE INDEX authorization_policy_rules_scope_status_idx
-            ON authorization.policy_rules (tenant_id, application_id, environment_id, status);
+            ON "authorization".policy_rules (tenant_id, application_id, environment_id, status);
         CREATE INDEX authorization_policy_rules_subject_status_idx
-            ON authorization.policy_rules (subject_type, subject, status);
+            ON "authorization".policy_rules (subject_type, subject, status);
         CREATE INDEX authorization_policy_rules_permission_status_idx
-            ON authorization.policy_rules (permission, status);
+            ON "authorization".policy_rules (permission, status);
 
-        CREATE TABLE authorization.policy_revisions (
+        CREATE TABLE "authorization".policy_revisions (
             id uuid PRIMARY KEY,
             revision_number bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
             change_type text NOT NULL,
@@ -108,7 +108,7 @@ public sealed class AuthorizationInitialMigration : IAsterloomModuleMigration
         );
 
         CREATE INDEX authorization_policy_revisions_resource_idx
-            ON authorization.policy_revisions (
+            ON "authorization".policy_revisions (
                 resource_type, resource_id, revision_number DESC);
         """;
 }

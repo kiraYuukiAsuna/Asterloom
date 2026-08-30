@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages dynamic configuration through every admin and runtime API", async ({
   page,
 }) => {
@@ -19,7 +21,7 @@ test("manages dynamic configuration through every admin and runtime API", async 
   await createSegment(page, tenantSlug, applicationSlug, environmentSlug, segmentKey);
 
   await page.getByRole("link", { name: "Configuration" }).click();
-  await expect(page).toHaveURL("http://localhost:3000/config");
+  await expect(page).toHaveURL(webUrl("/config"));
   await expect(page.locator("[data-config-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -89,6 +91,7 @@ test("manages dynamic configuration through every admin and runtime API", async 
 
   await draft.locator('input[name="editDefaultValue"]').fill("second");
   await draft.getByRole("button", { name: "Save draft" }).click();
+  await expect(row).toContainText("draft 3");
   await page.locator('[data-ui-action="validate-config-draft"]').click();
   await page.locator('[data-ui-action="publish-config-entry"]').click();
   await expect(row).toContainText("published 2");
@@ -163,14 +166,4 @@ async function createScope(
   await form.getByLabel("Type").selectOption("Development");
   await form.locator('[data-ui-action="create-environment"]').click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page.locator('input[name="Password"]').fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

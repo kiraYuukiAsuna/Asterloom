@@ -73,6 +73,8 @@ import { useHydrated } from "@/lib/ui/use-hydrated";
 import { cn } from "@/lib/utils/cn";
 
 import { useStorageSelection } from "./storage-store";
+import { translate } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -103,43 +105,37 @@ export function StorageWorkspace({
       data-hydrated={hydrated ? "true" : "false"}
       data-storage-workspace
     >
-      <section className="flex flex-col gap-5 rounded-2xl border border-sky-400/15 bg-gradient-to-br from-sky-400/[0.08] via-slate-950/60 to-indigo-400/[0.04] p-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="theme-hero-sky flex flex-col gap-5 rounded-2xl border border-sky-400/15 bg-gradient-to-br from-sky-400/[0.08] via-slate-950/60 to-indigo-400/[0.04] p-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Badge variant="info">Verified object plane</Badge>
+          <Badge variant="info">{translate("Verified object plane")}</Badge>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            Storage control center
-          </h1>
+            {translate("Storage control center")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Govern quotas and content policies, then transfer bytes with short-lived,
-            least-privilege tickets and SHA-256 verification.
-          </p>
+            {translate("Govern quotas and content policies, then transfer bytes with short-lived, least-privilege tickets and SHA-256 verification.")}</p>
         </div>
-        <nav aria-label="Storage views" className="flex rounded-xl border border-white/10 p-1">
+        <nav aria-label={translate("Storage views")} className="flex rounded-xl border border-white/10 p-1">
           <Link
             className={tabClassName(view === "buckets")}
             href="/storage/buckets"
           >
-            Buckets
-          </Link>
+            {translate("Buckets")}</Link>
           <Link
             className={tabClassName(view === "objects")}
             href="/storage/objects"
           >
-            Objects
-          </Link>
+            {translate("Objects")}</Link>
         </nav>
       </section>
 
       <Card>
         <CardHeader className="sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle>Tenant boundary</CardTitle>
+            <CardTitle>{translate("Tenant boundary")}</CardTitle>
             <CardDescription>
-              Every bucket and object is isolated under one tenant.
-            </CardDescription>
+              {translate("Every bucket and object is isolated under one tenant.")}</CardDescription>
           </div>
           <Button
-            aria-label="Refresh tenant list"
+            aria-label={translate("Refresh tenant list")}
             disabled={tenantsQuery.isLoading}
             onClick={() => void tenantsQuery.mutate()}
             size="sm"
@@ -147,20 +143,18 @@ export function StorageWorkspace({
             variant="outline"
           >
             <RefreshCw aria-hidden="true" className="size-3.5" />
-            Refresh
-          </Button>
+            {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent>
           <label className={labelClassName}>
-            Storage tenant
-            <select
-              aria-label="Storage tenant"
+            {translate("Storage tenant")}<select
+              aria-label={translate("Storage tenant")}
               className={inputClassName}
               disabled={tenantsQuery.isLoading || tenants.length === 0}
               onChange={(event) => selection.selectTenant(event.target.value)}
               value={tenantId}
             >
-              {tenants.length === 0 && <option value="">No active tenant</option>}
+              {tenants.length === 0 && <option value="">{translate("No active tenant")}</option>}
               {tenants.map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
                   {tenant.displayName} ({tenant.slug})
@@ -170,14 +164,14 @@ export function StorageWorkspace({
           </label>
           {tenantsQuery.error && (
             <p className="mt-3 text-sm text-rose-300">
-              {storageErrorMessage(tenantsQuery.error)}
+              {translate(storageErrorMessage(tenantsQuery.error))}
             </p>
           )}
         </CardContent>
       </Card>
 
       {!tenantId ? (
-        <EmptyState message="Create an active tenant before provisioning storage." />
+        <EmptyState message={translate("Create an active tenant before provisioning storage.")} />
       ) : view === "buckets" ? (
         <BucketWorkspace csrfToken={csrfToken} tenantId={tenantId} />
       ) : (
@@ -223,9 +217,9 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
       const loaded = await getStorageBucket(tenantId, bucket.id);
       selection.selectBucket(loaded.id);
       setDetail(loaded);
-      toast.success("Bucket details refreshed.");
+      toast.success(translate("Bucket details refreshed."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -244,15 +238,14 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
       <div className="space-y-6">
         <Card data-ui-action="list-storage-buckets">
           <CardHeader>
-            <CardTitle>Bucket inventory</CardTitle>
+            <CardTitle>{translate("Bucket inventory")}</CardTitle>
             <CardDescription>
-              Search active or archived buckets and inspect their live usage.
-            </CardDescription>
+              {translate("Search active or archived buckets and inspect their live usage.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="flex flex-col gap-3 sm:flex-row" onSubmit={applyFilter}>
               <label className="relative flex-1">
-                <span className="sr-only">Search storage buckets</span>
+                <span className="sr-only">{translate("Search storage buckets")}</span>
                 <Search
                   aria-hidden="true"
                   className="absolute left-3 top-3 size-4 text-slate-600"
@@ -260,17 +253,16 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                 <input
                   className={cn(inputClassName, "pl-9")}
                   onChange={(event) => setQueryDraft(event.target.value)}
-                  placeholder="Search key, name, or description"
+                  placeholder={translate("Search key, name, or description")}
                   value={queryDraft}
                 />
               </label>
               <Button type="submit" variant="outline">
-                Apply
-              </Button>
+                {translate("Apply")}</Button>
             </form>
             <label className="flex items-center gap-2 text-xs text-slate-400">
               <input
-                aria-label="Include archived storage buckets"
+                aria-label={translate("Include archived storage buckets")}
                 checked={includeArchived}
                 onChange={(event) => {
                   setIncludeArchived(event.target.checked);
@@ -279,15 +271,14 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                 }}
                 type="checkbox"
               />
-              Include archived buckets
-            </label>
+              {translate("Include archived buckets")}</label>
 
             {bucketsQuery.isLoading ? (
-              <LoadingState label="Loading buckets" />
+              <LoadingState label={translate("Loading buckets")} />
             ) : bucketsQuery.error ? (
               <ErrorState error={bucketsQuery.error} />
             ) : buckets.length === 0 ? (
-              <EmptyState message="No buckets match this view." compact />
+              <EmptyState message={translate("No buckets match this view.")} compact />
             ) : (
               <div className="space-y-2">
                 {buckets.map((bucket) => (
@@ -321,8 +312,7 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                         </span>
                         <span className="mt-2 block text-xs text-slate-500">
                           {formatBytes(bucket.usedBytes)} / {formatBytes(bucket.quotaBytes)} ·{" "}
-                          {bucket.objectCount} objects
-                        </span>
+                          {bucket.objectCount} {translate("objects")}</span>
                       </button>
                       <Button
                         data-ui-action="get-storage-bucket"
@@ -337,8 +327,7 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                         ) : (
                           <FolderCog aria-hidden="true" className="size-3.5" />
                         )}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                     </div>
                   </article>
                 ))}
@@ -372,7 +361,7 @@ function BucketWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
           onChanged={refresh}
         />
       ) : (
-        <EmptyState message="Select a bucket to edit policy and lifecycle settings." />
+        <EmptyState message={translate("Select a bucket to edit policy and lifecycle settings.")} />
       )}
     </div>
   );
@@ -415,9 +404,9 @@ function CreateBucketPanel({
       setKey("");
       setDisplayName("");
       setDescription("");
-      toast.success("Storage bucket created.");
+      toast.success(translate("Storage bucket created."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -426,38 +415,34 @@ function CreateBucketPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create bucket</CardTitle>
+        <CardTitle>{translate("Create bucket")}</CardTitle>
         <CardDescription>
-          Define quota, maximum object size, accepted media types, and read policy together.
-        </CardDescription>
+          {translate("Define quota, maximum object size, accepted media types, and read policy together.")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
           <label className={labelClassName}>
-            Bucket key
-            <input
+            {translate("Bucket key")}<input
               className={inputClassName}
               name="bucketKey"
               onChange={(event) => setKey(event.target.value)}
-              placeholder="release-artifacts"
+              placeholder={translate("release-artifacts")}
               required
               value={key}
             />
           </label>
           <label className={labelClassName}>
-            Display name
-            <input
+            {translate("Display name")}<input
               className={inputClassName}
               name="bucketDisplayName"
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Release artifacts"
+              placeholder={translate("Release artifacts")}
               required
               value={displayName}
             />
           </label>
           <label className={cn(labelClassName, "sm:col-span-2")}>
-            Description
-            <textarea
+            {translate("Description")}<textarea
               className={textAreaClassName}
               name="bucketDescription"
               onChange={(event) => setDescription(event.target.value)}
@@ -465,8 +450,7 @@ function CreateBucketPanel({
             />
           </label>
           <label className={labelClassName}>
-            Quota (MiB)
-            <input
+            {translate("Quota (MiB)")}<input
               className={inputClassName}
               min="1"
               name="bucketQuotaMiB"
@@ -477,8 +461,7 @@ function CreateBucketPanel({
             />
           </label>
           <label className={labelClassName}>
-            Maximum object (MiB)
-            <input
+            {translate("Maximum object (MiB)")}<input
               className={inputClassName}
               min="1"
               name="bucketMaxObjectMiB"
@@ -489,34 +472,30 @@ function CreateBucketPanel({
             />
           </label>
           <label className={labelClassName}>
-            Allowed content types
-            <input
+            {translate("Allowed content types")}<input
               className={inputClassName}
               name="bucketContentTypes"
               onChange={(event) => setContentTypes(event.target.value)}
-              placeholder="image/*, application/json"
+              placeholder={translate("image/*, application/json")}
               value={contentTypes}
             />
           </label>
           <label className={labelClassName}>
-            Access policy
-            <select
-              aria-label="Create bucket access policy"
+            {translate("Access policy")}<select
+              aria-label={translate("Create bucket access policy")}
               className={inputClassName}
               name="bucketAccessPolicy"
               onChange={(event) => setAccessPolicy(event.target.value as StorageAccessPolicy)}
               value={accessPolicy}
             >
               <option value={StorageAccessPolicyObject.STORAGE_ACCESS_POLICY_PRIVATE}>
-                Private
-              </option>
+                {translate("Private")}</option>
               <option
                 value={
                   StorageAccessPolicyObject.STORAGE_ACCESS_POLICY_AUTHENTICATED_READ
                 }
               >
-                Authenticated read
-              </option>
+                {translate("Authenticated read")}</option>
             </select>
           </label>
           <div className="sm:col-span-2">
@@ -530,8 +509,7 @@ function CreateBucketPanel({
               ) : (
                 <Plus aria-hidden="true" className="size-4" />
               )}
-              Create bucket
-            </Button>
+              {translate("Create bucket")}</Button>
           </div>
         </form>
       </CardContent>
@@ -573,16 +551,16 @@ function BucketInspector({
         quotaBytes: mebibytes(quotaMiB),
       });
       await onChanged(updated);
-      toast.success("Bucket policy updated.");
+      toast.success(translate("Bucket policy updated."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
   }
 
   async function changeLifecycle(action: "archive" | "restore") {
-    if (action === "archive" && !window.confirm("Archive this empty bucket?")) return;
+    if (action === "archive" && !window.confirm(translate("Archive this empty bucket?"))) return;
     setBusy(action);
     try {
       const updated =
@@ -590,9 +568,9 @@ function BucketInspector({
           ? await archiveStorageBucket(csrfToken, bucket)
           : await restoreStorageBucket(csrfToken, bucket);
       await onChanged(updated);
-      toast.success(action === "archive" ? "Bucket archived." : "Bucket restored.");
+      toast.success(translate(action === "archive" ? "Bucket archived." : "Bucket restored."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -602,24 +580,23 @@ function BucketInspector({
     <Card className="h-fit xl:sticky xl:top-24">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <CardTitle>Bucket policy</CardTitle>
+          <CardTitle>{translate("Bucket policy")}</CardTitle>
           <ResourceStatusBadge status={bucket.status} />
         </div>
         <CardDescription>
-          <span className="font-mono text-sky-300">{bucket.key}</span> · version {bucket.version}
+          <span className="font-mono text-sky-300">{bucket.key}</span> {" "}{translate("· version")}{" "}{bucket.version}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
-          <Metric label="Used" value={formatBytes(bucket.usedBytes)} />
-          <Metric label="Objects" value={bucket.objectCount.toString()} />
-          <Metric label="Quota" value={formatBytes(bucket.quotaBytes)} />
-          <Metric label="Max object" value={formatBytes(bucket.maxObjectSizeBytes)} />
+          <Metric label={translate("Used")} value={formatBytes(bucket.usedBytes)} />
+          <Metric label={translate("Objects")} value={bucket.objectCount.toString()} />
+          <Metric label={translate("Quota")} value={formatBytes(bucket.quotaBytes)} />
+          <Metric label={translate("Max object")} value={formatBytes(bucket.maxObjectSizeBytes)} />
         </dl>
         <form className="space-y-4" onSubmit={update}>
           <label className={labelClassName}>
-            Display name
-            <input
+            {translate("Display name")}<input
               className={inputClassName}
               disabled={archived}
               name="editBucketDisplayName"
@@ -628,8 +605,7 @@ function BucketInspector({
             />
           </label>
           <label className={labelClassName}>
-            Description
-            <textarea
+            {translate("Description")}<textarea
               className={textAreaClassName}
               disabled={archived}
               name="editBucketDescription"
@@ -639,8 +615,7 @@ function BucketInspector({
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClassName}>
-              Quota MiB
-              <input
+              {translate("Quota MiB")}<input
                 className={inputClassName}
                 disabled={archived}
                 min="1"
@@ -651,8 +626,7 @@ function BucketInspector({
               />
             </label>
             <label className={labelClassName}>
-              Max object MiB
-              <input
+              {translate("Max object MiB")}<input
                 className={inputClassName}
                 disabled={archived}
                 min="1"
@@ -664,8 +638,7 @@ function BucketInspector({
             </label>
           </div>
           <label className={labelClassName}>
-            Allowed content types
-            <input
+            {translate("Allowed content types")}<input
               className={inputClassName}
               disabled={archived}
               name="editBucketContentTypes"
@@ -674,9 +647,8 @@ function BucketInspector({
             />
           </label>
           <label className={labelClassName}>
-            Access policy
-            <select
-              aria-label="Edit bucket access policy"
+            {translate("Access policy")}<select
+              aria-label={translate("Edit bucket access policy")}
               className={inputClassName}
               disabled={archived}
               name="editBucketAccessPolicy"
@@ -684,15 +656,13 @@ function BucketInspector({
               value={accessPolicy}
             >
               <option value={StorageAccessPolicyObject.STORAGE_ACCESS_POLICY_PRIVATE}>
-                Private
-              </option>
+                {translate("Private")}</option>
               <option
                 value={
                   StorageAccessPolicyObject.STORAGE_ACCESS_POLICY_AUTHENTICATED_READ
                 }
               >
-                Authenticated read
-              </option>
+                {translate("Authenticated read")}</option>
             </select>
           </label>
           {!archived && (
@@ -707,8 +677,7 @@ function BucketInspector({
               ) : (
                 <Pencil aria-hidden="true" className="size-4" />
               )}
-              Update bucket
-            </Button>
+              {translate("Update bucket")}</Button>
           )}
         </form>
         {archived ? (
@@ -721,8 +690,7 @@ function BucketInspector({
             variant="outline"
           >
             <RotateCcw aria-hidden="true" className="size-4" />
-            Restore bucket
-          </Button>
+            {translate("Restore bucket")}</Button>
         ) : (
           <Button
             className="w-full"
@@ -734,8 +702,7 @@ function BucketInspector({
             variant="outline"
           >
             <Archive aria-hidden="true" className="size-4" />
-            Archive empty bucket
-          </Button>
+            {translate("Archive empty bucket")}</Button>
         )}
       </CardContent>
     </Card>
@@ -788,9 +755,9 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
       const loaded = await getStorageObject(tenantId, bucketId, storageObject.id);
       selection.selectObject(loaded.id);
       setDetail(loaded);
-      toast.success("Object details refreshed.");
+      toast.success(translate("Object details refreshed."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -816,16 +783,14 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Object scope</CardTitle>
+          <CardTitle>{translate("Object scope")}</CardTitle>
           <CardDescription>
-            Choose the active bucket that receives uploads and object operations.
-          </CardDescription>
+            {translate("Choose the active bucket that receives uploads and object operations.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <label className={labelClassName}>
-            Object bucket
-            <select
-              aria-label="Object bucket"
+            {translate("Object bucket")}<select
+              aria-label={translate("Object bucket")}
               className={inputClassName}
               disabled={bucketsQuery.isLoading || buckets.length === 0}
               onChange={(event) => {
@@ -836,7 +801,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
               }}
               value={bucketId}
             >
-              {buckets.length === 0 && <option value="">No active bucket</option>}
+              {buckets.length === 0 && <option value="">{translate("No active bucket")}</option>}
               {buckets.map((bucket) => (
                 <option key={bucket.id} value={bucket.id}>
                   {bucket.displayName} ({bucket.key})
@@ -849,7 +814,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
       </Card>
 
       {!bucketId ? (
-        <EmptyState message="Create an active bucket before uploading objects." />
+        <EmptyState message={translate("Create an active bucket before uploading objects.")} />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)]">
           <div className="space-y-6">
@@ -862,15 +827,14 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
 
             <Card data-ui-action="list-storage-objects">
               <CardHeader>
-                <CardTitle>Object inventory</CardTitle>
+                <CardTitle>{translate("Object inventory")}</CardTitle>
                 <CardDescription>
-                  Inspect integrity metadata and include tombstones when auditing deletions.
-                </CardDescription>
+                  {translate("Inspect integrity metadata and include tombstones when auditing deletions.")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <form className="flex flex-col gap-3 sm:flex-row" onSubmit={applyFilter}>
                   <label className="relative flex-1">
-                    <span className="sr-only">Search storage objects</span>
+                    <span className="sr-only">{translate("Search storage objects")}</span>
                     <Search
                       aria-hidden="true"
                       className="absolute left-3 top-3 size-4 text-slate-600"
@@ -878,17 +842,16 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                     <input
                       className={cn(inputClassName, "pl-9")}
                       onChange={(event) => setQueryDraft(event.target.value)}
-                      placeholder="Search object key or file name"
+                      placeholder={translate("Search object key or file name")}
                       value={queryDraft}
                     />
                   </label>
                   <Button type="submit" variant="outline">
-                    Apply
-                  </Button>
+                    {translate("Apply")}</Button>
                 </form>
                 <label className="flex items-center gap-2 text-xs text-slate-400">
                   <input
-                    aria-label="Include deleted storage objects"
+                    aria-label={translate("Include deleted storage objects")}
                     checked={includeDeleted}
                     onChange={(event) => {
                       setIncludeDeleted(event.target.checked);
@@ -897,15 +860,14 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                     }}
                     type="checkbox"
                   />
-                  Include deleted objects
-                </label>
+                  {translate("Include deleted objects")}</label>
 
                 {objectsQuery.isLoading ? (
-                  <LoadingState label="Loading objects" />
+                  <LoadingState label={translate("Loading objects")} />
                 ) : objectsQuery.error ? (
                   <ErrorState error={objectsQuery.error} />
                 ) : objects.length === 0 ? (
-                  <EmptyState message="No objects match this view." compact />
+                  <EmptyState message={translate("No objects match this view.")} compact />
                 ) : (
                   <div className="space-y-2">
                     {objects.map((storageObject) => (
@@ -938,8 +900,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                               {storageObject.objectKey}
                             </span>
                             <span className="mt-2 block text-xs text-slate-500">
-                              {formatBytes(storageObject.sizeBytes)} · {storageObject.contentType} · v
-                              {storageObject.version}
+                              {formatBytes(storageObject.sizeBytes)} · {storageObject.contentType} {translate("· v")} {storageObject.version}
                             </span>
                           </button>
                           <Button
@@ -955,8 +916,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
                             ) : (
                               <FileBox aria-hidden="true" className="size-3.5" />
                             )}
-                            Inspect
-                          </Button>
+                            {translate("Inspect")}</Button>
                         </div>
                       </article>
                     ))}
@@ -989,7 +949,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
               storageObject={selectedObject}
             />
           ) : (
-            <EmptyState message="Select an object to manage metadata and lifecycle." />
+            <EmptyState message={translate("Select an object to manage metadata and lifecycle.")} />
           )}
         </div>
       )}
@@ -1038,7 +998,7 @@ function UploadPanel({
   async function createSession(event: FormEvent) {
     event.preventDefault();
     if (!file) {
-      toast.error("Choose a non-empty file first.");
+      toast.error(translate("Choose a non-empty file first."));
       return;
     }
     setBusy("session");
@@ -1054,9 +1014,9 @@ function UploadPanel({
         sizeBytes: file.size,
       });
       setPending({ file, session });
-      toast.success("Upload session created. Transfer it before the ticket expires.");
+      toast.success(translate("Upload session created. Transfer it before the ticket expires."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -1074,9 +1034,9 @@ function UploadPanel({
       setFileInputKey((value) => value + 1);
       setObjectKey("");
       setMetadata("");
-      toast.success("Object uploaded and verified.");
+      toast.success(translate("Object uploaded and verified."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -1085,17 +1045,14 @@ function UploadPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Verified upload</CardTitle>
+        <CardTitle>{translate("Verified upload")}</CardTitle>
         <CardDescription>
-          Phase 1 reserves quota and issues a PUT ticket. Phase 2 transfers bytes and
-          verifies size, content type, and SHA-256 before publishing the object.
-        </CardDescription>
+          {translate("Phase 1 reserves quota and issues a PUT ticket. Phase 2 transfers bytes and verifies size, content type, and SHA-256 before publishing the object.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={createSession}>
           <label className={cn(labelClassName, "sm:col-span-2")}>
-            File
-            <input
+            {translate("File")}<input
               className={cn(inputClassName, "py-2")}
               key={fileInputKey}
               name="storageFile"
@@ -1112,19 +1069,17 @@ function UploadPanel({
             />
           </label>
           <label className={labelClassName}>
-            Object key
-            <input
+            {translate("Object key")}<input
               className={inputClassName}
               name="storageObjectKey"
               onChange={(event) => setObjectKey(event.target.value)}
-              placeholder="uploads/example.json"
+              placeholder={translate("uploads/example.json")}
               required
               value={objectKey}
             />
           </label>
           <label className={labelClassName}>
-            Content type
-            <input
+            {translate("Content type")}<input
               className={inputClassName}
               name="storageContentType"
               onChange={(event) => setContentType(event.target.value)}
@@ -1133,14 +1088,13 @@ function UploadPanel({
             />
           </label>
           <label className={labelClassName}>
-            Upload application (optional)
-            <select
-              aria-label="Upload application"
+            {translate("Upload application (optional)")}<select
+              aria-label={translate("Upload application")}
               className={inputClassName}
               onChange={(event) => selection.selectApplication(event.target.value)}
               value={applicationId}
             >
-              <option value="">Tenant-level object</option>
+              <option value="">{translate("Tenant-level object")}</option>
               {applications.map((application) => (
                 <option key={application.id} value={application.id}>
                   {application.displayName} ({application.slug})
@@ -1149,15 +1103,14 @@ function UploadPanel({
             </select>
           </label>
           <label className={labelClassName}>
-            Upload environment (optional)
-            <select
-              aria-label="Upload environment"
+            {translate("Upload environment (optional)")}<select
+              aria-label={translate("Upload environment")}
               className={inputClassName}
               disabled={!applicationId}
               onChange={(event) => selection.selectEnvironment(event.target.value)}
               value={environmentId}
             >
-              <option value="">Application-level object</option>
+              <option value="">{translate("Application-level object")}</option>
               {environments.map((environment) => (
                 <option key={environment.id} value={environment.id}>
                   {environment.displayName} ({environment.slug})
@@ -1166,12 +1119,11 @@ function UploadPanel({
             </select>
           </label>
           <label className={cn(labelClassName, "sm:col-span-2")}>
-            Custom metadata (one key=value per line)
-            <textarea
+            {translate("Custom metadata (one key=value per line)")}<textarea
               className={textAreaClassName}
               name="uploadMetadata"
               onChange={(event) => setMetadata(event.target.value)}
-              placeholder={"source=console\nretention=standard"}
+              placeholder={translate("source=console\nretention=standard")}
               value={metadata}
             />
           </label>
@@ -1186,8 +1138,7 @@ function UploadPanel({
               ) : (
                 <HardDriveUpload aria-hidden="true" className="size-4" />
               )}
-              Create upload session
-            </Button>
+              {translate("Create upload session")}</Button>
           </div>
         </form>
 
@@ -1195,12 +1146,12 @@ function UploadPanel({
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-amber-200">Transfer ticket ready</p>
+                <p className="text-sm font-medium text-amber-200">{translate("Transfer ticket ready")}</p>
                 <p className="mt-1 truncate font-mono text-xs text-slate-500">
                   {pending.session.id}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Expires {formatDate(pending.session.expiresAt)}
+                  {translate("Expires")} {formatDate(pending.session.expiresAt)}
                 </p>
               </div>
               <Button
@@ -1214,8 +1165,7 @@ function UploadPanel({
                 ) : (
                   <Upload aria-hidden="true" className="size-4" />
                 )}
-                Upload bytes & complete
-              </Button>
+                {translate("Upload bytes & complete")}</Button>
             </div>
           </div>
         )}
@@ -1260,9 +1210,9 @@ function ObjectInspector({
         parseStorageMetadata(metadata),
       );
       await onChanged(updated);
-      toast.success("Object metadata updated.");
+      toast.success(translate("Object metadata updated."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -1279,9 +1229,9 @@ function ObjectInspector({
       link.download = storageObject.fileName;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1_000);
-      toast.success("Download verified with SHA-256.");
+      toast.success(translate("Download verified with SHA-256."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -1298,23 +1248,23 @@ function ObjectInspector({
         targetBucketId,
       });
       await onChanged(copied);
-      toast.success("Object copied.");
+      toast.success(translate("Object copied."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
   }
 
   async function remove() {
-    if (!window.confirm("Delete this object and its stored bytes?")) return;
+    if (!window.confirm(translate("Delete this object and its stored bytes?"))) return;
     setBusy("delete");
     try {
       const deleted = await deleteStorageObject(csrfToken, storageObject);
       await onChanged(deleted);
-      toast.success("Object deleted.");
+      toast.success(translate("Object deleted."));
     } catch (error) {
-      toast.error(storageErrorMessage(error));
+      toast.error(translate(storageErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -1324,7 +1274,7 @@ function ObjectInspector({
     <Card className="h-fit xl:sticky xl:top-24">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <CardTitle>Object operations</CardTitle>
+          <CardTitle>{translate("Object operations")}</CardTitle>
           <ObjectStatusBadge status={storageObject.status} />
         </div>
         <CardDescription>
@@ -1335,23 +1285,22 @@ function ObjectInspector({
       </CardHeader>
       <CardContent className="space-y-6">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
-          <Metric label="Size" value={formatBytes(storageObject.sizeBytes)} />
-          <Metric label="Version" value={storageObject.version.toString()} />
-          <Metric label="Media type" value={storageObject.contentType} />
-          <Metric label="Completed" value={formatDate(storageObject.completedAt)} />
+          <Metric label={translate("Size")} value={formatBytes(storageObject.sizeBytes)} />
+          <Metric label={translate("Version")} value={storageObject.version.toString()} />
+          <Metric label={translate("Media type")} value={storageObject.contentType} />
+          <Metric label={translate("Completed")} value={formatDate(storageObject.completedAt)} />
         </dl>
         <div>
-          <p className="text-xs font-medium text-slate-400">SHA-256</p>
+          <p className="text-xs font-medium text-slate-400">{translate("SHA-256")}</p>
           <p className="mt-1 break-all rounded-lg bg-black/25 p-2 font-mono text-[10px] leading-4 text-emerald-300">
             {storageObject.sha256}
           </p>
         </div>
 
         <form className="space-y-3" onSubmit={updateMetadata}>
-          <h3 className="text-sm font-semibold text-white">Metadata</h3>
+          <h3 className="text-sm font-semibold text-white">{translate("Metadata")}</h3>
           <label className={labelClassName}>
-            File name
-            <input
+            {translate("File name")}<input
               className={inputClassName}
               disabled={!available}
               name="editObjectFileName"
@@ -1360,8 +1309,7 @@ function ObjectInspector({
             />
           </label>
           <label className={labelClassName}>
-            Custom metadata
-            <textarea
+            {translate("Custom metadata")}<textarea
               className={textAreaClassName}
               disabled={!available}
               name="editObjectMetadata"
@@ -1377,8 +1325,7 @@ function ObjectInspector({
             variant="outline"
           >
             <Pencil aria-hidden="true" className="size-4" />
-            Update metadata
-          </Button>
+            {translate("Update metadata")}</Button>
         </form>
 
         <Button
@@ -1393,14 +1340,12 @@ function ObjectInspector({
           ) : (
             <Download aria-hidden="true" className="size-4" />
           )}
-          Create ticket & download
-        </Button>
+          {translate("Create ticket & download")}</Button>
 
         <form className="space-y-3 border-t border-white/8 pt-5" onSubmit={copy}>
-          <h3 className="text-sm font-semibold text-white">Copy object</h3>
+          <h3 className="text-sm font-semibold text-white">{translate("Copy object")}</h3>
           <label className={labelClassName}>
-            Target bucket
-            <select
+            {translate("Target bucket")}<select
               className={inputClassName}
               disabled={!available}
               name="copyTargetBucket"
@@ -1415,8 +1360,7 @@ function ObjectInspector({
             </select>
           </label>
           <label className={labelClassName}>
-            New object key
-            <input
+            {translate("New object key")}<input
               className={inputClassName}
               disabled={!available}
               name="copyObjectKey"
@@ -1425,8 +1369,7 @@ function ObjectInspector({
             />
           </label>
           <label className={labelClassName}>
-            New file name
-            <input
+            {translate("New file name")}<input
               className={inputClassName}
               disabled={!available}
               name="copyObjectFileName"
@@ -1435,8 +1378,7 @@ function ObjectInspector({
             />
           </label>
           <label className={labelClassName}>
-            Copy metadata
-            <textarea
+            {translate("Copy metadata")}<textarea
               className={textAreaClassName}
               disabled={!available}
               name="copyObjectMetadata"
@@ -1452,8 +1394,7 @@ function ObjectInspector({
             variant="outline"
           >
             <Copy aria-hidden="true" className="size-4" />
-            Copy object
-          </Button>
+            {translate("Copy object")}</Button>
         </form>
 
         <Button
@@ -1465,8 +1406,7 @@ function ObjectInspector({
           variant="outline"
         >
           <Trash2 aria-hidden="true" className="size-4" />
-          Delete object
-        </Button>
+          {translate("Delete object")}</Button>
       </CardContent>
     </Card>
   );
@@ -1487,10 +1427,9 @@ function Pagination({
   return (
     <div className="flex justify-end gap-2 border-t border-white/8 pt-4">
       <Button disabled={!canGoPrevious} onClick={onPrevious} size="sm" type="button" variant="outline">
-        <ChevronLeft aria-hidden="true" className="size-3.5" /> Previous
-      </Button>
+        <ChevronLeft aria-hidden="true" className="size-3.5" /> {translate("Previous")}</Button>
       <Button disabled={!canGoNext} onClick={onNext} size="sm" type="button" variant="outline">
-        Next <ChevronRight aria-hidden="true" className="size-3.5" />
+        {translate("Next")}<ChevronRight aria-hidden="true" className="size-3.5" />
       </Button>
     </div>
   );
@@ -1498,7 +1437,7 @@ function Pagination({
 
 function ResourceStatusBadge({ status }: { status: StorageBucketRecord["status"] }) {
   const active = status === StorageResourceStatusObject.STORAGE_RESOURCE_STATUS_ACTIVE;
-  return <Badge variant={active ? "success" : "planned"}>{active ? "Active" : "Archived"}</Badge>;
+  return <Badge variant={active ? "success" : "planned"}>{translate(active ? "Active" : "Archived")}</Badge>;
 }
 
 function ObjectStatusBadge({ status }: { status: StorageObjectRecord["status"] }) {
@@ -1506,7 +1445,7 @@ function ObjectStatusBadge({ status }: { status: StorageObjectRecord["status"] }
   const deleted = status === StorageObjectStatusObject.STORAGE_OBJECT_STATUS_DELETED;
   return (
     <Badge variant={available ? "success" : deleted ? "planned" : "info"}>
-      {status.replace("STORAGE_OBJECT_STATUS_", "").toLowerCase()}
+      {translate(status.replace("STORAGE_OBJECT_STATUS_", "").toLowerCase())}
     </Badge>
   );
 }
@@ -1531,7 +1470,7 @@ function LoadingState({ label }: { label: string }) {
 function ErrorState({ error }: { error: unknown }) {
   return (
     <p className="rounded-xl border border-rose-400/15 bg-rose-400/[0.05] p-4 text-sm text-rose-300">
-      {storageErrorMessage(error)}
+      {translate(storageErrorMessage(error))}
     </p>
   );
 }
@@ -1589,7 +1528,7 @@ function formatBytes(bytes: number) {
 }
 
 function formatDate(value: string | null | undefined) {
-  return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+  return value ? formatDateTime(value) : "—";
 }
 
 function safeObjectKey(fileName: string) {

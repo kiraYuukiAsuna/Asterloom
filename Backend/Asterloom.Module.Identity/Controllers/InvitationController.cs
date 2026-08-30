@@ -21,12 +21,14 @@ public sealed class InvitationController(
         [FromQuery] string? userId,
         [FromQuery] string? token)
     {
+        var copy = InvitationCopy.For(IsChinese());
         var user = await FindPendingUserAsync(userId);
         if (user is null || !TryDecodeToken(token, out _))
         {
             return MessagePage(
-                "邀请不可用",
-                "邀请链接无效、已过期，或账户已完成激活。请联系管理员重新发送邀请。",
+                copy,
+                copy.UnavailableTitle,
+                copy.UnavailableMessage,
                 isError: true);
         }
 
@@ -39,19 +41,21 @@ public sealed class InvitationController(
         [FromForm] InvitationInput input,
         CancellationToken cancellationToken)
     {
+        var copy = InvitationCopy.For(IsChinese());
         var user = await FindPendingUserAsync(input.UserId);
         if (user is null || !TryDecodeToken(input.Token, out var decodedToken))
         {
             return MessagePage(
-                "邀请不可用",
-                "邀请链接无效、已过期，或账户已完成激活。请联系管理员重新发送邀请。",
+                copy,
+                copy.UnavailableTitle,
+                copy.UnavailableMessage,
                 isError: true);
         }
 
         if (string.IsNullOrEmpty(input.Password)
             || !string.Equals(input.Password, input.ConfirmPassword, StringComparison.Ordinal))
         {
-            return InvitationPage(user, input.Token, "两次输入的密码不一致。");
+            return InvitationPage(user, input.Token, copy.PasswordMismatch);
         }
 
         if (!await userManager.VerifyUserTokenAsync(
@@ -61,8 +65,9 @@ public sealed class InvitationController(
             decodedToken))
         {
             return MessagePage(
-                "邀请已过期",
-                "该邀请已失效，请联系管理员重新发送邀请。",
+                copy,
+                copy.ExpiredTitle,
+                copy.ExpiredMessage,
                 isError: true);
         }
 
@@ -79,13 +84,14 @@ public sealed class InvitationController(
             return InvitationPage(
                 user,
                 input.Token,
-                string.Join(" ", passwordResult.Errors.Select(static error => error.Description)));
+                copy.PasswordRequirementsNotMet);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         return MessagePage(
-            "账户已激活",
-            "密码设置成功。现在可以返回 Asterloom 控制台登录。",
+            copy,
+            copy.ActivatedTitle,
+            copy.ActivatedMessage,
             isError: false);
     }
 
@@ -112,6 +118,7 @@ public sealed class InvitationController(
         string token,
         string? error)
     {
+        var copy = InvitationCopy.For(IsChinese());
         SetSecurityHeaders();
         var antiforgeryToken = antiforgery.GetAndStoreTokens(HttpContext).RequestToken
             ?? string.Empty;
@@ -119,39 +126,43 @@ public sealed class InvitationController(
             ? string.Empty
             : $"<div class=\"error\" role=\"alert\">{WebUtility.HtmlEncode(error)}</div>";
         var html = $$"""
-            <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+            <!doctype html><html lang="{{copy.Language}}"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>接受邀请 · Asterloom Passport</title>
+            <title>{{copy.AcceptInvitation}} · Asterloom Passport</title>
             <style>{{PassportController.Styles}}</style></head><body><main>
             <section class="brand"><div class="mark">A</div><p class="eyebrow">ASTERLOOM PASSPORT</p>
-            <h1>加入 Asterloom</h1><p class="intro">完成密码设置后，这个邀请账户即可用于登录。</p></section>
-            <section class="card"><p class="eyebrow">ACCEPT INVITATION</p><h2>激活账户</h2>
+            <h1>{{copy.JoinAsterloom}}</h1><p class="intro">{{copy.Introduction}}</p></section>
+            <section class="card"><p class="eyebrow">ACCEPT INVITATION</p><h2>{{copy.ActivateAccount}}</h2>
             <p class="help">{{WebUtility.HtmlEncode(user.DisplayName)}} · {{WebUtility.HtmlEncode(user.Email)}}</p>
             {{errorMarkup}}<form method="post" action="/passport/invitation">
             <input type="hidden" name="__RequestVerificationToken" value="{{HtmlEncoder.Default.Encode(antiforgeryToken)}}">
             <input type="hidden" name="UserId" value="{{user.Id:D}}">
             <input type="hidden" name="Token" value="{{HtmlEncoder.Default.Encode(token)}}">
-            <label>新密码<input name="Password" type="password" autocomplete="new-password" minlength="12" required autofocus></label>
-            <label>确认密码<input name="ConfirmPassword" type="password" autocomplete="new-password" minlength="12" required></label>
-            <button type="submit">激活账户</button></form>
-            <p class="help">密码至少 12 位，并包含大小写字母、数字和特殊字符。</p>
+            <label>{{copy.NewPassword}}<input name="Password" type="password" autocomplete="new-password" minlength="12" required autofocus></label>
+            <label>{{copy.ConfirmPassword}}<input name="ConfirmPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+            <button type="submit">{{copy.ActivateAccount}}</button></form>
+            <p class="help">{{copy.PasswordRequirements}}</p>
             </section></main></body></html>
             """;
         return Content(html, "text/html; charset=utf-8");
     }
 
-    private ContentResult MessagePage(string title, string message, bool isError)
+    private ContentResult MessagePage(
+        InvitationCopy copy,
+        string title,
+        string message,
+        bool isError)
     {
         SetSecurityHeaders();
         var accent = isError ? "#fb7185" : "#5eead4";
         var html = $$"""
-            <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+            <!doctype html><html lang="{{copy.Language}}"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
             <title>{{WebUtility.HtmlEncode(title)}} · Asterloom Passport</title>
             <style>{{PassportController.Styles}}.message h1{color:{{accent}}}</style></head><body><main>
             <section class="card message"><div class="mark">A</div>
             <h1>{{WebUtility.HtmlEncode(title)}}</h1><p class="intro">{{WebUtility.HtmlEncode(message)}}</p>
-            <a class="button" href="/passport/login">前往登录</a></section></main></body></html>
+            <a class="button" href="/passport/login">{{copy.GoToSignIn}}</a></section></main></body></html>
             """;
         return Content(html, "text/html; charset=utf-8");
     }
@@ -165,6 +176,13 @@ public sealed class InvitationController(
             "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; " +
             "base-uri 'none'; frame-ancestors 'none'";
         Response.Headers["Referrer-Policy"] = "no-referrer";
+    }
+
+    private bool IsChinese()
+    {
+        var requestedLocale = Request.Cookies["asterloom-locale"]
+            ?? Request.Headers.AcceptLanguage.FirstOrDefault();
+        return requestedLocale?.Trim().StartsWith("zh", StringComparison.OrdinalIgnoreCase) is true;
     }
 
     private static bool TryDecodeToken(string? encoded, out string token)
@@ -191,4 +209,62 @@ public sealed class InvitationController(
         string Token,
         string Password,
         string ConfirmPassword);
+
+    private sealed record InvitationCopy(
+        string Language,
+        string AcceptInvitation,
+        string JoinAsterloom,
+        string Introduction,
+        string ActivateAccount,
+        string NewPassword,
+        string ConfirmPassword,
+        string PasswordRequirements,
+        string PasswordMismatch,
+        string PasswordRequirementsNotMet,
+        string UnavailableTitle,
+        string UnavailableMessage,
+        string ExpiredTitle,
+        string ExpiredMessage,
+        string ActivatedTitle,
+        string ActivatedMessage,
+        string GoToSignIn)
+    {
+        public static InvitationCopy For(bool chinese) => chinese
+            ? new(
+                "zh-CN",
+                "接受邀请",
+                "加入 Asterloom",
+                "完成密码设置后，这个邀请账户即可用于登录。",
+                "激活账户",
+                "新密码",
+                "确认密码",
+                "密码至少 12 位，并包含大小写字母、数字和特殊字符。",
+                "两次输入的密码不一致。",
+                "密码不符合复杂度要求，请检查后重试。",
+                "邀请不可用",
+                "邀请链接无效、已过期，或账户已完成激活。请联系管理员重新发送邀请。",
+                "邀请已过期",
+                "该邀请已失效，请联系管理员重新发送邀请。",
+                "账户已激活",
+                "密码设置成功。现在可以返回 Asterloom 控制台登录。",
+                "前往登录")
+            : new(
+                "en",
+                "Accept invitation",
+                "Join Asterloom",
+                "Set a password to activate this invited account for sign-in.",
+                "Activate account",
+                "New password",
+                "Confirm password",
+                "Use at least 12 characters with uppercase, lowercase, numeric, and special characters.",
+                "The passwords do not match.",
+                "The password does not meet the complexity requirements. Review it and try again.",
+                "Invitation unavailable",
+                "The invitation link is invalid, expired, or the account is already active. Ask an administrator to resend it.",
+                "Invitation expired",
+                "This invitation is no longer valid. Ask an administrator to resend it.",
+                "Account activated",
+                "Your password is set. You can now return to the Asterloom Console and sign in.",
+                "Go to sign in");
+    }
 }

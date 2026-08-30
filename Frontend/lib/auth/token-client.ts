@@ -92,7 +92,7 @@ async function tokenRequest(
 
   let response: Response;
   try {
-    response = await fetch(config.backendUrl + "/connect/token", {
+    response = await fetch(config.passportPublicUrl + "/connect/token", {
       body,
       cache: "no-store",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -122,7 +122,7 @@ async function verifyIdToken(
   expectedNonce?: string,
 ): Promise<Actor> {
   const config = getAuthConfig();
-  const jwksUrl = config.backendUrl + "/.well-known/jwks";
+  const jwksUrl = config.passportPublicUrl + "/.well-known/jwks";
   let jwks = jwksByUrl.get(jwksUrl);
   if (!jwks) {
     jwks = createRemoteJWKSet(new URL(jwksUrl), {

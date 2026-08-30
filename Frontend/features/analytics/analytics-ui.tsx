@@ -3,6 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { analyticsErrorMessage } from "@/lib/api/analytics-management";
+import { translate } from "@/lib/i18n/locale";
 import { cn } from "@/lib/utils/cn";
 
 export const analyticsInputClassName =
@@ -20,7 +21,7 @@ export function AnalyticsStatusBadge({ status }: { status: string }) {
     .toLowerCase();
   return (
     <Badge variant={status.endsWith("_ACTIVE") ? "success" : "planned"}>
-      {label}
+      {translate(label)}
     </Badge>
   );
 }
@@ -47,7 +48,7 @@ export function AnalyticsEmpty({ message }: { message: string }) {
 export function AnalyticsError({ error }: { error: unknown }) {
   return (
     <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-4 text-sm text-rose-200">
-      {analyticsErrorMessage(error)}
+      {translate(analyticsErrorMessage(error))}
     </div>
   );
 }

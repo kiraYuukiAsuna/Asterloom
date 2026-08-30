@@ -33,6 +33,7 @@ import {
   ReleaseEmptyState,
   ReleaseErrorState,
 } from "./release-ui";
+import { translate } from "@/lib/i18n/locale";
 
 const page = { includeArchived: false, pageSize: 100, pageToken: "", query: "" };
 
@@ -84,38 +85,35 @@ export function ReleaseWorkspace({
       data-hydrated={hydrated ? "true" : "false"}
       data-release-workspace
     >
-      <section className="flex flex-col gap-5 rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.09] via-slate-950/60 to-sky-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="theme-hero-violet flex flex-col gap-5 rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.09] via-slate-950/60 to-sky-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Badge variant="info">Signed desktop delivery</Badge>
+          <Badge variant="info">{translate("Signed desktop delivery")}</Badge>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            Release control center
-          </h1>
+            {translate("Release control center")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Verify signed artifacts, publish immutable manifests, and control targeted,
-            deterministic desktop rollouts without transferring private keys.
-          </p>
+            {translate("Verify signed artifacts, publish immutable manifests, and control targeted, deterministic desktop rollouts without transferring private keys.")}</p>
         </div>
         <nav
-          aria-label="Release views"
+          aria-label={translate("Release views")}
           className="flex flex-wrap rounded-xl border border-white/10 p-1"
         >
           <ReleaseTab
             active={view === "releases"}
             href="/releases"
             icon={PackageCheck}
-            label="Releases"
+            label={translate("Releases")}
           />
           <ReleaseTab
             active={view === "channels"}
             href="/channels"
             icon={Radio}
-            label="Channels"
+            label={translate("Channels")}
           />
           <ReleaseTab
             active={view === "artifacts"}
             href="/artifacts"
             icon={KeyRound}
-            label="Artifacts & keys"
+            label={translate("Artifacts & keys")}
           />
         </nav>
       </section>
@@ -123,14 +121,12 @@ export function ReleaseWorkspace({
       <Card>
         <CardHeader className="sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle>Release boundary</CardTitle>
+            <CardTitle>{translate("Release boundary")}</CardTitle>
             <CardDescription>
-              Channels, artifacts, and manifests are isolated by tenant, application,
-              and environment.
-            </CardDescription>
+              {translate("Channels, artifacts, and manifests are isolated by tenant, application, and environment.")}</CardDescription>
           </div>
           <Button
-            aria-label="Refresh release scope"
+            aria-label={translate("Refresh release scope")}
             onClick={() => {
               void tenants.mutate();
               void applications.mutate();
@@ -141,19 +137,17 @@ export function ReleaseWorkspace({
             variant="outline"
           >
             <RefreshCw aria-hidden="true" className="size-3.5" />
-            Refresh
-          </Button>
+            {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <label className={releaseLabelClassName}>
-            Release tenant
-            <select
-              aria-label="Release tenant"
+            {translate("Release tenant")}<select
+              aria-label={translate("Release tenant")}
               className={releaseInputClassName}
               onChange={(event) => selection.selectTenant(event.target.value)}
               value={selection.tenantId}
             >
-              <option value="">Choose a tenant</option>
+              <option value="">{translate("Choose a tenant")}</option>
               {(tenants.data?.tenants ?? []).map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
                   {tenant.displayName} ({tenant.slug})
@@ -162,15 +156,14 @@ export function ReleaseWorkspace({
             </select>
           </label>
           <label className={releaseLabelClassName}>
-            Release application
-            <select
-              aria-label="Release application"
+            {translate("Release application")}<select
+              aria-label={translate("Release application")}
               className={releaseInputClassName}
               disabled={!selection.tenantId}
               onChange={(event) => selection.selectApplication(event.target.value)}
               value={selection.applicationId}
             >
-              <option value="">Choose an application</option>
+              <option value="">{translate("Choose an application")}</option>
               {(applications.data?.applications ?? []).map((application) => (
                 <option key={application.id} value={application.id}>
                   {application.displayName} ({application.slug})
@@ -179,15 +172,14 @@ export function ReleaseWorkspace({
             </select>
           </label>
           <label className={releaseLabelClassName}>
-            Release environment
-            <select
-              aria-label="Release environment"
+            {translate("Release environment")}<select
+              aria-label={translate("Release environment")}
               className={releaseInputClassName}
               disabled={!selection.applicationId}
               onChange={(event) => selection.selectEnvironment(event.target.value)}
               value={selection.environmentId}
             >
-              <option value="">Choose an environment</option>
+              <option value="">{translate("Choose an environment")}</option>
               {(environments.data?.environments ?? []).map((environment) => (
                 <option key={environment.id} value={environment.id}>
                   {environment.displayName} ({environment.slug})
@@ -204,7 +196,7 @@ export function ReleaseWorkspace({
       </Card>
 
       {!scope ? (
-        <ReleaseEmptyState message="Choose a tenant, application, and environment to manage desktop delivery." />
+        <ReleaseEmptyState message={translate("Choose a tenant, application, and environment to manage desktop delivery.")} />
       ) : view === "channels" ? (
         <ReleaseChannelsPanel csrfToken={csrfToken} scope={scope} />
       ) : view === "artifacts" ? (

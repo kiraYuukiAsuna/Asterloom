@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+WORKDIR /app
+
+ENV Kestrel__Endpoints__Http__Url=http://+:8080 \
+    Kestrel__Endpoints__Http__Protocols=Http1 \
+    Kestrel__Endpoints__Grpc__Url=http://+:8081 \
+    Kestrel__Endpoints__Grpc__Protocols=Http2 \
+    DOTNET_EnableDiagnostics=0
+
+EXPOSE 8080 8081
+
+COPY --chown=$APP_UID:$APP_UID Backend/publish/server ./
+COPY --chown=$APP_UID:$APP_UID Backend/publish/migrations ./migrations/
+
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Asterloom.Server.dll"]

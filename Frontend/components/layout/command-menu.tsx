@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const destinations = [
   { label: "Overview", href: "/", icon: LayoutDashboard, available: true },
@@ -59,6 +60,7 @@ const destinations = [
 ];
 
 export function CommandMenu() {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -77,14 +79,14 @@ export function CommandMenu() {
   return (
     <>
       <Button
-        aria-label="Open command menu"
+        aria-label={t("Open command menu")}
         onClick={() => setOpen(true)}
         size="sm"
         type="button"
         variant="outline"
       >
         <Search aria-hidden="true" className="size-3.5" />
-        <span className="hidden sm:inline">Jump to</span>
+        <span className="hidden sm:inline">{t("Jump to")}</span>
         <kbd className="hidden rounded border border-white/10 bg-black/20 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 md:inline">
           Ctrl K
         </kbd>
@@ -92,7 +94,7 @@ export function CommandMenu() {
 
       <Command.Dialog
         className="fixed left-1/2 top-[16vh] z-50 w-[min(92vw,36rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/60 backdrop-blur-xl"
-        label="Navigate Asterloom"
+        label={t("Navigate Asterloom")}
         onOpenChange={setOpen}
         open={open}
       >
@@ -101,14 +103,14 @@ export function CommandMenu() {
           <Command.Input
             autoFocus
             className="h-13 w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-            placeholder="Search modules and resources…"
+            placeholder={t("Search modules and resources…")}
           />
         </div>
         <Command.List className="max-h-80 overflow-y-auto p-2">
           <Command.Empty className="p-8 text-center text-sm text-slate-500">
-            No destination found.
+            {t("No destination found.")}
           </Command.Empty>
-          <Command.Group heading="Platform">
+          <Command.Group heading={t("Platform")}>
             {destinations.map((destination) => {
               const Icon = destination.icon;
               return (
@@ -120,13 +122,13 @@ export function CommandMenu() {
                     router.push(destination.href);
                     setOpen(false);
                   }}
-                  value={destination.label}
+                  value={`${destination.label} ${t(destination.label)}`}
                 >
                   <Icon aria-hidden="true" className="size-4" />
-                  <span>{destination.label}</span>
+                  <span>{t(destination.label)}</span>
                   {!destination.available && (
                     <span className="ml-auto text-[10px] uppercase tracking-wider">
-                      Planned
+                      {t("Planned")}
                     </span>
                   )}
                 </Command.Item>

@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn, webUrl } from "./support/environment";
 
 test("searches, inspects, correlates, and exports audit events through the Web Console", async ({
   page,
@@ -22,7 +24,7 @@ test("searches, inspects, correlates, and exports audit events through the Web C
   await expect(page.getByTestId("tenant-" + tenantSlug)).toBeVisible();
 
   await page.getByRole("link", { name: "Audit", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/audit");
+  await expect(page).toHaveURL(webUrl("/audit"));
   await expect(page.locator("[data-audit-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -54,15 +56,3 @@ test("searches, inspects, correlates, and exports audit events through the Web C
   expect(download.suggestedFilename()).toMatch(/^asterloom-audit-\d{8}-\d{6}\.csv$/);
   await expect(page.getByText(/Exported 1 audit event/)).toBeVisible();
 });
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
-}

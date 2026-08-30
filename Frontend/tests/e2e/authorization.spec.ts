@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn, webUrl } from "./support/environment";
 
 test("manages the complete authorization surface through the Web Console", async ({
   page,
@@ -10,7 +12,7 @@ test("manages the complete authorization surface through the Web Console", async
   page.on("dialog", (dialog) => dialog.accept());
 
   await signIn(page, "/authorization/roles");
-  await expect(page).toHaveURL("http://localhost:3000/authorization/roles");
+  await expect(page).toHaveURL(webUrl("/authorization/roles"));
   await expect(page.locator("[data-authorization-workspace]")).toHaveAttribute(
     "data-hydrated",
     "true",
@@ -22,6 +24,8 @@ test("manages the complete authorization surface through the Web Console", async
   const suffix = Date.now().toString(36).slice(-8);
   const roleKey = `auth-e2e-${suffix}`;
   const actorId = `authorization-e2e-actor-${suffix}`;
+  const policyName = `E2E release rule ${suffix}`;
+  const updatedPolicyName = `E2E release deny rule ${suffix}`;
   const tenantId = randomUUID();
   const applicationId = randomUUID();
   const environmentId = randomUUID();
@@ -92,7 +96,7 @@ test("manages the complete authorization surface through the Web Console", async
   await expect(policiesCard).toBeVisible();
   await policiesCard.getByLabel("Include archived policies").check();
   const createPolicyCard = page.locator('[data-ui-action="create-policy-rule"]');
-  await createPolicyCard.locator('input[name="policyName"]').fill("E2E release rule");
+  await createPolicyCard.locator('input[name="policyName"]').fill(policyName);
   await createPolicyCard.locator('input[name="policySubject"]').fill(actorId);
   await createPolicyCard
     .locator('input[name="policyPermission"]')
@@ -105,19 +109,19 @@ test("manages the complete authorization surface through the Web Console", async
 
   const policyRow = page
     .locator('[data-testid^="authorization-policy-"]')
-    .filter({ hasText: "E2E release rule" });
+    .filter({ hasText: policyName });
   await expect(policyRow).toContainText("Allow");
   await policyRow.locator('[data-ui-action="update-policy-rule"]').click();
   await createPolicyCard
     .locator('input[name="policyName"]')
-    .fill("E2E release deny rule");
+    .fill(updatedPolicyName);
   await createPolicyCard
     .locator('select[name="policyEffect"]')
     .selectOption("POLICY_EFFECT_DENY");
   await createPolicyCard.getByRole("button", { name: "Save policy" }).click();
   const updatedPolicyRow = page
     .locator('[data-testid^="authorization-policy-"]')
-    .filter({ hasText: "E2E release deny rule" });
+    .filter({ hasText: updatedPolicyName });
   await expect(updatedPolicyRow).toContainText("Deny");
   await updatedPolicyRow.locator('[data-ui-action="archive-policy-rule"]').click();
   await expect(
@@ -151,15 +155,3 @@ test("manages the complete authorization surface through the Web Console", async
   await simulator.locator('[data-ui-action="check-permission"]').click();
   await expect(simulator.getByText("Allowed", { exact: true })).toBeVisible();
 });
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
-}

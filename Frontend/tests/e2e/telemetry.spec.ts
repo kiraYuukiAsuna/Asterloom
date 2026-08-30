@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn, webUrl } from "./support/environment";
+
 test("manages every Telemetry API through the Web Console", async ({ page }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(25_000);
@@ -14,7 +16,7 @@ test("manages every Telemetry API through the Web Console", async ({ page }) => 
   await createScope(page, tenantSlug, applicationSlug, environmentSlug);
 
   await page.getByLabel("Primary navigation").getByRole("link", { name: "Telemetry", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/telemetry/health");
+  await expect(page).toHaveURL(webUrl("/telemetry/health"));
   await expect(page.locator("[data-telemetry-workspace]")).toHaveAttribute("data-hydrated", "true");
   await selectScope(page, tenantSlug, applicationSlug, environmentSlug);
 
@@ -23,7 +25,7 @@ test("manages every Telemetry API through the Web Console", async ({ page }) => 
   await expect(page.locator('[data-ui-action="list-telemetry-errors"]')).toBeVisible();
 
   await page.getByRole("link", { name: "Sources & export", exact: true }).click();
-  await expect(page).toHaveURL("http://localhost:3000/telemetry/sources");
+  await expect(page).toHaveURL(webUrl("/telemetry/sources"));
   await expect(page.locator('[data-ui-action="list-telemetry-sources"]')).toBeVisible();
   await expect(page.locator('[data-ui-action="get-telemetry-settings"]')).toBeVisible();
 
@@ -87,14 +89,4 @@ async function createScope(page: Page, tenantSlug: string, applicationSlug: stri
   await form.getByLabel("Type").selectOption("Development");
   await form.locator('[data-ui-action="create-environment"]').click();
   await expect(page.getByTestId(`environment-${environmentSlug}`)).toBeVisible();
-}
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page.locator('input[name="Password"]').fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
 }

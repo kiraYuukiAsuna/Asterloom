@@ -4,7 +4,7 @@ package asterloom.telemetry.admin.v1;
 
 option csharp_namespace = "Asterloom.Protocol.Telemetry.Admin.V1";
 
-import "asterloom/telemetry/v1/telemetry_types.proto";
+import "Asterloom/telemetry/v1/telemetry_types.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 

@@ -1,0 +1,75 @@
+name: asterloom-production
+
+services:
+  migrations:
+    environment:
+      Identity__Issuer: https://asterloom.kirayuukiasuna.cloud/
+      Identity__WebClient__RedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/callback
+      Identity__WebClient__PostLogoutRedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/logout/callback
+
+  server:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Identity__Issuer: https://asterloom.kirayuukiasuna.cloud/
+      Identity__Certificates__Signing__Path: /run/secrets/asterloom-signing.pfx
+      Identity__Certificates__Signing__Password: ${ASTERLOOM_CERTIFICATE_PASSWORD:?ASTERLOOM_CERTIFICATE_PASSWORD is required}
+      Identity__Certificates__Encryption__Path: /run/secrets/asterloom-encryption.pfx
+      Identity__Certificates__Encryption__Password: ${ASTERLOOM_CERTIFICATE_PASSWORD:?ASTERLOOM_CERTIFICATE_PASSWORD is required}
+      Identity__WebClient__RedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/callback
+      Identity__WebClient__PostLogoutRedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/logout/callback
+      Storage__PublicEndpoint: https://asterloom.kirayuukiasuna.cloud
+    ports: !override
+      - "127.0.0.1:15080:8080"
+      - "127.0.0.1:15084:8081"
+    secrets:
+      - source: asterloom_signing_certificate
+        target: asterloom-signing.pfx
+      - source: asterloom_encryption_certificate
+        target: asterloom-encryption.pfx
+    volumes: !override
+      - ./.data/dataprotection-keys:/var/lib/asterloom/dataprotection-keys
+
+  web:
+    environment:
+      ASTERLOOM_PASSPORT_PUBLIC_URL: https://asterloom.kirayuukiasuna.cloud
+      ASTERLOOM_WEB_ORIGIN: https://asterloom.kirayuukiasuna.cloud
+      ASTERLOOM_OIDC_ISSUER: https://asterloom.kirayuukiasuna.cloud
+      ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "false"
+    ports: !override
+      - "127.0.0.1:15081:3000"
+
+  postgres:
+    ports: !override []
+
+  minio:
+    ports: !override
+      - "127.0.0.1:19000:9000"
+
+  otel-collector:
+    ports: !override []
+
+  reference-backend:
+    ports: !override
+      - "127.0.0.1:15082:5090"
+      - "127.0.0.1:15083:5091"
+
+  reference-client:
+    env_file:
+      - path: ./.data/reference-app/reference.env
+        required: false
+    environment:
+      ASTERLOOM_BASE_URL: https://asterloom.kirayuukiasuna.cloud/
+      ASTERLOOM_ISSUER: https://asterloom.kirayuukiasuna.cloud/
+      ASTERLOOM_REFERENCE_BACKEND_URL: http://reference-backend:5090/
+      ASTERLOOM_REFERENCE_BACKEND_GRPC_URL: http://reference-backend:5091/
+      ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    volumes: !override
+      - ./.data/reference-app/state:/var/lib/asterloom-reference
+
+secrets:
+  asterloom_signing_certificate:
+    file: ./Deploy/Secrets/asterloom-signing.pfx
+  asterloom_encryption_certificate:
+    file: ./Deploy/Secrets/asterloom-encryption.pfx

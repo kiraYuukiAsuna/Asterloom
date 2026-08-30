@@ -3,6 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { releaseErrorMessage } from "@/lib/api/release-management";
+import { translate } from "@/lib/i18n/locale";
 import { cn } from "@/lib/utils/cn";
 
 export const releaseInputClassName =
@@ -28,7 +29,7 @@ export function ReleaseStatusBadge({ status }: { status: string }) {
       className={status.endsWith("_REJECTED") ? "border-rose-400/20 bg-rose-400/10 text-rose-300" : undefined}
       variant={variant}
     >
-      {label}
+      {translate(label)}
     </Badge>
   );
 }
@@ -55,7 +56,7 @@ export function ReleaseEmptyState({ message }: { message: string }) {
 export function ReleaseErrorState({ error }: { error: unknown }) {
   return (
     <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-4 text-sm text-rose-200">
-      {releaseErrorMessage(error)}
+      {translate(releaseErrorMessage(error))}
     </div>
   );
 }

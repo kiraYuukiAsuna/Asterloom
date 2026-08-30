@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\Asterloom.Sdk.Release\Asterloom.Sdk.Release.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Analytics\Asterloom.Sdk.Analytics.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Rpc\Asterloom.Sdk.Rpc.csproj" />
   </ItemGroup>
 
 </Project>

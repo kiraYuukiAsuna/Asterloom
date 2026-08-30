@@ -3,6 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { telemetryErrorMessage } from "@/lib/api/telemetry-management";
+import { translate } from "@/lib/i18n/locale";
 import { cn } from "@/lib/utils/cn";
 
 export const telemetryInputClassName =
@@ -19,7 +20,7 @@ export function TelemetryStatusBadge({ status }: { status: string }) {
     .replaceAll("_", " ")
     .toLowerCase();
   const healthy = status.endsWith("_ACTIVE") || status.endsWith("_HEALTHY");
-  return <Badge variant={healthy ? "success" : "planned"}>{label}</Badge>;
+  return <Badge variant={healthy ? "success" : "planned"}>{translate(label)}</Badge>;
 }
 
 export function TelemetryLoading({ label }: { label: string }) {
@@ -38,7 +39,7 @@ export function TelemetryEmpty({ message }: { message: string }) {
 export function TelemetryError({ error }: { error: unknown }) {
   return (
     <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-4 text-sm text-rose-200">
-      {telemetryErrorMessage(error)}
+      {translate(telemetryErrorMessage(error))}
     </div>
   );
 }

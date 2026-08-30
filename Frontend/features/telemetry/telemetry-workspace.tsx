@@ -17,6 +17,7 @@ import { TelemetryHealthPanel } from "./telemetry-health-panel";
 import { TelemetrySourcesPanel } from "./telemetry-sources-panel";
 import { useTelemetrySelection } from "./telemetry-store";
 import { TelemetryEmpty, TelemetryError, telemetryInputClassName, telemetryLabelClassName } from "./telemetry-ui";
+import { translate } from "@/lib/i18n/locale";
 
 const page = { includeArchived: false, pageSize: 100, pageToken: "", query: "" };
 
@@ -44,46 +45,41 @@ export function TelemetryWorkspace({ csrfToken, view }: { csrfToken: string; vie
 
   return (
     <div className="space-y-6" data-hydrated={hydrated ? "true" : "false"} data-telemetry-workspace>
-      <section className="flex flex-col gap-5 rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.09] via-slate-950/60 to-cyan-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="theme-hero-violet flex flex-col gap-5 rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.09] via-slate-950/60 to-cyan-400/[0.05] p-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Badge variant="info">Technical observability</Badge>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">Telemetry control center</h1>
+          <Badge variant="info">{translate("Technical observability")}</Badge>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">{translate("Telemetry control center")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Register services, govern OTLP sampling and export, and pivot from recent failures into the configured observability backend.
-          </p>
+            {translate("Register services, govern OTLP sampling and export, and pivot from recent failures into the configured observability backend.")}</p>
         </div>
-        <nav aria-label="Telemetry views" className="flex rounded-xl border border-white/10 p-1">
-          <TelemetryTab active={view === "health"} href="/telemetry/health" icon={Activity} label="Health & errors" />
-          <TelemetryTab active={view === "sources"} href="/telemetry/sources" icon={RadioTower} label="Sources & export" />
+        <nav aria-label={translate("Telemetry views")} className="flex rounded-xl border border-white/10 p-1">
+          <TelemetryTab active={view === "health"} href="/telemetry/health" icon={Activity} label={translate("Health & errors")} />
+          <TelemetryTab active={view === "sources"} href="/telemetry/sources" icon={RadioTower} label={translate("Sources & export")} />
         </nav>
       </section>
 
       <Card>
         <CardHeader className="sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle>Telemetry boundary</CardTitle>
-            <CardDescription>Source identity and policy are isolated per tenant, application, and environment.</CardDescription>
+            <CardTitle>{translate("Telemetry boundary")}</CardTitle>
+            <CardDescription>{translate("Source identity and policy are isolated per tenant, application, and environment.")}</CardDescription>
           </div>
-          <Button aria-label="Refresh telemetry scope" onClick={() => { void tenants.mutate(); void applications.mutate(); void environments.mutate(); }} size="sm" type="button" variant="outline">
-            <RefreshCw aria-hidden="true" className="size-3.5" /> Refresh
-          </Button>
+          <Button aria-label={translate("Refresh telemetry scope")} onClick={() => { void tenants.mutate(); void applications.mutate(); void environments.mutate(); }} size="sm" type="button" variant="outline">
+            <RefreshCw aria-hidden="true" className="size-3.5" /> {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <label className={telemetryLabelClassName}>Tenant
-            <select aria-label="Telemetry tenant" className={telemetryInputClassName} onChange={(event) => selection.selectTenant(event.target.value)} value={selection.tenantId}>
-              <option value="">Choose a tenant</option>
+          <label className={telemetryLabelClassName}>{translate("Tenant")}<select aria-label={translate("Telemetry tenant")} className={telemetryInputClassName} onChange={(event) => selection.selectTenant(event.target.value)} value={selection.tenantId}>
+              <option value="">{translate("Choose a tenant")}</option>
               {(tenants.data?.tenants ?? []).map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.displayName} ({tenant.slug})</option>)}
             </select>
           </label>
-          <label className={telemetryLabelClassName}>Application
-            <select aria-label="Telemetry application" className={telemetryInputClassName} disabled={!selection.tenantId} onChange={(event) => selection.selectApplication(event.target.value)} value={selection.applicationId}>
-              <option value="">Choose an application</option>
+          <label className={telemetryLabelClassName}>{translate("Application")}<select aria-label={translate("Telemetry application")} className={telemetryInputClassName} disabled={!selection.tenantId} onChange={(event) => selection.selectApplication(event.target.value)} value={selection.applicationId}>
+              <option value="">{translate("Choose an application")}</option>
               {(applications.data?.applications ?? []).map((application) => <option key={application.id} value={application.id}>{application.displayName} ({application.slug})</option>)}
             </select>
           </label>
-          <label className={telemetryLabelClassName}>Environment
-            <select aria-label="Telemetry environment" className={telemetryInputClassName} disabled={!selection.applicationId} onChange={(event) => selection.selectEnvironment(event.target.value)} value={selection.environmentId}>
-              <option value="">Choose an environment</option>
+          <label className={telemetryLabelClassName}>{translate("Environment")}<select aria-label={translate("Telemetry environment")} className={telemetryInputClassName} disabled={!selection.applicationId} onChange={(event) => selection.selectEnvironment(event.target.value)} value={selection.environmentId}>
+              <option value="">{translate("Choose an environment")}</option>
               {(environments.data?.environments ?? []).map((environment) => <option key={environment.id} value={environment.id}>{environment.displayName} ({environment.slug})</option>)}
             </select>
           </label>
@@ -91,7 +87,7 @@ export function TelemetryWorkspace({ csrfToken, view }: { csrfToken: string; vie
         </CardContent>
       </Card>
 
-      {!scope ? <TelemetryEmpty message="Choose a tenant, application, and environment to manage telemetry." />
+      {!scope ? <TelemetryEmpty message={translate("Choose a tenant, application, and environment to manage telemetry.")} />
         : view === "sources" ? <TelemetrySourcesPanel csrfToken={csrfToken} scope={scope} />
         : <TelemetryHealthPanel csrfToken={csrfToken} scope={scope} />}
     </div>

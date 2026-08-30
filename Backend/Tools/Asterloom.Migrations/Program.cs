@@ -1,11 +1,18 @@
 using Asterloom.Modules.Hosting;
+using Asterloom.Modules.Analytics;
 using Asterloom.Modules.Auditing;
 using Asterloom.Modules.Authorization;
+using Asterloom.Modules.Config;
+using Asterloom.Modules.Feature;
 using Asterloom.Modules.Infrastructure;
 using Asterloom.Modules.Infrastructure.Persistence;
 using Asterloom.Modules.Identity.Persistence;
 using Asterloom.Modules.Identity.Bootstrap;
 using Asterloom.Modules.Platform;
+using Asterloom.Modules.Release;
+using Asterloom.Modules.Storage;
+using Asterloom.Modules.Targeting;
+using Asterloom.Modules.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -17,6 +24,13 @@ try
         new PlatformModule(),
         new AuthorizationModule(),
         new AuditModule(),
+        new TargetingModule(),
+        new FeatureModule(),
+        new ConfigModule(),
+        new StorageModule(),
+        new ReleaseModule(),
+        new AnalyticsModule(),
+        new TelemetryModule(),
         new InfrastructureModule());
     builder.Services.AddAsterloomIdentityCore(builder.Configuration);
 

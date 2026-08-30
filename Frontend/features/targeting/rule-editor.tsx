@@ -15,6 +15,7 @@ import type {
   TargetingSegmentRecord,
   TargetingValueInput,
 } from "@/lib/api/targeting-management";
+import { translate } from "@/lib/i18n/locale";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -133,7 +134,7 @@ export function RuleEditor({
   return (
     <div className="space-y-4">
       <label className="block">
-        <span className={labelClassName}>Match mode</span>
+        <span className={labelClassName}>{translate("Match mode")}</span>
         <select
           className={inputClassName}
           name={`${idPrefix}MatchMode`}
@@ -146,11 +147,9 @@ export function RuleEditor({
           value={draft.matchMode}
         >
           <option value={TargetingMatchModeObject.TARGETING_MATCH_MODE_ALL}>
-            All conditions
-          </option>
+            {translate("All conditions")}</option>
           <option value={TargetingMatchModeObject.TARGETING_MATCH_MODE_ANY}>
-            Any condition
-          </option>
+            {translate("Any condition")}</option>
         </select>
       </label>
 
@@ -177,10 +176,10 @@ export function RuleEditor({
             >
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-300">
-                  Condition {index + 1}
+                  {translate("Condition")} {index + 1}
                 </span>
                 <Button
-                  aria-label={`Remove condition ${index + 1}`}
+                  aria-label={translate(`Remove condition ${index + 1}`)}
                   disabled={draft.conditions.length === 1}
                   onClick={() => removeCondition(index)}
                   size="sm"
@@ -188,12 +187,11 @@ export function RuleEditor({
                   variant="ghost"
                 >
                   <Trash2 aria-hidden="true" className="size-3.5" />
-                  Remove
-                </Button>
+                  {translate("Remove")}</Button>
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <label className="block">
-                  <span className={labelClassName}>Condition ID</span>
+                  <span className={labelClassName}>{translate("Condition ID")}</span>
                   <input
                     className={inputClassName}
                     name={`${idPrefix}ConditionId`}
@@ -204,7 +202,7 @@ export function RuleEditor({
                   />
                 </label>
                 <label className="block">
-                  <span className={labelClassName}>Attribute</span>
+                  <span className={labelClassName}>{translate("Attribute")}</span>
                   <input
                     className={inputClassName}
                     list={`${idPrefix}-attribute-options`}
@@ -212,12 +210,12 @@ export function RuleEditor({
                     onChange={(event) =>
                       updateCondition(index, { attribute: event.target.value })
                     }
-                    placeholder="region or subscription.plan"
+                    placeholder={translate("region or subscription.plan")}
                     value={condition.attribute}
                   />
                 </label>
                 <label className="block">
-                  <span className={labelClassName}>Value type</span>
+                  <span className={labelClassName}>{translate("Value type")}</span>
                   <select
                     className={inputClassName}
                     name={`${idPrefix}ConditionValueKind`}
@@ -227,18 +225,15 @@ export function RuleEditor({
                     value={condition.valueKind}
                   >
                     <option value={TargetingValueKindObject.TARGETING_VALUE_KIND_TEXT}>
-                      Text
-                    </option>
+                      {translate("Text")}</option>
                     <option value={TargetingValueKindObject.TARGETING_VALUE_KIND_TRUTH}>
-                      Boolean
-                    </option>
+                      {translate("Boolean")}</option>
                     <option value={TargetingValueKindObject.TARGETING_VALUE_KIND_NUMERIC}>
-                      Number
-                    </option>
+                      {translate("Number")}</option>
                   </select>
                 </label>
                 <label className="block">
-                  <span className={labelClassName}>Operator</span>
+                  <span className={labelClassName}>{translate("Operator")}</span>
                   <select
                     className={inputClassName}
                     name={`${idPrefix}ConditionOperator`}
@@ -256,15 +251,14 @@ export function RuleEditor({
                       </option>
                     )) ?? (
                       <option value={TargetingOperatorObject.TARGETING_OPERATOR_EQUALS}>
-                        Equals
-                      </option>
+                        {translate("Equals")}</option>
                     )}
                   </select>
                 </label>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                 <label className="block">
-                  <span className={labelClassName}>Comparison value</span>
+                  <span className={labelClassName}>{translate("Comparison value")}</span>
                   <input
                     className={inputClassName}
                     disabled={!hasValues}
@@ -273,14 +267,14 @@ export function RuleEditor({
                       updateCondition(index, { rawValues: event.target.value })
                     }
                     placeholder={
-                      hasValues
+                      translate(hasValues
                         ? allowsMultiple
                           ? "Comma-separated values"
                           : condition.valueKind ===
                               TargetingValueKindObject.TARGETING_VALUE_KIND_TRUTH
                             ? "true or false"
                             : "Comparison value"
-                        : "No value required"
+                        : "No value required")
                     }
                     value={condition.rawValues}
                   />
@@ -298,8 +292,7 @@ export function RuleEditor({
                     }
                     type="checkbox"
                   />
-                  Case sensitive
-                </label>
+                  {translate("Case sensitive")}</label>
               </div>
             </div>
           );
@@ -322,8 +315,7 @@ export function RuleEditor({
         variant="outline"
       >
         <Plus aria-hidden="true" className="size-3.5" />
-        Add condition
-      </Button>
+        {translate("Add condition")}</Button>
     </div>
   );
 }

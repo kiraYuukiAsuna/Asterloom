@@ -61,6 +61,8 @@ import {
   ReleaseLoadingState,
   ReleaseStatusBadge,
 } from "./release-ui";
+import { translate } from "@/lib/i18n/locale";
+import { formatNumber } from "@/lib/i18n/format";
 
 export function ReleaseArtifactsPanel({
   csrfToken,
@@ -118,9 +120,9 @@ function SigningKeysPanel({
       setKey("");
       setDisplayName("");
       setPublicKeyPem("");
-      toast.success("Release signing public key registered.");
+      toast.success(translate("Release signing public key registered."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -139,9 +141,9 @@ function SigningKeysPanel({
       await mutateGlobal(["release-form-keys", tenantId], undefined, {
         revalidate: false,
       });
-      toast.success(success);
+      toast.success(translate(success));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -151,30 +153,27 @@ function SigningKeysPanel({
     <Card>
       <CardHeader className="sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <CardTitle>Signing trust store</CardTitle>
+          <CardTitle>{translate("Signing trust store")}</CardTitle>
           <CardDescription>
-            Register public RSA keys only. Private key material remains in your external
-            signer or HSM.
-          </CardDescription>
+            {translate("Register public RSA keys only. Private key material remains in your external signer or HSM.")}</CardDescription>
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-400">
           <input
-            aria-label="Include archived release signing keys"
+            aria-label={translate("Include archived release signing keys")}
             checked={includeArchived}
             onChange={(event) => setIncludeArchived(event.target.checked)}
             type="checkbox"
           />
-          Include archived
-        </label>
+          {translate("Include archived")}</label>
       </CardHeader>
       <CardContent className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)]">
         <div data-ui-action="list-release-signing-keys">
           {keys.isLoading ? (
-            <ReleaseLoadingState label="Loading signing keys" />
+            <ReleaseLoadingState label={translate("Loading signing keys")} />
           ) : keys.error ? (
             <ReleaseErrorState error={keys.error} />
           ) : (keys.data?.signingKeys.length ?? 0) === 0 ? (
-            <ReleaseEmptyState message="No release signing keys are registered." />
+            <ReleaseEmptyState message={translate("No release signing keys are registered.")} />
           ) : (
             <div className="space-y-2">
               {keys.data?.signingKeys.map((signingKey) => {
@@ -219,8 +218,7 @@ function SigningKeysPanel({
                           variant="outline"
                         >
                           <Archive aria-hidden="true" className="size-3.5" />
-                          Archive
-                        </Button>
+                          {translate("Archive")}</Button>
                       ) : (
                         <Button
                           data-ui-action="restore-release-signing-key"
@@ -236,8 +234,7 @@ function SigningKeysPanel({
                           type="button"
                         >
                           <RotateCcw aria-hidden="true" className="size-3.5" />
-                          Restore
-                        </Button>
+                          {translate("Restore")}</Button>
                       )}
                     </div>
                   </article>
@@ -249,43 +246,38 @@ function SigningKeysPanel({
 
         <form className="space-y-4" onSubmit={create}>
           <div>
-            <h3 className="text-sm font-medium text-white">Register public key</h3>
+            <h3 className="text-sm font-medium text-white">{translate("Register public key")}</h3>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              RSA 2048-bit or stronger, SubjectPublicKeyInfo PEM. Algorithm:
-              RSA-PSS-SHA256.
-            </p>
+              {translate("RSA 2048-bit or stronger, SubjectPublicKeyInfo PEM. Algorithm: RSA-PSS-SHA256.")}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={releaseLabelClassName}>
-              Key
-              <input
+              {translate("Key")}<input
                 className={releaseInputClassName}
                 name="signingKey"
                 onChange={(event) => setKey(event.target.value)}
-                placeholder="desktop-production"
+                placeholder={translate("desktop-production")}
                 required
                 value={key}
               />
             </label>
             <label className={releaseLabelClassName}>
-              Display name
-              <input
+              {translate("Display name")}<input
                 className={releaseInputClassName}
                 name="signingKeyDisplayName"
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Desktop production"
+                placeholder={translate("Desktop production")}
                 required
                 value={displayName}
               />
             </label>
           </div>
           <label className={releaseLabelClassName}>
-            Public key PEM
-            <textarea
+            {translate("Public key PEM")}<textarea
               className={cn(releaseTextAreaClassName, "h-44 font-mono text-xs")}
               name="publicKeyPem"
               onChange={(event) => setPublicKeyPem(event.target.value)}
-              placeholder="-----BEGIN PUBLIC KEY-----"
+              placeholder={translate("-----BEGIN PUBLIC KEY-----")}
               required
               value={publicKeyPem}
             />
@@ -300,8 +292,7 @@ function SigningKeysPanel({
             ) : (
               <Fingerprint aria-hidden="true" className="size-4" />
             )}
-            Register public key
-          </Button>
+            {translate("Register public key")}</Button>
         </form>
       </CardContent>
     </Card>
@@ -344,9 +335,9 @@ function ArtifactsPanel({
     setGettingId(artifact.id);
     try {
       setSelected(await getReleaseArtifact(scope, artifact.id));
-      toast.success("Artifact details refreshed.");
+      toast.success(translate("Artifact details refreshed."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setGettingId("");
     }
@@ -372,11 +363,9 @@ function ArtifactsPanel({
       <div className="space-y-6">
         <Card data-ui-action="list-release-artifacts">
           <CardHeader>
-            <CardTitle>Verified artifact inventory</CardTitle>
+            <CardTitle>{translate("Verified artifact inventory")}</CardTitle>
             <CardDescription>
-              Each runtime mapping is content-addressed and signed before it can enter a
-              release manifest.
-            </CardDescription>
+              {translate("Each runtime mapping is content-addressed and signed before it can enter a release manifest.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form
@@ -388,7 +377,7 @@ function ArtifactsPanel({
               }}
             >
               <label className="relative flex-1">
-                <span className="sr-only">Search release artifacts</span>
+                <span className="sr-only">{translate("Search release artifacts")}</span>
                 <Search
                   aria-hidden="true"
                   className="absolute left-3 top-3 size-4 text-slate-600"
@@ -397,29 +386,27 @@ function ArtifactsPanel({
                   className={cn(releaseInputClassName, "pl-9")}
                   name="artifactSearch"
                   onChange={(event) => setQueryDraft(event.target.value)}
-                  placeholder="Search version, runtime, or file name"
+                  placeholder={translate("Search version, runtime, or file name")}
                   value={queryDraft}
                 />
               </label>
               <Button type="submit" variant="outline">
-                Apply
-              </Button>
+                {translate("Apply")}</Button>
             </form>
             <label className="flex items-center gap-2 text-xs text-slate-400">
               <input
-                aria-label="Include archived release artifacts"
+                aria-label={translate("Include archived release artifacts")}
                 checked={includeArchived}
                 onChange={(event) => setIncludeArchived(event.target.checked)}
                 type="checkbox"
               />
-              Include archived artifacts
-            </label>
+              {translate("Include archived artifacts")}</label>
             {artifacts.isLoading ? (
-              <ReleaseLoadingState label="Loading artifacts" />
+              <ReleaseLoadingState label={translate("Loading artifacts")} />
             ) : artifacts.error ? (
               <ReleaseErrorState error={artifacts.error} />
             ) : (artifacts.data?.artifacts.length ?? 0) === 0 ? (
-              <ReleaseEmptyState message="No release artifacts match this view." />
+              <ReleaseEmptyState message={translate("No release artifacts match this view.")} />
             ) : (
               <div className="space-y-2">
                 {artifacts.data?.artifacts.map((artifact) => (
@@ -448,10 +435,10 @@ function ArtifactsPanel({
                         </span>
                         <span className="mt-1 block font-mono text-xs text-violet-300">
                           {artifact.releaseVersion} · {artifact.targetRuntimeId} ·{" "}
-                          {artifact.artifactKind.endsWith("_DELTA") ? "delta" : "full"}
+                          {translate(artifact.artifactKind.endsWith("_DELTA") ? "delta" : "full")}
                         </span>
                         <span className="mt-2 block truncate font-mono text-[11px] text-slate-600">
-                          sha256 {artifact.sha256}
+                          {translate("sha256")} {artifact.sha256}
                         </span>
                       </button>
                       <Button
@@ -467,8 +454,7 @@ function ArtifactsPanel({
                         ) : (
                           <Eye aria-hidden="true" className="size-3.5" />
                         )}
-                        Inspect
-                      </Button>
+                        {translate("Inspect")}</Button>
                     </div>
                   </article>
                 ))}
@@ -491,7 +477,7 @@ function ArtifactsPanel({
           onChanged={changed}
         />
       ) : (
-        <ReleaseEmptyState message="Select an artifact to inspect verification and storage metadata." />
+        <ReleaseEmptyState message={translate("Select an artifact to inspect verification and storage metadata.")} />
       )}
     </div>
   );
@@ -545,7 +531,7 @@ function ArtifactUploadCard({
       setSha256(await sha256Hex(next));
       setContentType(next.type || "application/octet-stream");
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
       setSha256("");
     } finally {
       setBusy("");
@@ -555,7 +541,7 @@ function ArtifactUploadCard({
   async function begin(event: FormEvent) {
     event.preventDefault();
     if (!file || !sha256) {
-      toast.error("Choose a file and wait for SHA-256 calculation.");
+      toast.error(translate("Choose a file and wait for SHA-256 calculation."));
       return;
     }
     setBusy("begin");
@@ -573,9 +559,9 @@ function ArtifactUploadCard({
         targetRuntimeId,
       });
       setPending({ file, upload });
-      toast.success("Artifact upload ticket created.");
+      toast.success(translate("Artifact upload ticket created."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -596,12 +582,12 @@ function ArtifactUploadCard({
       setSha256("");
       setSignature("");
       toast.success(
-        artifact.status === ReleaseArtifactStatusObject.RELEASE_ARTIFACT_STATUS_VERIFIED
+        translate(artifact.status === ReleaseArtifactStatusObject.RELEASE_ARTIFACT_STATUS_VERIFIED
           ? "Artifact uploaded and signature verified."
-          : "Artifact upload completed, but signature verification was rejected.",
+          : "Artifact upload completed, but signature verification was rejected."),
       );
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy("");
     }
@@ -610,17 +596,14 @@ function ArtifactUploadCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload signed artifact</CardTitle>
+        <CardTitle>{translate("Upload signed artifact")}</CardTitle>
         <CardDescription>
-          Sign the lowercase SHA-256 text with RSA-PSS/SHA-256 (32-byte salt), then
-          provide the Base64 signature before requesting a short-lived upload ticket.
-        </CardDescription>
+          {translate("Sign the lowercase SHA-256 text with RSA-PSS/SHA-256 (32-byte salt), then provide the Base64 signature before requesting a short-lived upload ticket.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={begin}>
           <label className={cn(releaseLabelClassName, "sm:col-span-2")}>
-            Artifact file
-            <input
+            {translate("Artifact file")}<input
               className={cn(releaseInputClassName, "py-2")}
               disabled={Boolean(pending)}
               name="releaseArtifactFile"
@@ -630,8 +613,7 @@ function ArtifactUploadCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Release version
-            <input
+            {translate("Release version")}<input
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactReleaseVersion"
@@ -642,8 +624,7 @@ function ArtifactUploadCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Target runtime
-            <input
+            {translate("Target runtime")}<input
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactRuntimeId"
@@ -653,8 +634,7 @@ function ArtifactUploadCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Artifact kind
-            <select
+            {translate("Artifact kind")}<select
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactKind"
@@ -665,16 +645,13 @@ function ArtifactUploadCard({
               value={artifactKind}
             >
               <option value={ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_FULL}>
-                Full package
-              </option>
+                {translate("Full package")}</option>
               <option value={ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_DELTA}>
-                Delta package
-              </option>
+                {translate("Delta package")}</option>
             </select>
           </label>
           <label className={releaseLabelClassName}>
-            Delta from version
-            <input
+            {translate("Delta from version")}<input
               className={releaseInputClassName}
               disabled={
                 Boolean(pending) ||
@@ -687,8 +664,7 @@ function ArtifactUploadCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Content type
-            <input
+            {translate("Content type")}<input
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactContentType"
@@ -698,8 +674,7 @@ function ArtifactUploadCard({
             />
           </label>
           <label className={releaseLabelClassName}>
-            Signing key
-            <select
+            {translate("Signing key")}<select
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactSigningKey"
@@ -707,7 +682,7 @@ function ArtifactUploadCard({
               required
               value={signingKeyId}
             >
-              <option value="">Choose a key</option>
+              <option value="">{translate("Choose a key")}</option>
               {(keys.data?.signingKeys ?? []).map((key) => (
                 <option key={key.id} value={key.id}>
                   {key.displayName} ({key.key})
@@ -716,7 +691,7 @@ function ArtifactUploadCard({
             </select>
           </label>
           <div className="sm:col-span-2 rounded-xl border border-white/8 bg-slate-950/60 p-4">
-            <p className="text-xs font-medium text-slate-400">SHA-256 signing input</p>
+            <p className="text-xs font-medium text-slate-400">{translate("SHA-256 signing input")}</p>
             <output
               className="mt-2 block break-all font-mono text-xs text-violet-300"
               data-testid="artifact-sha256"
@@ -725,8 +700,7 @@ function ArtifactUploadCard({
             </output>
           </div>
           <label className={cn(releaseLabelClassName, "sm:col-span-2")}>
-            Detached signature (Base64)
-            <textarea
+            {translate("Detached signature (Base64)")}<textarea
               className={cn(releaseTextAreaClassName, "h-28 font-mono text-xs")}
               disabled={Boolean(pending)}
               name="artifactSignature"
@@ -746,8 +720,7 @@ function ArtifactUploadCard({
               ) : (
                 <PackagePlus aria-hidden="true" className="size-4" />
               )}
-              Create upload ticket
-            </Button>
+              {translate("Create upload ticket")}</Button>
           </div>
         </form>
 
@@ -755,7 +728,7 @@ function ArtifactUploadCard({
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-amber-200">Upload ticket ready</p>
+                <p className="text-sm font-medium text-amber-200">{translate("Upload ticket ready")}</p>
                 <p className="mt-1 font-mono text-xs text-slate-500">
                   {pending.upload.uploadSession.id}
                 </p>
@@ -771,8 +744,7 @@ function ArtifactUploadCard({
                 ) : (
                   <Upload aria-hidden="true" className="size-4" />
                 )}
-                Upload and verify
-              </Button>
+                {translate("Upload and verify")}</Button>
             </div>
           </div>
         )}
@@ -801,9 +773,9 @@ function ArtifactInspector({
     try {
       const updated = await archiveReleaseArtifact(csrfToken, artifact);
       await onChanged(updated);
-      toast.success("Release artifact archived.");
+      toast.success(translate("Release artifact archived."));
     } catch (error) {
-      toast.error(releaseErrorMessage(error));
+      toast.error(translate(releaseErrorMessage(error)));
     } finally {
       setBusy(false);
     }
@@ -822,14 +794,14 @@ function ArtifactInspector({
       </CardHeader>
       <CardContent className="space-y-5">
         <dl className="space-y-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
-          <Detail label="Artifact ID" value={artifact.id} />
-          <Detail label="Kind" value={artifact.artifactKind} />
-          <Detail label="Delta source" value={artifact.deltaFromVersion || "None"} />
-          <Detail label="Content type" value={artifact.contentType} />
-          <Detail label="Size" value={`${artifact.sizeBytes.toLocaleString()} bytes`} />
-          <Detail label="SHA-256" value={artifact.sha256} mono />
-          <Detail label="Signing key ID" value={artifact.signingKeyId} mono />
-          <Detail label="Storage object ID" value={artifact.storageObjectId} mono />
+          <Detail label={translate("Artifact ID")} value={artifact.id} />
+          <Detail label={translate("Kind")} value={artifact.artifactKind} />
+          <Detail label={translate("Delta source")} value={artifact.deltaFromVersion || translate("None")} />
+          <Detail label={translate("Content type")} value={artifact.contentType} />
+          <Detail label={translate("Size")} value={`${formatNumber(artifact.sizeBytes)} ${translate("bytes")}`} />
+          <Detail label={translate("SHA-256")} value={artifact.sha256} mono />
+          <Detail label={translate("Signing key ID")} value={artifact.signingKeyId} mono />
+          <Detail label={translate("Storage object ID")} value={artifact.storageObjectId} mono />
         </dl>
         {artifact.failureReason && (
           <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-4 text-xs text-rose-200">
@@ -850,21 +822,18 @@ function ArtifactInspector({
             ) : (
               <Archive aria-hidden="true" className="size-4" />
             )}
-            Archive artifact
-          </Button>
+            {translate("Archive artifact")}</Button>
         )}
         {artifact.status ===
           ReleaseArtifactStatusObject.RELEASE_ARTIFACT_STATUS_VERIFIED && (
           <p className="flex items-center gap-2 text-xs text-emerald-300">
             <ShieldCheck aria-hidden="true" className="size-4" />
-            Storage hash and RSA-PSS signature verified.
-          </p>
+            {translate("Storage hash and RSA-PSS signature verified.")}</p>
         )}
         {archived && (
           <p className="flex items-center gap-2 text-xs text-slate-500">
             <CheckCircle2 aria-hidden="true" className="size-4" />
-            Archived artifacts remain immutable for audit history.
-          </p>
+            {translate("Archived artifacts remain immutable for audit history.")}</p>
         )}
       </CardContent>
     </Card>

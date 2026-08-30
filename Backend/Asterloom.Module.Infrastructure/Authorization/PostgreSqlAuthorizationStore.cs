@@ -17,7 +17,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, key, display_name, description, permissions, is_system,
                    status, version, created_at, updated_at, archived_at
-            FROM authorization.roles
+            FROM "authorization".roles
             WHERE (@include_archived OR status = 1)
               AND (@query = ''
                    OR key ILIKE '%' || @query || '%'
@@ -45,7 +45,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, key, display_name, description, permissions, is_system,
                    status, version, created_at, updated_at, archived_at
-            FROM authorization.roles
+            FROM "authorization".roles
             WHERE id = @id;
             """);
         command.Parameters.AddWithValue("id", roleId);
@@ -59,7 +59,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            INSERT INTO authorization.roles (
+            INSERT INTO "authorization".roles (
                 id, key, display_name, description, permissions, is_system,
                 status, version, created_at, updated_at, archived_at)
             VALUES (
@@ -78,7 +78,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            UPDATE authorization.roles
+            UPDATE "authorization".roles
             SET display_name = @display_name,
                 description = @description,
                 permissions = @permissions,
@@ -106,7 +106,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, actor_id, role_id, role_key, tenant_id, application_id, environment_id,
                    status, version, created_at, updated_at, archived_at
-            FROM authorization.role_bindings
+            FROM "authorization".role_bindings
             WHERE (@include_archived OR status = 1)
               AND (@actor_id = '' OR actor_id ILIKE '%' || @actor_id || '%')
               AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
@@ -135,7 +135,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, actor_id, role_id, role_key, tenant_id, application_id, environment_id,
                    status, version, created_at, updated_at, archived_at
-            FROM authorization.role_bindings
+            FROM "authorization".role_bindings
             WHERE id = @id;
             """);
         command.Parameters.AddWithValue("id", bindingId);
@@ -149,7 +149,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            INSERT INTO authorization.role_bindings (
+            INSERT INTO "authorization".role_bindings (
                 id, actor_id, role_id, role_key, tenant_id, application_id, environment_id,
                 status, version, created_at, updated_at, archived_at)
             VALUES (
@@ -168,7 +168,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            UPDATE authorization.role_bindings
+            UPDATE "authorization".role_bindings
             SET actor_id = @actor_id,
                 role_id = @role_id,
                 role_key = @role_key,
@@ -199,7 +199,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                    environment_id, permission, status, version, created_at, updated_at,
                    archived_at
-            FROM authorization.policy_rules
+            FROM "authorization".policy_rules
             WHERE (@include_archived OR status = 1)
               AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
               AND (@query = ''
@@ -230,7 +230,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                    environment_id, permission, status, version, created_at, updated_at,
                    archived_at
-            FROM authorization.policy_rules
+            FROM "authorization".policy_rules
             WHERE id = @id;
             """);
         command.Parameters.AddWithValue("id", policyRuleId);
@@ -244,7 +244,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            INSERT INTO authorization.policy_rules (
+            INSERT INTO "authorization".policy_rules (
                 id, name, effect, subject_type, subject, tenant_id, application_id,
                 environment_id, permission, status, version, created_at, updated_at,
                 archived_at)
@@ -265,7 +265,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken) =>
         ExecuteWriteAsync(
             """
-            UPDATE authorization.policy_rules
+            UPDATE "authorization".policy_rules
             SET name = @name,
                 effect = @effect,
                 subject_type = @subject_type,
@@ -299,7 +299,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, revision_number, change_type, resource_type, resource_id,
                    snapshot_hash, change_summary, created_by, created_at
-            FROM authorization.policy_revisions
+            FROM "authorization".policy_revisions
             WHERE (@resource_type = '' OR resource_type = @resource_type)
               AND (@resource_id = '' OR resource_id = @resource_id)
             ORDER BY revision_number DESC
@@ -335,7 +335,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 """
                 SELECT id, key, display_name, description, permissions, is_system,
                        status, version, created_at, updated_at, archived_at
-                FROM authorization.roles
+                FROM "authorization".roles
                 WHERE status = 1;
                 """;
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -353,7 +353,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 """
                 SELECT id, actor_id, role_id, role_key, tenant_id, application_id, environment_id,
                        status, version, created_at, updated_at, archived_at
-                FROM authorization.role_bindings
+                FROM "authorization".role_bindings
                 WHERE status = 1;
                 """;
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -372,7 +372,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                        environment_id, permission, status, version, created_at, updated_at,
                        archived_at
-                FROM authorization.policy_rules
+                FROM "authorization".policy_rules
                 WHERE status = 1;
                 """;
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -412,7 +412,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 command.Transaction = transaction;
                 command.CommandText =
                     """
-                    INSERT INTO authorization.policy_revisions (
+                    INSERT INTO "authorization".policy_revisions (
                         id, change_type, resource_type, resource_id, snapshot_hash,
                         change_summary, created_by, created_at)
                     VALUES (

@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn, webUrl } from "./support/environment";
 
 test("manages the complete platform hierarchy through the Web Console", async ({
   page,
@@ -8,7 +10,7 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   page.on("dialog", (dialog) => dialog.accept());
 
   await signIn(page, "/tenants");
-  await expect(page).toHaveURL("http://localhost:3000/tenants");
+  await expect(page).toHaveURL(webUrl("/tenants"));
 
   const sessionResponse = await page.request.get("/api/auth/session");
   expect(sessionResponse.ok()).toBeTruthy();
@@ -147,15 +149,3 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   await tenantRow.locator('[data-ui-action="restore-tenant"]').click();
   await expect(tenantRow.locator('[data-ui-action="archive-tenant"]')).toBeVisible();
 });
-
-async function signIn(page: Page, returnTo: string) {
-  await page.goto(returnTo);
-  await expect(page).toHaveURL(/\/login\?returnTo=/);
-  await page.locator('[data-ui-action="start-passport-login"]').click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:5080\/passport\/login/);
-  await page.locator('input[name="Email"]').fill("admin@asterloom.test");
-  await page
-    .locator('input[name="Password"]')
-    .fill("Asterloom-E2E-Admin!2026");
-  await page.getByRole("button", { name: "继续" }).click();
-}

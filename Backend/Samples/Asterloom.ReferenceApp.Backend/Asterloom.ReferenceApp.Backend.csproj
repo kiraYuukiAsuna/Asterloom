@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Grpc.JsonTranscoding" />
+    <PackageReference Include="Npgsql" />
+    <ProjectReference Include="..\Asterloom.ReferenceApp.Contracts\Asterloom.ReferenceApp.Contracts.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
