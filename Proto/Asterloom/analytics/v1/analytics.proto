@@ -2,11 +2,11 @@ syntax = "proto3";
 
 package asterloom.analytics.v1;
 
-option csharp_namespace = "Asterloom.Protocol.Analytics.V1";
-
 import "Asterloom/analytics/v1/analytics_types.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Analytics.V1";
 
 service AnalyticsService {
   rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse) {

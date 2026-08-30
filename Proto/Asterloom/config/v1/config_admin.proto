@@ -16,34 +16,55 @@ service ConfigAdminService {
     option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}"};
   }
   rpc CreateConfigEntry(CreateConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries"
+      body: "*"
+    };
   }
   rpc UpdateConfigDraft(UpdateConfigDraftRequest) returns (asterloom.config.v1.ConfigEntry) {
-    option (google.api.http) = {patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/draft" body: "*"};
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/draft"
+      body: "*"
+    };
   }
   rpc ValidateConfigDraft(ValidateConfigDraftRequest) returns (asterloom.config.v1.ConfigValidationResult) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:validate" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:validate"
+      body: "*"
+    };
   }
   rpc DiffConfigDraft(DiffConfigDraftRequest) returns (asterloom.config.v1.ConfigDiff) {
     option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/diff"};
   }
   rpc PublishConfigEntry(PublishConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:publish" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:publish"
+      body: "*"
+    };
   }
   rpc ListConfigRevisions(ListConfigRevisionsRequest) returns (ListConfigRevisionsResponse) {
     option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/revisions"};
   }
   rpc RollbackConfigEntry(RollbackConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:rollback" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:rollback"
+      body: "*"
+    };
   }
   rpc ArchiveConfigEntry(ArchiveConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
     option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}"};
   }
   rpc RestoreConfigEntry(RestoreConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:restore" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:restore"
+      body: "*"
+    };
   }
   rpc PreviewConfigValue(PreviewConfigValueRequest) returns (asterloom.config.v1.ConfigEffectiveValue) {
-    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:preview" body: "*"};
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:preview"
+      body: "*"
+    };
   }
   rpc ListConfigSnapshots(ListConfigSnapshotsRequest) returns (ListConfigSnapshotsResponse) {
     option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/snapshots"};

@@ -188,7 +188,10 @@ public sealed class PassportController(
             if (queryStart >= 0)
             {
                 var query = QueryHelpers.ParseQuery(returnUrl[queryStart..]);
-                requestedLocale = query["ui_locales"].FirstOrDefault();
+                if (query.TryGetValue("ui_locales", out var locales))
+                {
+                    requestedLocale = locales.FirstOrDefault();
+                }
             }
         }
 

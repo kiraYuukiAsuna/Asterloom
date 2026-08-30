@@ -2,18 +2,18 @@ syntax = "proto3";
 
 package asterloom.analytics.admin.v1;
 
-option csharp_namespace = "Asterloom.Protocol.Analytics.Admin.V1";
-
 import "Asterloom/analytics/v1/analytics_types.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
+option csharp_namespace = "Asterloom.Protocol.Analytics.Admin.V1";
+
 service AnalyticsAdminService {
   rpc ListEventSchemas(ListEventSchemasRequest) returns (ListEventSchemasResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas"};
   }
   rpc GetEventSchema(GetEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}"};
   }
   rpc CreateEventSchema(CreateEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
     option (google.api.http) = {
@@ -28,7 +28,7 @@ service AnalyticsAdminService {
     };
   }
   rpc ArchiveEventSchema(ArchiveEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
-    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}" };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}"};
   }
   rpc RestoreEventSchema(RestoreEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
     option (google.api.http) = {
@@ -37,7 +37,7 @@ service AnalyticsAdminService {
     };
   }
   rpc ListWriteKeys(ListWriteKeysRequest) returns (ListWriteKeysResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys"};
   }
   rpc CreateWriteKey(CreateWriteKeyRequest) returns (asterloom.analytics.v1.AnalyticsWriteKeyCredential) {
     option (google.api.http) = {
@@ -58,10 +58,10 @@ service AnalyticsAdminService {
     };
   }
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events"};
   }
   rpc GetEvent(GetEventRequest) returns (asterloom.analytics.v1.AnalyticsEvent) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events/{analytics_event_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events/{analytics_event_id}"};
   }
   rpc QueryAnalytics(QueryAnalyticsRequest) returns (QueryAnalyticsResponse) {
     option (google.api.http) = {
@@ -142,7 +142,9 @@ message ListWriteKeysRequest {
   string environment_id = 3;
   bool include_revoked = 4;
 }
-message ListWriteKeysResponse { repeated asterloom.analytics.v1.AnalyticsWriteKey write_keys = 1; }
+message ListWriteKeysResponse {
+  repeated asterloom.analytics.v1.AnalyticsWriteKey write_keys = 1;
+}
 message CreateWriteKeyRequest {
   string tenant_id = 1;
   string application_id = 2;
@@ -194,7 +196,9 @@ message QueryAnalyticsRequest {
   google.protobuf.Timestamp to_at = 6;
   string interval = 7;
 }
-message QueryAnalyticsResponse { repeated asterloom.analytics.v1.AnalyticsAggregationBucket buckets = 1; }
+message QueryAnalyticsResponse {
+  repeated asterloom.analytics.v1.AnalyticsAggregationBucket buckets = 1;
+}
 message UpdateRetentionRequest {
   string tenant_id = 1;
   string application_id = 2;

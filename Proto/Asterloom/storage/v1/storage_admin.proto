@@ -9,15 +9,11 @@ option csharp_namespace = "Asterloom.Protocol.Storage.Admin.V1";
 
 service StorageAdminService {
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/storage/buckets"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/storage/buckets"};
   }
 
   rpc GetBucket(GetBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"};
   }
 
   rpc CreateBucket(CreateBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
@@ -35,9 +31,7 @@ service StorageAdminService {
   }
 
   rpc ArchiveBucket(ArchiveBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
-    option (google.api.http) = {
-      delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"
-    };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"};
   }
 
   rpc RestoreBucket(RestoreBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
@@ -48,15 +42,11 @@ service StorageAdminService {
   }
 
   rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects"};
   }
 
   rpc GetObject(GetObjectRequest) returns (asterloom.storage.v1.StorageObject) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"};
   }
 
   rpc UpdateObjectMetadata(UpdateObjectMetadataRequest) returns (asterloom.storage.v1.StorageObject) {
@@ -95,9 +85,7 @@ service StorageAdminService {
   }
 
   rpc DeleteObject(DeleteObjectRequest) returns (asterloom.storage.v1.StorageObject) {
-    option (google.api.http) = {
-      delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"
-    };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"};
   }
 }
 

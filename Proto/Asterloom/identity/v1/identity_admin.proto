@@ -136,7 +136,9 @@ message ListUsersResponse {
   string next_page_token = 2;
 }
 
-message GetUserRequest { string user_id = 1; }
+message GetUserRequest {
+  string user_id = 1;
+}
 
 message InviteUserRequest {
   string email = 1;
@@ -183,9 +185,13 @@ message RevokeUserSessionRequest {
   string session_id = 2;
 }
 
-message RevokeAllUserSessionsRequest { string user_id = 1; }
+message RevokeAllUserSessionsRequest {
+  string user_id = 1;
+}
 
-message RevokeAllUserSessionsResponse { int64 revoked_sessions = 1; }
+message RevokeAllUserSessionsResponse {
+  int64 revoked_sessions = 1;
+}
 
 message ListClientsRequest {
   int32 page_size = 1;
@@ -198,7 +204,9 @@ message ListClientsResponse {
   string next_page_token = 2;
 }
 
-message GetClientRequest { string client_id = 1; }
+message GetClientRequest {
+  string client_id = 1;
+}
 
 message CreateClientRequest {
   string client_id = 1;
@@ -242,7 +250,9 @@ message ListScopesResponse {
   string next_page_token = 2;
 }
 
-message GetScopeRequest { string scope_id = 1; }
+message GetScopeRequest {
+  string scope_id = 1;
+}
 
 message CreateScopeRequest {
   string name = 1;

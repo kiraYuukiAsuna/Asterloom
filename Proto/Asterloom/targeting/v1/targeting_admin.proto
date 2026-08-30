@@ -15,15 +15,11 @@ service TargetingAdminService {
   }
 
   rpc ListSegments(ListSegmentsRequest) returns (ListSegmentsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments"};
   }
 
   rpc GetSegment(GetSegmentRequest) returns (asterloom.targeting.v1.Segment) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"};
   }
 
   rpc CreateSegment(CreateSegmentRequest) returns (asterloom.targeting.v1.Segment) {
@@ -41,9 +37,7 @@ service TargetingAdminService {
   }
 
   rpc ArchiveSegment(ArchiveSegmentRequest) returns (asterloom.targeting.v1.Segment) {
-    option (google.api.http) = {
-      delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"
-    };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"};
   }
 
   rpc RestoreSegment(RestoreSegmentRequest) returns (asterloom.targeting.v1.Segment) {

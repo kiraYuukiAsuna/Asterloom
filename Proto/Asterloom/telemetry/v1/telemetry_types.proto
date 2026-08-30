@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package asterloom.telemetry.v1;
 
-option csharp_namespace = "Asterloom.Protocol.Telemetry.V1";
-
 import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Telemetry.V1";
 
 message TelemetryScope {
   string tenant_id = 1;

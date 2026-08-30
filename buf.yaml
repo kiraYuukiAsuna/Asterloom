@@ -7,9 +7,14 @@ lint:
   use:
     - STANDARD
   except:
-    # The repository intentionally keeps contracts under Proto/Asterloom while
-    # packages separate runtime and admin services with an extra package segment.
+    # The public v1 contract intentionally co-locates runtime and admin packages
+    # and returns shared resource messages directly. Changing these conventions
+    # now would rename most generated client types and break the published API.
+    - DIRECTORY_SAME_PACKAGE
     - PACKAGE_DIRECTORY_MATCH
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
   rpc_allow_google_protobuf_empty_requests: true
 breaking:
   use:

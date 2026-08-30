@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package asterloom.operations.v1;
 
-option csharp_namespace = "Asterloom.Protocol.Operations.V1";
-
 import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Operations.V1";
 
 message ApiEndpoint {
   string service = 1;

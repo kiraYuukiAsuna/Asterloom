@@ -83,6 +83,7 @@ public sealed class ModuleFoundationTests
             new InfrastructureModule());
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
+        Assert.Same(configuration, provider.GetRequiredService<IConfiguration>());
         var migrations = provider.GetServices<IAsterloomModuleMigration>().ToArray();
         var result = await provider
             .GetRequiredService<IAsterloomDatabaseMigrator>()

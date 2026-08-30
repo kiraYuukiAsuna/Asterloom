@@ -53,6 +53,7 @@ public static class AsterloomModuleHostingExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(modules);
 
+        services.TryAddSingleton(configuration);
         var registry = new AsterloomModuleRegistry(modules);
 
         foreach (var module in registry.Modules)

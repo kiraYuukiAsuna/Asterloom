@@ -2,18 +2,18 @@ syntax = "proto3";
 
 package asterloom.telemetry.admin.v1;
 
-option csharp_namespace = "Asterloom.Protocol.Telemetry.Admin.V1";
-
 import "Asterloom/telemetry/v1/telemetry_types.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
+option csharp_namespace = "Asterloom.Protocol.Telemetry.Admin.V1";
+
 service TelemetryAdminService {
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources"};
   }
   rpc GetSource(GetSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}"};
   }
   rpc CreateSource(CreateSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
     option (google.api.http) = {
@@ -28,7 +28,7 @@ service TelemetryAdminService {
     };
   }
   rpc ArchiveSource(ArchiveSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
-    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}" };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}"};
   }
   rpc RestoreSource(RestoreSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
     option (google.api.http) = {
@@ -37,7 +37,7 @@ service TelemetryAdminService {
     };
   }
   rpc GetTelemetrySettings(GetTelemetrySettingsRequest) returns (asterloom.telemetry.v1.TelemetrySettings) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings"};
   }
   rpc UpdateTelemetrySettings(UpdateTelemetrySettingsRequest) returns (asterloom.telemetry.v1.TelemetrySettings) {
     option (google.api.http) = {
@@ -46,10 +46,10 @@ service TelemetryAdminService {
     };
   }
   rpc GetCollectorHealth(GetCollectorHealthRequest) returns (asterloom.telemetry.v1.CollectorHealth) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/collector/health" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/collector/health"};
   }
   rpc ListRecentErrors(ListRecentErrorsRequest) returns (ListRecentErrorsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/errors" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/errors"};
   }
   rpc GetDiagnosticLink(GetDiagnosticLinkRequest) returns (asterloom.telemetry.v1.DiagnosticLink) {
     option (google.api.http) = {

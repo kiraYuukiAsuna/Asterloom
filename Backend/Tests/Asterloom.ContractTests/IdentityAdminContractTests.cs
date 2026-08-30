@@ -295,6 +295,7 @@ public sealed partial class IdentityAdminContractTests(
             AllowAutoRedirect = false,
             HandleCookies = true,
         });
+        browser.DefaultRequestHeaders.AcceptLanguage.ParseAdd("zh-CN");
         var invitationUri = new Uri(invitationUrl);
         using var pageResponse = await browser.GetAsync(invitationUri.PathAndQuery);
         pageResponse.EnsureSuccessStatusCode();

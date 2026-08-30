@@ -10,7 +10,7 @@ option csharp_namespace = "Asterloom.Protocol.Release.Admin.V1";
 
 service ReleaseAdminService {
   rpc ListSigningKeys(ListSigningKeysRequest) returns (ListSigningKeysResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/release/signing-keys" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/release/signing-keys"};
   }
   rpc CreateSigningKey(CreateSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
     option (google.api.http) = {
@@ -19,7 +19,7 @@ service ReleaseAdminService {
     };
   }
   rpc ArchiveSigningKey(ArchiveSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
-    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}" };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}"};
   }
   rpc RestoreSigningKey(RestoreSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
     option (google.api.http) = {
@@ -29,10 +29,10 @@ service ReleaseAdminService {
   }
 
   rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels"};
   }
   rpc GetChannel(GetChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}"};
   }
   rpc CreateChannel(CreateChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
     option (google.api.http) = {
@@ -47,7 +47,7 @@ service ReleaseAdminService {
     };
   }
   rpc ArchiveChannel(ArchiveChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
-    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}" };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}"};
   }
   rpc RestoreChannel(RestoreChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
     option (google.api.http) = {
@@ -57,10 +57,10 @@ service ReleaseAdminService {
   }
 
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts"};
   }
   rpc GetArtifact(GetArtifactRequest) returns (asterloom.release.v1.ReleaseArtifact) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}"};
   }
   rpc CreateArtifactUpload(CreateArtifactUploadRequest) returns (asterloom.release.v1.ArtifactUpload) {
     option (google.api.http) = {
@@ -75,14 +75,14 @@ service ReleaseAdminService {
     };
   }
   rpc ArchiveArtifact(ArchiveArtifactRequest) returns (asterloom.release.v1.ReleaseArtifact) {
-    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}" };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}"};
   }
 
   rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases"};
   }
   rpc GetRelease(GetReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}"};
   }
   rpc CreateRelease(CreateReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
     option (google.api.http) = {
@@ -127,7 +127,7 @@ service ReleaseAdminService {
     };
   }
   rpc GetReleaseManifest(GetReleaseManifestRequest) returns (asterloom.release.v1.ReleaseManifest) {
-    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}/manifest" };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}/manifest"};
   }
   rpc SimulateUpdate(SimulateUpdateRequest) returns (asterloom.release.v1.UpdateDecision) {
     option (google.api.http) = {

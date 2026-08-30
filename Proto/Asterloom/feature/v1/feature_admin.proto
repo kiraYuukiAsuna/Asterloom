@@ -11,15 +11,11 @@ option csharp_namespace = "Asterloom.Protocol.Feature.Admin.V1";
 // Manages feature flag drafts and immutable published revisions.
 service FeatureAdminService {
   rpc ListFlags(ListFlagsRequest) returns (ListFlagsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags"};
   }
 
   rpc GetFlag(GetFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"};
   }
 
   rpc CreateFlag(CreateFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
@@ -51,9 +47,7 @@ service FeatureAdminService {
   }
 
   rpc ListFlagRevisions(ListFlagRevisionsRequest) returns (ListFlagRevisionsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/revisions"
-    };
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/revisions"};
   }
 
   rpc RollbackFlag(RollbackFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
@@ -64,9 +58,7 @@ service FeatureAdminService {
   }
 
   rpc ArchiveFlag(ArchiveFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
-    option (google.api.http) = {
-      delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"
-    };
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"};
   }
 
   rpc RestoreFlag(RestoreFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
