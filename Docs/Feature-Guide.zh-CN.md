@@ -4,7 +4,8 @@
 
 本文介绍如何通过 Web 管理后台操作 Asterloom 的全部能力，以及 .NET
 应用如何使用运行时 C# SDK。内容以当前仓库已经实现和验证的功能为准，不包含尚未实现的
-多语言 SDK。
+多语言 SDK。需要某一能力的边界、权限、完整工作流与实现链接时，使用
+[模块使用文档](Module/README.zh-CN.md)。
 
 ## 1. 接入方式
 
@@ -158,6 +159,10 @@ SDK 的缓存和 Last-Known-Good 能在临时网络故障时继续返回最近�
 
 路由：`/channels`、`/artifacts`、`/releases`
 
+这一能力还涉及 RID、Velopack 包结构、首次安装程序、外部签名和上传协议。实施前请先阅读
+[Asterloom 桌面自动更新指南](Module/Desktop-Updates.zh-CN.md)，不要把普通发布目录或任意 ZIP 当作
+可安装 Artifact。
+
 1. 创建 `stable`、`beta`、`canary` 等 Channel。
 2. 在 Asterloom 外部生成 RSA 签名密钥；后台只登记公钥，私钥留在受控构建/签名系统。
 3. 上传 Artifact，核对 SHA-256，按约定使用 RSA-PSS 对摘要签名并完成上传票据。
@@ -196,6 +201,10 @@ Telemetry 用于 Trace、Metric、Log、Exception 与技术健康；它与产品
 
 路由：`/storage/buckets`、`/storage/objects`
 
+Storage 侧边栏默认进入 `/storage/objects`；创建入口位于工作区顶部的 **Buckets** 页签，页面
+下方有 **Create bucket** 卡片。管理员通常先在 Web 创建逻辑 Bucket，业务应用再使用配置好的
+`BucketId` 通过 SDK/API 上传和下载；Web 也支持人工上传、下载、复制和删除。
+
 1. 创建并配置逻辑 Bucket。
 2. 创建 Upload Session，使用短时 Signed URL 和返回的全部 Required Header 上传字节，然后 Complete Session。
 3. 查看对象 Metadata 和服务端验证的 SHA-256。
@@ -204,6 +213,9 @@ Telemetry 用于 Trace、Metric、Log、Exception 与技术健康；它与产品
 
 对象传输地址可能指向 S3 Origin，而不是 Asterloom API Origin。禁止把 Asterloom Bearer Token
 附加到该地址，只能使用 Transfer Ticket 返回的签名 Header。
+
+资源模型、完整三阶段传输协议、权限与 SDK 覆盖边界见
+[Asterloom 文件存储指南](Module/File-Storage.zh-CN.md)。
 
 ### 4.11 Operations、Audit 与主题
 
@@ -394,6 +406,8 @@ if (decision.UpdateAvailable)
 ```
 
 不要绕过 `AsterloomReleaseClient` 自己下载 Artifact URL，否则会失去签名与哈希验证。
+有关 `win-x64` 等 RID、Velopack 打包、Artifact/Manifest 签名和发布顺序，请阅读
+[Asterloom 桌面自动更新指南](Module/Desktop-Updates.zh-CN.md)。
 
 ### 5.7 Analytics
 
@@ -483,6 +497,10 @@ var stored = await storage.UploadAsync(
 await using var destination = File.Create(destinationPath);
 await storage.DownloadToAsync(stored, destination, cancellationToken: cancellationToken);
 ```
+
+当前 `AsterloomStorageClient` 封装对象上传和下载；Bucket 管理以及 Object List、Metadata、Copy、
+Delete 已由 gRPC/JSON API 和 Web 覆盖，需要时使用生成的 API Client。完整说明见
+[Asterloom 文件存储指南](Module/File-Storage.zh-CN.md)。
 
 ### 5.10 原生 gRPC、HTTP/JSON 与 Persistence
 

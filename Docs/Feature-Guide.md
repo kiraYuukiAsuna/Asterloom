@@ -4,7 +4,9 @@
 
 This guide explains how to operate every Asterloom capability from the Web
 Console and how a .NET application consumes the runtime C# SDKs. It describes
-the implementation in this repository, not a future multi-language SDK.
+the implementation in this repository, not a future multi-language SDK. For
+capability boundaries, permissions, complete workflows, and implementation links,
+use the [module guides](Module/README.md).
 
 ## 1. Access paths
 
@@ -181,6 +183,10 @@ secret manager, not Dynamic Config.
 
 Routes: `/channels`, `/artifacts`, `/releases`
 
+This capability also defines RIDs, Velopack package structure, initial installers, external signatures, and the
+upload protocol. Read the [Asterloom Desktop Update Guide](Module/Desktop-Updates.md) before implementation; an ordinary
+publish directory or arbitrary ZIP is not an installable artifact.
+
 1. Create a channel such as `stable`, `beta`, or `canary`.
 2. Generate an RSA signing key outside Asterloom. Register only the public key
    and retain the private key in controlled build/signing infrastructure.
@@ -229,6 +235,11 @@ separate from Analytics product events.
 
 Routes: `/storage/buckets`, `/storage/objects`
 
+The Storage sidebar opens `/storage/objects` by default. Bucket creation is under the **Buckets** tab at the top
+of the workspace, in the **Create bucket** card. Administrators normally create a logical bucket in the Web
+console first; applications then upload and download through the SDK/API with its configured `BucketId`. The Web
+console also supports manual upload, download, copy, and deletion.
+
 1. Create and configure a logical bucket.
 2. Start an upload session, upload bytes to the short-lived signed transfer
    URL with every required header, then complete the session.
@@ -240,6 +251,9 @@ Routes: `/storage/buckets`, `/storage/objects`
 The object transfer URL may point to an S3 origin rather than the Asterloom API
 origin. Never attach an Asterloom Bearer token to that URL; use only the signed
 headers returned in the transfer ticket.
+
+See the [Asterloom File Storage Guide](Module/File-Storage.md) for the resource model, complete three-phase transfer
+protocol, permissions, and SDK coverage boundary.
 
 ### 4.11 Operations, Audit, and appearance
 
@@ -440,6 +454,9 @@ if (decision.UpdateAvailable)
 Do not bypass `AsterloomReleaseClient` verification by downloading the artifact
 URL yourself.
 
+For RIDs such as `win-x64`, Velopack packaging, artifact/manifest signing, and the release sequence, see the
+[Asterloom Desktop Update Guide](Module/Desktop-Updates.md).
+
 ### 5.7 Analytics
 
 ```csharp
@@ -529,6 +546,10 @@ var stored = await storage.UploadAsync(
 await using var destination = File.Create(destinationPath);
 await storage.DownloadToAsync(stored, destination, cancellationToken: cancellationToken);
 ```
+
+The current `AsterloomStorageClient` wraps object upload and download. Bucket administration and Object List,
+Metadata, Copy, and Delete are covered by the gRPC/JSON API and Web console; use a generated API client when an
+application needs them. See the [Asterloom File Storage Guide](Module/File-Storage.md) for the complete model.
 
 ### 5.10 Native gRPC, HTTP/JSON, and persistence
 

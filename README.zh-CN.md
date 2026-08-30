@@ -163,8 +163,12 @@ npm run dev
 
 ## 如何使用各项能力
 
+- [模块使用文档（中文）](Docs/Module/README.zh-CN.md)：按能力拆分的实施、Web、API、SDK、权限与运维文档。
+- [Module Guides (English)](Docs/Module/README.md)：对应的英文模块索引。
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)：Web 操作顺序、全部能力说明和 C# SDK 示例。
 - [Feature Usage Guide (English)](Docs/Feature-Guide.md)：对应的英文文档。
+- [桌面自动更新指南](Docs/Module/Desktop-Updates.zh-CN.md)：RID、Velopack 打包、签名、上传、灰度与客户端安装。
+- [文件存储指南](Docs/Module/File-Storage.zh-CN.md)：Bucket、对象传输、权限、Web 入口和 C# SDK 接入。
 - [全能力参考应用](Docs/Reference-Application.md)：可执行的 Backend + Client、`provision`、`doctor` 与 `login`。
 
 最简服务接入方式是先使用 Passport Client Credentials 获得 Token，再创建一个同时支持
@@ -235,8 +239,14 @@ npm run test:e2e
 ## 文档
 
 - [技术架构与实施基线](Docs/Architecture.md)
+- [模块使用文档（中文）](Docs/Module/README.zh-CN.md)
+- [Module Guides (English)](Docs/Module/README.md)
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)
 - [Feature Usage Guide (English)](Docs/Feature-Guide.md)
+- [桌面自动更新指南](Docs/Module/Desktop-Updates.zh-CN.md)
+- [Desktop Update Guide (English)](Docs/Module/Desktop-Updates.md)
+- [文件存储指南](Docs/Module/File-Storage.zh-CN.md)
+- [File Storage Guide (English)](Docs/Module/File-Storage.md)
 - [全能力参考应用与诊断规范](Docs/Reference-Application.md)
 - [标准协议端点](Docs/Protocol/standard-endpoints.md)
 - [Redis Web BFF Session ADR](Docs/ADR/0001-redis-for-web-bff-sessions.md)

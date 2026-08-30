@@ -9,8 +9,14 @@ telemetry, RPC/HTTP, object storage, and persistence.
 ## Documentation
 
 - [Architecture and implementation baseline](Docs/Architecture.md)
+- [Module-by-module guides](Docs/Module/README.md)
+- [模块使用文档（中文）](Docs/Module/README.zh-CN.md)
 - [Feature usage guide](Docs/Feature-Guide.md)
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)
+- [Desktop update packaging and release guide](Docs/Module/Desktop-Updates.md)
+- [桌面自动更新指南（中文）](Docs/Module/Desktop-Updates.zh-CN.md)
+- [File storage integration guide](Docs/Module/File-Storage.md)
+- [文件存储指南（中文）](Docs/Module/File-Storage.zh-CN.md)
 - [Full-capability reference application](Docs/Reference-Application.md)
 - [Standard protocol endpoints](Docs/Protocol/standard-endpoints.md)
 

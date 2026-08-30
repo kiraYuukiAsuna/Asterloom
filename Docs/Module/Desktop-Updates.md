@@ -1,0 +1,399 @@
+# Asterloom Desktop Update Guide
+
+[English](Desktop-Updates.md) | [简体中文](Desktop-Updates.zh-CN.md) | [Module index](README.md)
+
+This guide describes the current C# desktop update path from initial packaging through signed upload, rollout,
+download, installation, and release control. “Desktop update” means an application installed with Velopack;
+services, containers, and Web applications should continue to use their normal CI/CD deployment systems.
+
+## 1. Responsibility boundary
+
+```text
+CI / external signer
+  └─ build the app and create an installer plus .nupkg with Velopack
+       └─ sign the artifact SHA-256 with an external RSA-PSS key
+            └─ upload to Asterloom and sign the candidate release manifest
+                 └─ publish to stable / beta / canary
+                      └─ authenticated clients check with a stable targeting key
+                           └─ Asterloom selects an eligible, trusted artifact
+                                └─ Velopack downloads, replaces files, and restarts the app
+```
+
+| Component | Owns | Does not own |
+| --- | --- | --- |
+| Asterloom Release | Channels, artifact metadata, trust, signed manifests, version comparison, targeting, deterministic rollout, transfer tickets, pause/promote/rollback control | Installer generation, replacing in-use files, process restart |
+| Velopack | Initial installer, `.nupkg`, update orchestration, delta reconstruction, file replacement, restart, and install hooks | Asterloom authentication, authorization, targeting, or manifest signing |
+| CI/HSM/external signer | Private-key custody, artifact and manifest signatures, optional OS code signing | Sending private keys to Asterloom or desktop clients |
+
+Distribute the Velopack Setup/Installer for the first install. The `.nupkg` stored by Asterloom is for updates to
+an already installed application and is not a replacement for the initial installer.
+
+## 2. The three different meanings of platform
+
+### 2.1 Platform resource hierarchy
+
+The Asterloom Platform module defines business isolation, not an operating system:
+
+```text
+Tenant
+  └─ Application
+       └─ Environment
+            ├─ Feature / Config / Targeting
+            ├─ Release Channel / Desktop Release
+            └─ Analytics / Telemetry and other scoped resources
+```
+
+- A Tenant is an organization or customer boundary.
+- An Application is a product, such as `my-desktop-app`.
+- An Environment is a deployment stage such as `development`, `staging`, or `production`.
+
+Normally create one Application for one desktop product and attach artifacts for all supported runtimes to the
+same Desktop Release.
+
+### 2.2 Release `targetRuntimeId`
+
+`targetRuntimeId` describes the OS and CPU architecture supported by one artifact. The current backend stores a
+lowercase .NET RID-like value and performs an **exact string match**. A `win-x64` client can only receive a
+`win-x64` artifact.
+
+Recommended values:
+
+| OS | Architecture | `targetRuntimeId` |
+| --- | --- | --- |
+| Windows | x64 | `win-x64` |
+| Windows | Arm64 | `win-arm64` |
+| Windows | x86 | `win-x86` |
+| macOS | Intel x64 | `osx-x64` |
+| macOS | Apple Silicon | `osx-arm64` |
+| Linux | x64 | `linux-x64` |
+| Linux | Arm64 | `linux-arm64` |
+
+The field is not a database enum, but it accepts only 1–100 lowercase letters, digits, dots, and hyphens and is
+intended to follow .NET RID conventions. Do not mix aliases such as `windows-x64`, `Win64`, or `win_x64`.
+
+Treat the RID as build-artifact metadata rather than guessing it from an operating-system display name. For a
+single-RID installer, injecting a fixed CI value is the safest choice. `RuntimeInformation.RuntimeIdentifier` is
+also usable, but the release build must assert that it exactly matches the uploaded artifact's `targetRuntimeId`.
+
+A single `1.4.0` release can contain:
+
+```text
+my-app-1.4.0-win-x64-full.nupkg   → win-x64 / Full
+my-app-1.4.0-win-arm64-full.nupkg → win-arm64 / Full
+my-app-1.4.0-osx-arm64-full.nupkg → osx-arm64 / Full
+```
+
+Provide at least one Full artifact per release version and runtime. A matching Delta artifact may be added for an
+exact source version.
+
+### 2.3 Targeting Context `platform`
+
+The `platform` passed to `AsterloomReleaseContext.Create` is a Targeting attribute used by Segment rules and
+decision traces. It does not select an artifact and does not replace `TargetRuntimeId`:
+
+- Artifact selection uses `AsterloomReleaseClientOptions.TargetRuntimeId` only.
+- Segment evaluation can use Context `platform`, `region`, `language`, `clientVersion`, or custom attributes.
+- Use the same RID string in both fields to keep operational behavior understandable.
+
+### 2.4 Package ID and Channel
+
+- `PackageId` must equal Velopack `--packId` and remain stable for the lifetime of the product.
+- Prefer one Asterloom Application per Package ID. The server manifest does not currently carry an independent
+  Package ID, so never mix packages from different products in one Application/Channel.
+- `stable`, `beta`, and `canary` are release channels, not operating-system platforms.
+- Package with `--channel stable`, or explicitly select the channel through `UpdateOptions.ExplicitChannel`.
+
+## 3. One-time platform setup
+
+### 3.1 Create the scope
+
+Use Web `/tenants` to create or select a Tenant, Application, and Environment, then retain their UUIDs. Keep
+production separate from development and staging.
+
+### 3.2 Configure Passport and authorization
+
+Use a public OIDC client with Authorization Code + PKCE for a desktop application:
+
+- Client ID such as `my-desktop-client`.
+- Loopback redirect URI such as `http://localhost/`.
+- At least the `asterloom.api` scope.
+- No client secret embedded in the application.
+
+The check endpoint requires `release.update.check`. Either bind a suitable role to a specific user/service client,
+or create an application/environment-scoped `Any actor` Allow policy for `release.update.check` when all
+authenticated users should be able to check.
+
+There is currently no anonymous release feed. The safe implemented path checks after Passport sign-in. A product
+that must update before sign-in needs a separate constrained bootstrap identity or anonymous signed-manifest
+endpoint. Do not embed Client Credentials secrets in a desktop binary.
+
+### 3.3 Register an external RSA public key
+
+Generate an RSA key of at least 2048 bits. Keep the private key in CI, an HSM, or a signing service. Register only
+the SubjectPublicKeyInfo public PEM at:
+
+```text
+Web → Releases → Artifacts → Signing trust store → Register public key
+```
+
+Embed the returned `fingerprint → publicKeyPem` trust mapping in the desktop client. Artifact and manifest
+signatures use:
+
+```text
+algorithm: RSA-PSS-SHA256
+input: UTF-8 bytes of the lowercase 64-character SHA-256 hex text
+output: Base64 detached signature
+```
+
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+
+static string SignSha256Text(RSA privateKey, string sha256) =>
+    Convert.ToBase64String(privateKey.SignData(
+        Encoding.UTF8.GetBytes(sha256.ToLowerInvariant()),
+        HashAlgorithmName.SHA256,
+        RSASignaturePadding.Pss));
+```
+
+OS code signing and Asterloom Release signing are independent protections. Production Windows and macOS packages
+should use both.
+
+### 3.4 Create channels
+
+Use Web `/channels` to create immutable client-facing keys such as:
+
+- `stable` for general availability;
+- `beta` for opt-in early access;
+- `canary` for internal or very small cohorts.
+
+A Channel has one Active Release at a time and retains its Previous Release for channel rollback control.
+
+## 4. Packaging contract
+
+The repository currently pins Velopack `1.2.0`; pin `vpk` to the same version in CI:
+
+```powershell
+dotnet tool install --global vpk --version 1.2.0
+
+dotnet publish .\MyDesktopApp.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -o .\publish\win-x64
+
+vpk pack `
+  --packId Kirayuuki.MyDesktopApp `
+  --packVersion 1.4.0 `
+  --packDir .\publish\win-x64 `
+  --mainExe MyDesktopApp.exe `
+  --channel stable `
+  --outputDir .\releases\win-x64
+```
+
+Rules:
+
+- Use SemVer such as `1.4.0` or `1.4.0-beta.1`, not a four-part version such as `1.4.0.0`.
+- Keep `--packId` unchanged across releases.
+- Make `--packVersion` exactly equal to the Asterloom Artifact and Desktop Release version.
+- Make `--channel` equal to the Asterloom channel the installed client will query.
+- Run `dotnet publish` and `vpk pack` separately for every RID.
+- Begin with Full `.nupkg` artifacts; add Delta only after the full path is proven.
+- Distribute Setup/Installer for the initial install; do not label it as a Velopack Full Artifact.
+
+Velopack packaging reference: <https://docs.velopack.io/getting-started/csharp>
+
+## 5. Web release workflow
+
+### 5.1 Upload an artifact
+
+Open Web `/artifacts`:
+
+1. Select the Velopack `.nupkg`.
+2. Enter the same Release Version as `--packVersion`.
+3. Enter a runtime such as `win-x64`.
+4. Select Full; a Delta also requires the exact Delta From Version.
+5. Let Web calculate SHA-256.
+6. Sign that SHA-256 text in the external signer.
+7. Select the registered public key and paste the Base64 signature.
+8. Create the short-lived upload ticket and transfer the file.
+9. Complete the upload so the server rechecks size, media type, SHA-256, and RSA-PSS signature.
+
+Only a `Verified` artifact can be attached to a release. Common rejection causes are signing raw file bytes rather
+than the lowercase digest text, using RSA PKCS#1 v1.5, selecting the wrong key, dropping required signed headers,
+or uploading content that differs from the ticket declaration.
+
+Release artifacts use the tenant system bucket `release-artifacts`; do not create a normal bucket or bypass the
+Release upload workflow for update packages.
+
+### 5.2 Create, validate, and publish a draft
+
+Open Web `/releases`, then configure Channel, Semantic Version, display name, notes, verified artifacts, minimum
+version, rollout basis points, optional Target Segment, and Mandatory.
+
+The rollout denominator is `100000`: `1000` = 1%, `5000` = 5%, `25000` = 25%, and `100000` = 100%.
+
+After saving the draft:
+
+1. Run `Validate release`.
+2. Resolve every validation error.
+3. Sign the Candidate Manifest SHA-256 with the external RSA key.
+4. Select the Manifest Signing Key and paste the Base64 signature.
+5. Publish the signed release.
+
+Any draft change alters the manifest and requires another validation and signature. A published manifest is
+immutable; create a new release for subsequent changes.
+
+### 5.3 Simulate and roll out
+
+Use the update simulator to cover current version, incompatible runtime, matching/non-matching segment, stable
+keys inside and outside rollout, and clients below Minimum Version. A typical progression is:
+
+```text
+canary 100% → stable 1% → 5% → 25% → 50% → 100%
+```
+
+Observe startup failures, crashes, Telemetry errors, download failures, and business outcomes between promotions.
+
+## 6. C# client integration
+
+The SDK is currently provided as `net10.0` repository projects:
+
+```powershell
+dotnet add .\MyDesktopApp.csproj reference .\Backend\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj
+dotnet add .\MyDesktopApp.csproj reference .\Backend\Asterloom.Sdk.Rpc\Asterloom.Sdk.Rpc.csproj
+dotnet add .\MyDesktopApp.csproj reference .\Backend\Asterloom.Sdk.Release\Asterloom.Sdk.Release.csproj
+```
+
+Run Velopack as early as possible in `Main`:
+
+```csharp
+using Velopack;
+
+VelopackApp.Build().Run();
+```
+
+After Passport sign-in:
+
+```csharp
+using Asterloom.Sdk.Release;
+using Asterloom.Sdk.Rpc;
+using Velopack;
+
+using var transport = AsterloomAuthenticatedTransport.Create(
+    new Uri("https://asterloom.example/"),
+    identity.GetAccessTokenAsync);
+
+var scope = new AsterloomReleaseScope(tenantId, applicationId, environmentId);
+var trustedKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    [releaseKeyFingerprint] = releasePublicKeyPem,
+};
+
+using var releaseClient = new AsterloomReleaseClient(
+    transport.HttpClient,
+    new AsterloomReleaseClientOptions
+    {
+        Scope = scope,
+        TargetRuntimeId = "win-x64",
+        PackageId = "Kirayuuki.MyDesktopApp",
+        TrustedPublicKeysByFingerprint = trustedKeys,
+    });
+
+var source = new AsterloomVelopackUpdateSource(
+    releaseClient,
+    currentVersion => AsterloomReleaseContext.Create(
+        scope,
+        targetingKey: installationId,
+        clientVersion: currentVersion,
+        platform: "win-x64"));
+
+var manager = new UpdateManager(
+    source,
+    new UpdateOptions { ExplicitChannel = "stable" });
+
+if (manager.IsInstalled)
+{
+    var update = await manager.CheckForUpdatesAsync();
+    if (update is not null)
+    {
+        await manager.DownloadUpdatesAsync(update, ReportUpdateProgress, cancellationToken);
+        await SaveApplicationStateAsync(cancellationToken);
+        manager.ApplyUpdatesAndRestart(update);
+    }
+}
+```
+
+Generate `installationId` once and persist it. Recreating it on every launch changes deterministic rollout
+membership. A stable User ID can be used for user-based rollout, but switching accounts then changes the result.
+
+Before exposing an artifact, `AsterloomReleaseClient` verifies the trusted fingerprint, manifest signature,
+manifest payload, artifact metadata, downloaded size and SHA-256, and detached artifact signature. Never bypass the
+client and download the signed URL directly.
+
+`Mandatory` is application policy metadata; it does not automatically lock the application UI. Call
+`AsterloomReleaseClient.CheckForUpdateAsync` when the application needs to inspect `decision.Mandatory` and decide
+whether dismiss, offline continuation, retries, or restart can be deferred.
+
+## 7. Decision and control semantics
+
+The server evaluates an update in this order:
+
+1. Active Tenant, Application, and Environment.
+2. Active Channel with an Active Release.
+3. Release is not paused.
+4. Target version is greater than current version.
+5. Optional Target Segment matches.
+6. Stable bucket is below Rollout Basis Points.
+7. A Verified artifact exactly matches `targetRuntimeId`.
+8. Below Minimum Version: select Full and mark Mandatory.
+9. Otherwise prefer an exact-source Delta and fall back to Full.
+
+Control behavior:
+
+- Pause stops new update decisions but does not uninstall an already installed version.
+- Promote increases rollout while stable targeting keys retain deterministic membership.
+- Rollback repoints the Channel to an earlier signed release and prevents further upgrades to the bad release.
+- Current Asterloom and default Velopack behavior move forward only; Rollback does **not** downgrade clients that
+  already installed the newer release.
+
+Forced downgrade requires a separate high-risk recovery design with explicit Velopack downgrade support and data
+compatibility handling.
+
+## 8. Key rotation
+
+Old clients trust only embedded keys. Rotate safely:
+
+1. Sign a transition release with the old key.
+2. Embed both old and new public keys in that transition client.
+3. Wait for the supported population to upgrade.
+4. Begin signing new releases with the new private key.
+5. Remove the old public key only after the support window.
+
+Immediately switching to a new key strands old clients that cannot authenticate the update carrying that key.
+
+## 9. CI checklist
+
+- [ ] Publish with the correct RID and Release configuration.
+- [ ] Pin `vpk` to the application Velopack version.
+- [ ] Match Package ID, Channel, SemVer, Asterloom version, and runtime exactly.
+- [ ] Apply OS code signing where required.
+- [ ] Keep the private RSA key in a controlled signer.
+- [ ] Generate the artifact digest signature.
+- [ ] Confirm the artifact is Verified.
+- [ ] Validate and externally sign the candidate manifest.
+- [ ] Run simulation with fixed test installation IDs.
+- [ ] Perform a real installed canary download, replace, and restart test.
+- [ ] Prepare Telemetry/Analytics monitoring and a signed rollback target.
+
+## 10. Related implementation
+
+- Release client: [AsterloomReleaseClient.cs](../../Backend/Asterloom.Sdk.Release/AsterloomReleaseClient.cs)
+- Velopack adapter: [AsterloomVelopackUpdateSource.cs](../../Backend/Asterloom.Sdk.Release/AsterloomVelopackUpdateSource.cs)
+- Signature verification: [AsterloomReleaseVerifier.cs](../../Backend/Asterloom.Sdk.Release/AsterloomReleaseVerifier.cs)
+- Runtime protocol: [release.proto](../../Proto/Asterloom/release/v1/release.proto)
+- Admin protocol: [release_admin.proto](../../Proto/Asterloom/release/v1/release_admin.proto)
+- Executable signing/upload example: [ReferenceAppProvisioner.cs](../../Backend/Samples/Asterloom.ReferenceApp.Client/ReferenceAppProvisioner.cs)
+- General feature guide: [Feature-Guide.md](../Feature-Guide.md)
+- Velopack C# guide: <https://docs.velopack.io/getting-started/csharp>
+- Velopack UpdateManager: <https://docs.velopack.io/reference/cs/Velopack/UpdateManager>
