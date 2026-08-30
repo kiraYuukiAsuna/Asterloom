@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_DB: asterloom_tests
+          POSTGRES_USER: asterloom
+          POSTGRES_PASSWORD: asterloom-tests
+        options: >-
+          --health-cmd "pg_isready -U asterloom -d asterloom_tests"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore Backend/Asterloom.sln
+      - name: Audit NuGet dependencies
+        run: dotnet list Backend/Asterloom.sln package --vulnerable --include-transitive
+      - name: Build
+        run: dotnet build Backend/Asterloom.sln --configuration Release --no-restore
+      - name: Test
+        env:
+          ASTERLOOM_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=asterloom_tests;Username=asterloom;Password=asterloom-tests
+        run: >-
+          dotnet test Backend/Asterloom.sln
+          --configuration Release
+          --no-build
+          --logger trx
+          --results-directory TestResults
+      - name: Verify Admin API and UI coverage
+        run: >-
+          dotnet run
+          --project Backend/Tools/Asterloom.ApiCoverage
+          --configuration Release
+          --no-build
+          --
+          --repo-root .
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  protocol:
+    name: Protocol contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Build, lint, format, and breaking-change check
+        uses: bufbuild/buf-action@v1
+        with:
+          version: "1.72.0"
+          input: .
+          lint: true
+          format: true
+          breaking: ${{ github.event_name == 'pull_request' }}
+          push: false
+          archive: false
+          pr_comment: false
+      - name: Regenerate OpenAPI and Kiota client
+        shell: pwsh
+        run: ./Deploy/Scripts/Sync-ProtocolArtifacts.ps1 -Configuration Release
+      - name: Verify generated artifacts are committed
+        run: >-
+          git diff --exit-code --
+          Docs/Protocol/openapi
+          Frontend/lib/api/generated
+
+  e2e:
+    name: Web E2E
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser journeys
+        run: npm run test:e2e
+
+  dependency-security:
+    name: Dependency security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Scan lock files and configuration
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  containers:
+    name: Container (${{ matrix.name }})
+    needs: [backend, frontend, protocol]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            dockerfile: Dockerfile
+            image: asterloom-server:ci
+          - name: web
+            dockerfile: Frontend/Dockerfile
+            image: asterloom-web:ci
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - name: Validate Compose configuration
+        if: matrix.name == 'server'
+        run: docker compose config --quiet
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          load: true
+          push: false
+          tags: ${{ matrix.image }}
+      - name: Scan image
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

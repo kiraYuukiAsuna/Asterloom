@@ -1,0 +1,1577 @@
+"use client";
+
+import {
+  Archive,
+  BookKey,
+  CheckCircle2,
+  CircleAlert,
+  FileClock,
+  KeyRound,
+  LoaderCircle,
+  Pencil,
+  Play,
+  Plus,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Trash2,
+  UserRoundCog,
+} from "lucide-react";
+import { type FormEvent, type ReactNode, useState } from "react";
+import { toast } from "sonner";
+import useSWR from "swr";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  archivePolicyRule,
+  archiveRole,
+  authorizationErrorMessage,
+  checkCurrentActorPermission,
+  createPolicyRule,
+  createRole,
+  isAuthorizationVersionConflict,
+  listPermissions,
+  listPolicyRevisions,
+  listPolicyRules,
+  listRoleBindings,
+  listRoles,
+  removeRoleBinding,
+  restorePolicyRule,
+  restoreRole,
+  setRoleBinding,
+  simulateAuthorization,
+  updatePolicyRule,
+  updateRole,
+  type AuthorizationDecisionRecord,
+  type AuthorizationRoleRecord,
+  type AuthorizationScopeInput,
+  type PermissionRecord,
+  type PolicyEffect,
+  type PolicyRuleRecord,
+  type PolicySubjectType,
+  type RoleBindingRecord,
+} from "@/lib/api/authorization-management";
+import { cn } from "@/lib/utils/cn";
+import { useHydrated } from "@/lib/ui/use-hydrated";
+
+const inputClassName =
+  "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
+const textAreaClassName = cn(inputClassName, "h-20 resize-y py-2");
+const labelClassName =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-500";
+const activeStatus = "AUTHORIZATION_RESOURCE_STATUS_ACTIVE";
+const allowEffect = "POLICY_EFFECT_ALLOW";
+const denyEffect = "POLICY_EFFECT_DENY";
+const actorSubject = "POLICY_SUBJECT_TYPE_ACTOR";
+const roleSubject = "POLICY_SUBJECT_TYPE_ROLE";
+const anySubject = "POLICY_SUBJECT_TYPE_ANY";
+
+type WorkspaceTab = "roles" | "bindings" | "policies" | "simulator";
+type ScopeFieldsValue = {
+  applicationId: string;
+  environmentId: string;
+  tenantId: string;
+};
+type MutationRunner = (
+  key: string,
+  work: () => Promise<unknown>,
+  refresh: Array<() => Promise<unknown>>,
+  successMessage: string,
+) => Promise<boolean>;
+
+const emptyScope: ScopeFieldsValue = {
+  applicationId: "",
+  environmentId: "",
+  tenantId: "",
+};
+
+export function AuthorizationWorkspace({
+  actorId,
+  csrfToken,
+}: {
+  actorId: string;
+  csrfToken: string;
+}) {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("roles");
+  const hydrated = useHydrated();
+  const [pending, setPending] = useState("");
+  const [permissionQuery, setPermissionQuery] = useState("");
+  const [roleQuery, setRoleQuery] = useState("");
+  const [includeArchivedRoles, setIncludeArchivedRoles] = useState(false);
+  const [bindingActorQuery, setBindingActorQuery] = useState("");
+  const [bindingTenantQuery, setBindingTenantQuery] = useState("");
+  const [includeArchivedBindings, setIncludeArchivedBindings] = useState(false);
+  const [policyQuery, setPolicyQuery] = useState("");
+  const [policyTenantQuery, setPolicyTenantQuery] = useState("");
+  const [includeArchivedPolicies, setIncludeArchivedPolicies] = useState(false);
+  const [revisionResourceType, setRevisionResourceType] = useState("");
+  const [revisionResourceId, setRevisionResourceId] = useState("");
+
+  const permissions = useSWR(
+    ["authorization-permissions", permissionQuery],
+    () => listPermissions({ pageSize: 100, query: permissionQuery }),
+    { keepPreviousData: true },
+  );
+  const roles = useSWR(
+    ["authorization-roles", roleQuery, includeArchivedRoles],
+    () =>
+      listRoles({
+        includeArchived: includeArchivedRoles,
+        pageSize: 100,
+        query: roleQuery,
+      }),
+    { keepPreviousData: true },
+  );
+  const bindings = useSWR(
+    [
+      "authorization-bindings",
+      bindingActorQuery,
+      bindingTenantQuery,
+      includeArchivedBindings,
+    ],
+    () =>
+      listRoleBindings({
+        actorId: bindingActorQuery,
+        includeArchived: includeArchivedBindings,
+        pageSize: 100,
+        tenantId: bindingTenantQuery,
+      }),
+    { keepPreviousData: true },
+  );
+  const policies = useSWR(
+    [
+      "authorization-policies",
+      policyQuery,
+      policyTenantQuery,
+      includeArchivedPolicies,
+    ],
+    () =>
+      listPolicyRules({
+        includeArchived: includeArchivedPolicies,
+        pageSize: 100,
+        query: policyQuery,
+        tenantId: policyTenantQuery,
+      }),
+    { keepPreviousData: true },
+  );
+  const revisions = useSWR(
+    ["authorization-revisions", revisionResourceType, revisionResourceId],
+    () =>
+      listPolicyRevisions({
+        pageSize: 100,
+        resourceId: revisionResourceId,
+        resourceType: revisionResourceType,
+      }),
+    { keepPreviousData: true },
+  );
+
+  const runMutation: MutationRunner = async (key, work, refresh, message) => {
+    setPending(key);
+    try {
+      await work();
+      await Promise.all(refresh.map((reload) => reload()));
+      toast.success(message);
+      return true;
+    } catch (error) {
+      await Promise.allSettled(refresh.map((reload) => reload()));
+      toast.error(
+        isAuthorizationVersionConflict(error)
+          ? "This policy resource changed elsewhere. Latest data loaded; review it and retry."
+          : authorizationErrorMessage(error),
+      );
+      return false;
+    } finally {
+      setPending("");
+    }
+  };
+
+  const tabs: Array<{ id: WorkspaceTab; label: string; icon: typeof ShieldCheck }> = [
+    { id: "roles", label: "Roles & permissions", icon: BookKey },
+    { id: "bindings", label: "Role bindings", icon: UserRoundCog },
+    { id: "policies", label: "Policy rules", icon: ShieldCheck },
+    { id: "simulator", label: "Simulator & revisions", icon: Play },
+  ];
+
+  return (
+    <div
+      aria-busy={!hydrated}
+      className={cn("space-y-6", !hydrated && "pointer-events-none")}
+      data-authorization-workspace
+      data-hydrated={hydrated}
+    >
+      <section className="overflow-hidden rounded-3xl border border-violet-300/10 bg-[linear-gradient(135deg,rgba(139,92,246,0.14),rgba(15,23,42,0.84)_55%,rgba(2,6,23,0.96))] p-6 sm:p-8">
+        <Badge className="border-violet-400/20 bg-violet-400/10 text-violet-300">
+          <KeyRound aria-hidden="true" className="size-3" />
+          Casbin policy plane
+        </Badge>
+        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+          Authorization control center
+        </h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+          Compose immutable platform permissions into roles, bind them to actors at an
+          exact scope, add explicit policy exceptions, and inspect every revision before
+          testing the resulting decision.
+        </p>
+      </section>
+
+      <nav
+        aria-label="Authorization workspace"
+        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              className={cn(
+                "flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition",
+                activeTab === tab.id
+                  ? "bg-violet-400/15 text-violet-200 ring-1 ring-violet-300/20"
+                  : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200",
+              )}
+              data-testid={`authorization-tab-${tab.id}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {activeTab === "roles" && (
+        <RolesPanel
+          csrfToken={csrfToken}
+          includeArchived={includeArchivedRoles}
+          onIncludeArchivedChange={setIncludeArchivedRoles}
+          onPermissionQueryChange={setPermissionQuery}
+          onRoleQueryChange={setRoleQuery}
+          pending={pending}
+          permissionQuery={permissionQuery}
+          permissions={permissions.data?.permissions ?? []}
+          permissionsError={permissions.error}
+          reloadRevisions={revisions.mutate}
+          reloadRoles={roles.mutate}
+          roleQuery={roleQuery}
+          roles={roles.data?.roles ?? []}
+          rolesError={roles.error}
+          runMutation={runMutation}
+        />
+      )}
+      {activeTab === "bindings" && (
+        <BindingsPanel
+          actorQuery={bindingActorQuery}
+          bindings={bindings.data?.roleBindings ?? []}
+          csrfToken={csrfToken}
+          error={bindings.error}
+          includeArchived={includeArchivedBindings}
+          onActorQueryChange={setBindingActorQuery}
+          onIncludeArchivedChange={setIncludeArchivedBindings}
+          onTenantQueryChange={setBindingTenantQuery}
+          pending={pending}
+          reloadBindings={bindings.mutate}
+          reloadRevisions={revisions.mutate}
+          roles={roles.data?.roles ?? []}
+          runMutation={runMutation}
+          tenantQuery={bindingTenantQuery}
+        />
+      )}
+      {activeTab === "policies" && (
+        <PoliciesPanel
+          csrfToken={csrfToken}
+          error={policies.error}
+          includeArchived={includeArchivedPolicies}
+          onIncludeArchivedChange={setIncludeArchivedPolicies}
+          onQueryChange={setPolicyQuery}
+          onTenantQueryChange={setPolicyTenantQuery}
+          pending={pending}
+          permissions={permissions.data?.permissions ?? []}
+          policies={policies.data?.policyRules ?? []}
+          query={policyQuery}
+          reloadPolicies={policies.mutate}
+          reloadRevisions={revisions.mutate}
+          runMutation={runMutation}
+          tenantQuery={policyTenantQuery}
+        />
+      )}
+      {activeTab === "simulator" && (
+        <SimulatorPanel
+          actorId={actorId}
+          csrfToken={csrfToken}
+          onRevisionResourceIdChange={setRevisionResourceId}
+          onRevisionResourceTypeChange={setRevisionResourceType}
+          pending={pending}
+          permissions={permissions.data?.permissions ?? []}
+          revisionResourceId={revisionResourceId}
+          revisionResourceType={revisionResourceType}
+          revisions={revisions.data?.revisions ?? []}
+          revisionsError={revisions.error}
+          runMutation={runMutation}
+        />
+      )}
+    </div>
+  );
+}
+
+function RolesPanel({
+  csrfToken,
+  includeArchived,
+  onIncludeArchivedChange,
+  onPermissionQueryChange,
+  onRoleQueryChange,
+  pending,
+  permissionQuery,
+  permissions,
+  permissionsError,
+  reloadRevisions,
+  reloadRoles,
+  roleQuery,
+  roles,
+  rolesError,
+  runMutation,
+}: {
+  csrfToken: string;
+  includeArchived: boolean;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onPermissionQueryChange: (value: string) => void;
+  onRoleQueryChange: (value: string) => void;
+  pending: string;
+  permissionQuery: string;
+  permissions: PermissionRecord[];
+  permissionsError: unknown;
+  reloadRevisions: () => Promise<unknown>;
+  reloadRoles: () => Promise<unknown>;
+  roleQuery: string;
+  roles: AuthorizationRoleRecord[];
+  rolesError: unknown;
+  runMutation: MutationRunner;
+}) {
+  const [key, setKey] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [description, setDescription] = useState("");
+  const [permissionKeys, setPermissionKeys] = useState("");
+  const [editing, setEditing] = useState<AuthorizationRoleRecord>();
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPermissions, setEditPermissions] = useState("");
+
+  async function submitCreate(event: FormEvent) {
+    event.preventDefault();
+    const success = await runMutation(
+      "create-role",
+      () =>
+        createRole(csrfToken, {
+          description,
+          displayName,
+          key,
+          permissions: parseCsv(permissionKeys),
+        }),
+      [reloadRoles, reloadRevisions],
+      "Role created.",
+    );
+    if (success) {
+      setKey("");
+      setDisplayName("");
+      setDescription("");
+      setPermissionKeys("");
+    }
+  }
+
+  function beginEdit(role: AuthorizationRoleRecord) {
+    setEditing(role);
+    setEditDisplayName(role.displayName);
+    setEditDescription(role.description);
+    setEditPermissions(role.permissions.join(", "));
+  }
+
+  async function submitEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    const success = await runMutation(
+      `update-role-${editing.id}`,
+      () =>
+        updateRole(csrfToken, editing, {
+          description: editDescription,
+          displayName: editDisplayName,
+          permissions: parseCsv(editPermissions),
+        }),
+      [reloadRoles, reloadRevisions],
+      "Role updated.",
+    );
+    if (success) setEditing(undefined);
+  }
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+      <div className="space-y-5">
+        <Card data-ui-action="list-roles">
+          <CardHeader>
+            <CardTitle>Roles</CardTitle>
+            <CardDescription>
+              System roles are immutable; custom roles have optimistic versions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FilterBar
+              includeArchived={includeArchived}
+              onIncludeArchivedChange={onIncludeArchivedChange}
+              onQueryChange={onRoleQueryChange}
+              query={roleQuery}
+              queryPlaceholder="Search roles"
+            />
+            <ResourceError error={rolesError} />
+            <div className="mt-4 space-y-3">
+              {roles.map((role) => (
+                <div
+                  className="rounded-xl border border-white/8 bg-slate-950/45 p-4"
+                  data-testid={`authorization-role-${role.key}`}
+                  key={role.id}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-slate-100">{role.displayName}</p>
+                        <StatusBadge active={role.status === activeStatus} />
+                        {role.isSystem && <Badge variant="planned">System</Badge>}
+                      </div>
+                      <p className="mt-1 font-mono text-xs text-violet-300">{role.key}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        {role.description || "No description"} · v{role.version}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {role.permissions.map((permission) => (
+                          <span
+                            className="rounded-md bg-white/[0.045] px-2 py-1 font-mono text-[10px] text-slate-400"
+                            key={permission}
+                          >
+                            {permission}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {!role.isSystem && (
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          onClick={() => beginEdit(role)}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Pencil className="size-3.5" /> Edit
+                        </Button>
+                        {role.status === activeStatus ? (
+                          <Button
+                            data-ui-action="archive-role"
+                            disabled={pending !== ""}
+                            onClick={() => {
+                              if (!window.confirm(`Archive role ${role.displayName}?`)) return;
+                              void runMutation(
+                                `archive-role-${role.id}`,
+                                () => archiveRole(csrfToken, role),
+                                [reloadRoles, reloadRevisions],
+                                "Role archived.",
+                              );
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Archive className="size-3.5" /> Archive
+                          </Button>
+                        ) : (
+                          <Button
+                            data-ui-action="restore-role"
+                            disabled={pending !== ""}
+                            onClick={() =>
+                              void runMutation(
+                                `restore-role-${role.id}`,
+                                () => restoreRole(csrfToken, role),
+                                [reloadRoles, reloadRevisions],
+                                "Role restored.",
+                              )
+                            }
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <RotateCcw className="size-3.5" /> Restore
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {editing?.id === role.id && (
+                    <form
+                      className="mt-4 grid gap-3 border-t border-white/8 pt-4"
+                      data-ui-action="update-role"
+                      onSubmit={submitEdit}
+                    >
+                      <Field label="Display name">
+                        <input
+                          className={inputClassName}
+                          name="editRoleDisplayName"
+                          onChange={(event) => setEditDisplayName(event.target.value)}
+                          value={editDisplayName}
+                        />
+                      </Field>
+                      <Field label="Description">
+                        <textarea
+                          className={textAreaClassName}
+                          name="editRoleDescription"
+                          onChange={(event) => setEditDescription(event.target.value)}
+                          value={editDescription}
+                        />
+                      </Field>
+                      <Field label="Permission keys (comma separated)">
+                        <textarea
+                          className={textAreaClassName}
+                          name="editRolePermissions"
+                          onChange={(event) => setEditPermissions(event.target.value)}
+                          value={editPermissions}
+                        />
+                      </Field>
+                      <div className="flex justify-end gap-2">
+                        <Button onClick={() => setEditing(undefined)} type="button" variant="ghost">
+                          Cancel
+                        </Button>
+                        <Button disabled={pending !== ""} type="submit">
+                          Save role
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              ))}
+              {roles.length === 0 && <EmptyState text="No roles match this view." />}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-ui-action="create-role">
+          <CardHeader>
+            <CardTitle>Create custom role</CardTitle>
+            <CardDescription>Keys are stable; permission sets remain editable.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4 sm:grid-cols-2" onSubmit={submitCreate}>
+              <Field label="Role key">
+                <input
+                  className={inputClassName}
+                  name="roleKey"
+                  onChange={(event) => setKey(event.target.value)}
+                  placeholder="release-operator"
+                  value={key}
+                />
+              </Field>
+              <Field label="Display name">
+                <input
+                  className={inputClassName}
+                  name="roleDisplayName"
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="Release operator"
+                  value={displayName}
+                />
+              </Field>
+              <Field className="sm:col-span-2" label="Description">
+                <textarea
+                  className={textAreaClassName}
+                  name="roleDescription"
+                  onChange={(event) => setDescription(event.target.value)}
+                  value={description}
+                />
+              </Field>
+              <Field className="sm:col-span-2" label="Permission keys (comma separated)">
+                <textarea
+                  className={textAreaClassName}
+                  name="rolePermissions"
+                  onChange={(event) => setPermissionKeys(event.target.value)}
+                  placeholder="platform.environment.read, platform.environment.update"
+                  value={permissionKeys}
+                />
+              </Field>
+              <div className="sm:col-span-2 sm:justify-self-end">
+                <Button disabled={pending !== ""} type="submit">
+                  {pending === "create-role" ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
+                  Create role
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-ui-action="list-permissions">
+        <CardHeader>
+          <CardTitle>Permission catalog</CardTitle>
+          <CardDescription>Contract-owned keys available to roles and policies.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SearchInput
+            onChange={onPermissionQueryChange}
+            placeholder="Search permission keys"
+            value={permissionQuery}
+          />
+          <ResourceError error={permissionsError} />
+          <div className="mt-4 max-h-[48rem] space-y-2 overflow-y-auto pr-1">
+            {permissions.map((permission) => (
+              <div className="rounded-lg border border-white/7 bg-white/[0.02] p-3" key={permission.key}>
+                <p className="break-all font-mono text-[11px] text-violet-300">
+                  {permission.key}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-300">
+                  {permission.displayName}
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                  {permission.description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <datalist id="authorization-permission-keys">
+            {permissions.map((permission) => (
+              <option key={permission.key} value={permission.key} />
+            ))}
+          </datalist>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function BindingsPanel({
+  actorQuery,
+  bindings,
+  csrfToken,
+  error,
+  includeArchived,
+  onActorQueryChange,
+  onIncludeArchivedChange,
+  onTenantQueryChange,
+  pending,
+  reloadBindings,
+  reloadRevisions,
+  roles,
+  runMutation,
+  tenantQuery,
+}: {
+  actorQuery: string;
+  bindings: RoleBindingRecord[];
+  csrfToken: string;
+  error: unknown;
+  includeArchived: boolean;
+  onActorQueryChange: (value: string) => void;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onTenantQueryChange: (value: string) => void;
+  pending: string;
+  reloadBindings: () => Promise<unknown>;
+  reloadRevisions: () => Promise<unknown>;
+  roles: AuthorizationRoleRecord[];
+  runMutation: MutationRunner;
+  tenantQuery: string;
+}) {
+  const [editing, setEditing] = useState<RoleBindingRecord>();
+  const [actorId, setActorId] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [scope, setScope] = useState<ScopeFieldsValue>(emptyScope);
+
+  function resetForm() {
+    setEditing(undefined);
+    setActorId("");
+    setRoleId("");
+    setScope(emptyScope);
+  }
+
+  function beginEdit(binding: RoleBindingRecord) {
+    setEditing(binding);
+    setActorId(binding.actorId);
+    setRoleId(binding.roleId);
+    setScope(fromScope(binding.scope));
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const bindingId = editing?.id ?? crypto.randomUUID();
+    const success = await runMutation(
+      editing ? `set-binding-${editing.id}` : "set-binding",
+      () =>
+        setRoleBinding(csrfToken, bindingId, {
+          actorId,
+          expectedVersion: editing?.version ?? 0,
+          roleId,
+          scope: toScope(scope),
+        }),
+      [reloadBindings, reloadRevisions],
+      editing ? "Role binding updated." : "Role binding created.",
+    );
+    if (success) resetForm();
+  }
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.72fr_1.28fr]">
+      <Card data-ui-action="set-role-binding">
+        <CardHeader>
+          <CardTitle>{editing ? "Edit role binding" : "Bind role to actor"}</CardTitle>
+          <CardDescription>
+            Empty scope means global. Application and environment scopes must remain nested.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={submit}>
+            <Field label="Actor ID">
+              <input
+                className={inputClassName}
+                name="bindingActorId"
+                onChange={(event) => setActorId(event.target.value)}
+                placeholder="user UUID or service client ID"
+                value={actorId}
+              />
+            </Field>
+            <Field label="Role">
+              <select
+                className={inputClassName}
+                name="bindingRoleId"
+                onChange={(event) => setRoleId(event.target.value)}
+                value={roleId}
+              >
+                <option value="">Select a role</option>
+                {roles
+                  .filter((role) => role.status === activeStatus)
+                  .map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.displayName} ({role.key})
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <ScopeFields onChange={setScope} prefix="binding" value={scope} />
+            <div className="flex justify-end gap-2">
+              {editing && (
+                <Button onClick={resetForm} type="button" variant="ghost">
+                  Cancel
+                </Button>
+              )}
+              <Button disabled={pending !== ""} type="submit">
+                <UserRoundCog className="size-4" />
+                {editing ? "Save binding" : "Create binding"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-role-bindings">
+        <CardHeader>
+          <CardTitle>Role bindings</CardTitle>
+          <CardDescription>Search actors or constrain the view to one tenant.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SearchInput
+              onChange={onActorQueryChange}
+              placeholder="Filter actor IDs"
+              value={actorQuery}
+            />
+            <input
+              className={inputClassName}
+              name="bindingTenantFilter"
+              onChange={(event) => onTenantQueryChange(event.target.value)}
+              placeholder="Tenant UUID filter (optional)"
+              value={tenantQuery}
+            />
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+            <input
+              checked={includeArchived}
+              className="accent-violet-400"
+              onChange={(event) => onIncludeArchivedChange(event.target.checked)}
+              type="checkbox"
+            />
+            Include removed bindings
+          </label>
+          <ResourceError error={error} />
+          <div className="mt-4 space-y-3">
+            {bindings.map((binding) => (
+              <div
+                className="rounded-xl border border-white/8 bg-slate-950/45 p-4"
+                data-testid={`authorization-binding-${binding.id}`}
+                key={binding.id}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-slate-100">{binding.actorId}</p>
+                      <StatusBadge active={binding.status === activeStatus} />
+                    </div>
+                    <p className="mt-1 font-mono text-xs text-violet-300">
+                      {binding.roleKey}
+                    </p>
+                    <ScopeSummary scope={binding.scope} />
+                    <p className="mt-2 text-[11px] text-slate-600">v{binding.version}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button onClick={() => beginEdit(binding)} size="sm" type="button" variant="ghost">
+                      {binding.status === activeStatus ? (
+                        <Pencil className="size-3.5" />
+                      ) : (
+                        <RotateCcw className="size-3.5" />
+                      )}
+                      {binding.status === activeStatus ? "Edit" : "Reactivate"}
+                    </Button>
+                    {binding.status === activeStatus && (
+                      <Button
+                        data-ui-action="remove-role-binding"
+                        disabled={pending !== ""}
+                        onClick={() => {
+                          if (!window.confirm(`Remove ${binding.roleKey} from ${binding.actorId}?`)) {
+                            return;
+                          }
+                          void runMutation(
+                            `remove-binding-${binding.id}`,
+                            () => removeRoleBinding(csrfToken, binding),
+                            [reloadBindings, reloadRevisions],
+                            "Role binding removed.",
+                          );
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 className="size-3.5" /> Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {bindings.length === 0 && <EmptyState text="No role bindings match this view." />}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PoliciesPanel({
+  csrfToken,
+  error,
+  includeArchived,
+  onIncludeArchivedChange,
+  onQueryChange,
+  onTenantQueryChange,
+  pending,
+  permissions,
+  policies,
+  query,
+  reloadPolicies,
+  reloadRevisions,
+  runMutation,
+  tenantQuery,
+}: {
+  csrfToken: string;
+  error: unknown;
+  includeArchived: boolean;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onQueryChange: (value: string) => void;
+  onTenantQueryChange: (value: string) => void;
+  pending: string;
+  permissions: PermissionRecord[];
+  policies: PolicyRuleRecord[];
+  query: string;
+  reloadPolicies: () => Promise<unknown>;
+  reloadRevisions: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  tenantQuery: string;
+}) {
+  const [editing, setEditing] = useState<PolicyRuleRecord>();
+  const [name, setName] = useState("");
+  const [effect, setEffect] = useState<PolicyEffect>(allowEffect);
+  const [subjectType, setSubjectType] = useState<PolicySubjectType>(actorSubject);
+  const [subject, setSubject] = useState("");
+  const [permission, setPermission] = useState("");
+  const [scope, setScope] = useState<ScopeFieldsValue>(emptyScope);
+
+  function resetForm() {
+    setEditing(undefined);
+    setName("");
+    setEffect(allowEffect);
+    setSubjectType(actorSubject);
+    setSubject("");
+    setPermission("");
+    setScope(emptyScope);
+  }
+
+  function beginEdit(policy: PolicyRuleRecord) {
+    setEditing(policy);
+    setName(policy.name);
+    setEffect(policy.effect);
+    setSubjectType(policy.subjectType);
+    setSubject(policy.subject);
+    setPermission(policy.permission);
+    setScope(fromScope(policy.scope));
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const input = {
+      effect,
+      name,
+      permission,
+      scope: toScope(scope),
+      subject: subjectType === anySubject ? "*" : subject,
+      subjectType,
+    };
+    const success = await runMutation(
+      editing ? `update-policy-${editing.id}` : "create-policy",
+      () =>
+        editing
+          ? updatePolicyRule(csrfToken, editing, input)
+          : createPolicyRule(csrfToken, input),
+      [reloadPolicies, reloadRevisions],
+      editing ? "Policy rule updated." : "Policy rule created.",
+    );
+    if (success) resetForm();
+  }
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.72fr_1.28fr]">
+      <Card data-ui-action="create-policy-rule">
+        <CardHeader>
+          <CardTitle>{editing ? "Edit policy rule" : "Create policy rule"}</CardTitle>
+          <CardDescription>
+            Explicit denies override every matching grant at the same or broader scope.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={submit}>
+            <Field label="Policy name">
+              <input
+                className={inputClassName}
+                name="policyName"
+                onChange={(event) => setName(event.target.value)}
+                value={name}
+              />
+            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Effect">
+                <select
+                  className={inputClassName}
+                  name="policyEffect"
+                  onChange={(event) => setEffect(event.target.value as PolicyEffect)}
+                  value={effect}
+                >
+                  <option value={allowEffect}>Allow</option>
+                  <option value={denyEffect}>Deny</option>
+                </select>
+              </Field>
+              <Field label="Subject type">
+                <select
+                  className={inputClassName}
+                  name="policySubjectType"
+                  onChange={(event) =>
+                    setSubjectType(event.target.value as PolicySubjectType)
+                  }
+                  value={subjectType}
+                >
+                  <option value={actorSubject}>Actor</option>
+                  <option value={roleSubject}>Role key or ID</option>
+                  <option value={anySubject}>Any actor</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Subject">
+              <input
+                className={inputClassName}
+                disabled={subjectType === anySubject}
+                name="policySubject"
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder={subjectType === anySubject ? "*" : "actor ID or role key"}
+                value={subjectType === anySubject ? "*" : subject}
+              />
+            </Field>
+            <Field label="Permission">
+              <input
+                className={inputClassName}
+                list="policy-permission-keys"
+                name="policyPermission"
+                onChange={(event) => setPermission(event.target.value)}
+                value={permission}
+              />
+              <datalist id="policy-permission-keys">
+                {permissions.map((item) => (
+                  <option key={item.key} value={item.key} />
+                ))}
+              </datalist>
+            </Field>
+            <ScopeFields onChange={setScope} prefix="policy" value={scope} />
+            <div className="flex justify-end gap-2">
+              {editing && (
+                <Button onClick={resetForm} type="button" variant="ghost">
+                  Cancel
+                </Button>
+              )}
+              <Button disabled={pending !== ""} type="submit">
+                <ShieldCheck className="size-4" />
+                {editing ? "Save policy" : "Create policy"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-policy-rules">
+        <CardHeader>
+          <CardTitle>Policy rules</CardTitle>
+          <CardDescription>Fine-grained exceptions layered over role grants.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SearchInput onChange={onQueryChange} placeholder="Search name or permission" value={query} />
+            <input
+              className={inputClassName}
+              name="policyTenantFilter"
+              onChange={(event) => onTenantQueryChange(event.target.value)}
+              placeholder="Tenant UUID filter (optional)"
+              value={tenantQuery}
+            />
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+            <input
+              checked={includeArchived}
+              className="accent-violet-400"
+              onChange={(event) => onIncludeArchivedChange(event.target.checked)}
+              type="checkbox"
+            />
+            Include archived policies
+          </label>
+          <ResourceError error={error} />
+          <div className="mt-4 space-y-3">
+            {policies.map((policy) => (
+              <div
+                className="rounded-xl border border-white/8 bg-slate-950/45 p-4"
+                data-testid={`authorization-policy-${policy.id}`}
+                key={policy.id}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-slate-100">{policy.name}</p>
+                      <StatusBadge active={policy.status === activeStatus} />
+                      <Badge
+                        className={cn(
+                          policy.effect === denyEffect
+                            ? "border-rose-400/20 bg-rose-400/10 text-rose-300"
+                            : "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                        )}
+                      >
+                        {policy.effect === denyEffect ? "Deny" : "Allow"}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 break-all font-mono text-xs text-violet-300">
+                      {policy.permission}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {friendlySubjectType(policy.subjectType)}: {policy.subject}
+                    </p>
+                    <ScopeSummary scope={policy.scope} />
+                    <p className="mt-2 text-[11px] text-slate-600">v{policy.version}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      data-ui-action="update-policy-rule"
+                      onClick={() => beginEdit(policy)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Pencil className="size-3.5" /> Edit
+                    </Button>
+                    {policy.status === activeStatus ? (
+                      <Button
+                        data-ui-action="archive-policy-rule"
+                        disabled={pending !== ""}
+                        onClick={() => {
+                          if (!window.confirm(`Archive policy ${policy.name}?`)) return;
+                          void runMutation(
+                            `archive-policy-${policy.id}`,
+                            () => archivePolicyRule(csrfToken, policy),
+                            [reloadPolicies, reloadRevisions],
+                            "Policy rule archived.",
+                          );
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Archive className="size-3.5" /> Archive
+                      </Button>
+                    ) : (
+                      <Button
+                        data-ui-action="restore-policy-rule"
+                        disabled={pending !== ""}
+                        onClick={() =>
+                          void runMutation(
+                            `restore-policy-${policy.id}`,
+                            () => restorePolicyRule(csrfToken, policy),
+                            [reloadPolicies, reloadRevisions],
+                            "Policy rule restored.",
+                          )
+                        }
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <RotateCcw className="size-3.5" /> Restore
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {policies.length === 0 && <EmptyState text="No policy rules match this view." />}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SimulatorPanel({
+  actorId,
+  csrfToken,
+  onRevisionResourceIdChange,
+  onRevisionResourceTypeChange,
+  pending,
+  permissions,
+  revisionResourceId,
+  revisionResourceType,
+  revisions,
+  revisionsError,
+  runMutation,
+}: {
+  actorId: string;
+  csrfToken: string;
+  onRevisionResourceIdChange: (value: string) => void;
+  onRevisionResourceTypeChange: (value: string) => void;
+  pending: string;
+  permissions: PermissionRecord[];
+  revisionResourceId: string;
+  revisionResourceType: string;
+  revisions: Array<{
+    changeSummary: string;
+    changeType: string;
+    createdAt: string;
+    createdBy: string;
+    id: string;
+    resourceId: string;
+    resourceType: string;
+    revisionNumber: number;
+    snapshotHash: string;
+  }>;
+  revisionsError: unknown;
+  runMutation: MutationRunner;
+}) {
+  const [simulatedActor, setSimulatedActor] = useState(actorId);
+  const [permission, setPermission] = useState("platform.info.read");
+  const [trustedRoles, setTrustedRoles] = useState("");
+  const [scope, setScope] = useState<ScopeFieldsValue>(emptyScope);
+  const [simulation, setSimulation] = useState<AuthorizationDecisionRecord>();
+  const [currentDecision, setCurrentDecision] = useState<AuthorizationDecisionRecord>();
+
+  async function submitSimulation(event: FormEvent) {
+    event.preventDefault();
+    await runMutation(
+      "simulate-authorization",
+      async () => {
+        setSimulation(
+          await simulateAuthorization(csrfToken, {
+            actorId: simulatedActor,
+            permission,
+            scope: toScope(scope),
+            trustedRoles: parseCsv(trustedRoles),
+          }),
+        );
+      },
+      [],
+      "Authorization simulation complete.",
+    );
+  }
+
+  async function checkCurrentActor() {
+    await runMutation(
+      "check-permission",
+      async () => {
+        setCurrentDecision(
+          await checkCurrentActorPermission(csrfToken, {
+            actorId,
+            permission,
+            scope: toScope(scope),
+          }),
+        );
+      },
+      [],
+      "Current actor permission checked.",
+    );
+  }
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-2">
+      <Card data-ui-action="simulate-authorization">
+        <CardHeader>
+          <CardTitle>Decision simulator</CardTitle>
+          <CardDescription>
+            Test any actor and optional trusted Passport role without changing policy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={submitSimulation}>
+            <Field label="Actor ID">
+              <input
+                className={inputClassName}
+                name="simulationActorId"
+                onChange={(event) => setSimulatedActor(event.target.value)}
+                value={simulatedActor}
+              />
+            </Field>
+            <Field label="Permission">
+              <input
+                className={inputClassName}
+                list="simulation-permission-keys"
+                name="simulationPermission"
+                onChange={(event) => setPermission(event.target.value)}
+                value={permission}
+              />
+              <datalist id="simulation-permission-keys">
+                {permissions.map((item) => (
+                  <option key={item.key} value={item.key} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Trusted roles (simulation only, comma separated)">
+              <input
+                className={inputClassName}
+                name="simulationTrustedRoles"
+                onChange={(event) => setTrustedRoles(event.target.value)}
+                placeholder="SuperAdministrator"
+                value={trustedRoles}
+              />
+            </Field>
+            <ScopeFields onChange={setScope} prefix="simulation" value={scope} />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                data-ui-action="check-permission"
+                disabled={pending !== ""}
+                onClick={() => void checkCurrentActor()}
+                type="button"
+                variant="outline"
+              >
+                <KeyRound className="size-4" /> Check my access
+              </Button>
+              <Button disabled={pending !== ""} type="submit">
+                <Play className="size-4" /> Simulate
+              </Button>
+            </div>
+          </form>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <DecisionCard decision={simulation} label="Simulation" />
+            <DecisionCard decision={currentDecision} label="Current actor" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-policy-revisions">
+        <CardHeader>
+          <CardTitle>Policy revisions</CardTitle>
+          <CardDescription>Immutable history for roles, bindings, and policy rules.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <select
+              className={inputClassName}
+              name="revisionResourceType"
+              onChange={(event) => onRevisionResourceTypeChange(event.target.value)}
+              value={revisionResourceType}
+            >
+              <option value="">All resource types</option>
+              <option value="role">Role</option>
+              <option value="role_binding">Role binding</option>
+              <option value="policy_rule">Policy rule</option>
+            </select>
+            <input
+              className={inputClassName}
+              name="revisionResourceId"
+              onChange={(event) => onRevisionResourceIdChange(event.target.value)}
+              placeholder="Resource ID (optional)"
+              value={revisionResourceId}
+            />
+          </div>
+          <ResourceError error={revisionsError} />
+          <div className="mt-4 max-h-[44rem] space-y-3 overflow-y-auto pr-1">
+            {revisions.map((revision) => (
+              <div className="rounded-xl border border-white/8 bg-slate-950/45 p-4" key={revision.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <FileClock className="size-4 text-violet-300" />
+                    <p className="text-sm font-medium text-slate-200">
+                      Revision {revision.revisionNumber}
+                    </p>
+                  </div>
+                  <Badge variant="planned">{revision.changeType}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-slate-400">{revision.changeSummary}</p>
+                <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                  {revision.resourceType}/{revision.resourceId}
+                </p>
+                <p className="mt-2 text-[10px] text-slate-600">
+                  {revision.createdBy} · {formatTime(revision.createdAt)}
+                </p>
+              </div>
+            ))}
+            {revisions.length === 0 && <EmptyState text="No policy revisions match this view." />}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ScopeFields({
+  onChange,
+  prefix,
+  value,
+}: {
+  onChange: (value: ScopeFieldsValue) => void;
+  prefix: string;
+  value: ScopeFieldsValue;
+}) {
+  return (
+    <fieldset className="rounded-xl border border-white/8 p-3">
+      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+        Scope (optional)
+      </legend>
+      <div className="grid gap-3">
+        <Field label="Tenant UUID">
+          <input
+            className={inputClassName}
+            name={`${prefix}TenantId`}
+            onChange={(event) => onChange({ ...value, tenantId: event.target.value })}
+            value={value.tenantId}
+          />
+        </Field>
+        <Field label="Application UUID">
+          <input
+            className={inputClassName}
+            name={`${prefix}ApplicationId`}
+            onChange={(event) => onChange({ ...value, applicationId: event.target.value })}
+            value={value.applicationId}
+          />
+        </Field>
+        <Field label="Environment UUID">
+          <input
+            className={inputClassName}
+            name={`${prefix}EnvironmentId`}
+            onChange={(event) => onChange({ ...value, environmentId: event.target.value })}
+            value={value.environmentId}
+          />
+        </Field>
+      </div>
+    </fieldset>
+  );
+}
+
+function ScopeSummary({ scope }: { scope: AuthorizationScopeInput }) {
+  const parts = [
+    scope.tenantId ? `tenant:${shortId(scope.tenantId)}` : "global",
+    scope.applicationId ? `app:${shortId(scope.applicationId)}` : "",
+    scope.environmentId ? `env:${shortId(scope.environmentId)}` : "",
+  ].filter(Boolean);
+  return <p className="mt-2 font-mono text-[10px] text-slate-500">{parts.join(" / ")}</p>;
+}
+
+function DecisionCard({
+  decision,
+  label,
+}: {
+  decision?: AuthorizationDecisionRecord;
+  label: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/8 bg-slate-950/55 p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">{label}</p>
+      {!decision ? (
+        <p className="mt-3 text-xs text-slate-600">No decision yet.</p>
+      ) : (
+        <>
+          <div className="mt-3 flex items-center gap-2">
+            {decision.allowed ? (
+              <CheckCircle2 className="size-4 text-emerald-300" />
+            ) : (
+              <CircleAlert className="size-4 text-rose-300" />
+            )}
+            <p
+              className={cn(
+                "text-sm font-semibold",
+                decision.allowed ? "text-emerald-300" : "text-rose-300",
+              )}
+            >
+              {decision.allowed ? "Allowed" : "Denied"}
+            </p>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{decision.reason}</p>
+          {decision.matchedRoleKeys.length > 0 && (
+            <p className="mt-2 font-mono text-[10px] text-violet-300">
+              {decision.matchedRoleKeys.join(", ")}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FilterBar({
+  includeArchived,
+  onIncludeArchivedChange,
+  onQueryChange,
+  query,
+  queryPlaceholder,
+}: {
+  includeArchived: boolean;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onQueryChange: (value: string) => void;
+  query: string;
+  queryPlaceholder: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="min-w-0 flex-1">
+        <SearchInput onChange={onQueryChange} placeholder={queryPlaceholder} value={query} />
+      </div>
+      <label className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+        <input
+          checked={includeArchived}
+          className="accent-violet-400"
+          onChange={(event) => onIncludeArchivedChange(event.target.checked)}
+          type="checkbox"
+        />
+        Include archived
+      </label>
+    </div>
+  );
+}
+
+function SearchInput({
+  onChange,
+  placeholder,
+  value,
+}: {
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  return (
+    <label className="relative block">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" />
+      <input
+        className={cn(inputClassName, "pl-9")}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        type="search"
+        value={value}
+      />
+    </label>
+  );
+}
+
+function Field({
+  children,
+  className,
+  label,
+}: {
+  children: ReactNode;
+  className?: string;
+  label: string;
+}) {
+  return (
+    <label className={className}>
+      <span className={labelClassName}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <Badge variant={active ? "success" : "planned"}>{active ? "Active" : "Archived"}</Badge>
+  );
+}
+
+function ResourceError({ error }: { error: unknown }) {
+  if (!error) return null;
+  return (
+    <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.06] p-3 text-xs text-rose-300">
+      <CircleAlert className="mt-0.5 size-4 shrink-0" />
+      {authorizationErrorMessage(error)}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-600">
+      {text}
+    </div>
+  );
+}
+
+function parseCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toScope(scope: ScopeFieldsValue): AuthorizationScopeInput {
+  return {
+    applicationId: scope.applicationId.trim() || undefined,
+    environmentId: scope.environmentId.trim() || undefined,
+    tenantId: scope.tenantId.trim() || undefined,
+  };
+}
+
+function fromScope(scope: AuthorizationScopeInput): ScopeFieldsValue {
+  return {
+    applicationId: scope.applicationId ?? "",
+    environmentId: scope.environmentId ?? "",
+    tenantId: scope.tenantId ?? "",
+  };
+}
+
+function friendlySubjectType(subjectType: PolicySubjectType): string {
+  if (subjectType === roleSubject) return "Role";
+  if (subjectType === anySubject) return "Any actor";
+  return "Actor";
+}
+
+function shortId(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 8)}…` : value;
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package asterloom.config.v1;
+
+import "Asterloom/config/v1/config_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Config.V1";
+
+service ConfigService {
+  rpc GetConfigSnapshot(ConfigSnapshotRequest) returns (ConfigSnapshotResponse) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:snapshot" body: "*"};
+  }
+  rpc GetServerConfigSnapshot(ConfigSnapshotRequest) returns (ConfigSnapshotResponse) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:server-snapshot" body: "*"};
+  }
+  rpc CheckConfigUpdates(ConfigUpdateCheckRequest) returns (ConfigUpdateStatus) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:check-updates" body: "*"};
+  }
+}

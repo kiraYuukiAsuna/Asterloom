@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package asterloom.release.v1;
+
+import "Asterloom/release/v1/release_types.proto";
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Release.V1";
+
+service ReleaseService {
+  rpc CheckForUpdate(CheckForUpdateRequest) returns (UpdateDecision) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release:check"
+      body: "*"
+    };
+  }
+}
+
+message CheckForUpdateRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_key = 4;
+  string current_version = 5;
+  string target_runtime_id = 6;
+  asterloom.targeting.v1.EvaluationContext context = 7;
+}

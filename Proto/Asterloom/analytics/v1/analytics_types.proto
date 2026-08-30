@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package asterloom.analytics.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Analytics.V1";
+
+import "google/protobuf/timestamp.proto";
+
+message AnalyticsScope {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+}
+
+enum AnalyticsResourceStatus {
+  ANALYTICS_RESOURCE_STATUS_UNSPECIFIED = 0;
+  ANALYTICS_RESOURCE_STATUS_ACTIVE = 1;
+  ANALYTICS_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum AnalyticsWriteKeyStatus {
+  ANALYTICS_WRITE_KEY_STATUS_UNSPECIFIED = 0;
+  ANALYTICS_WRITE_KEY_STATUS_ACTIVE = 1;
+  ANALYTICS_WRITE_KEY_STATUS_REVOKED = 2;
+}
+
+message EventSchema {
+  string id = 1;
+  AnalyticsScope scope = 2;
+  string key = 3;
+  string display_name = 4;
+  string description = 5;
+  string schema_json = 6;
+  AnalyticsResourceStatus status = 7;
+  int32 retention_days = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp archived_at = 12;
+}
+
+message AnalyticsWriteKey {
+  string id = 1;
+  AnalyticsScope scope = 2;
+  string name = 3;
+  string prefix = 4;
+  AnalyticsWriteKeyStatus status = 5;
+  int64 version = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp last_used_at = 9;
+  google.protobuf.Timestamp revoked_at = 10;
+}
+
+message AnalyticsWriteKeyCredential {
+  AnalyticsWriteKey write_key = 1;
+  string secret = 2;
+}
+
+message AnalyticsEvent {
+  string id = 1;
+  string event_id = 2;
+  AnalyticsScope scope = 3;
+  string event_name = 4;
+  int64 schema_version = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+  google.protobuf.Timestamp received_at = 7;
+  string actor_id = 8;
+  string anonymous_id = 9;
+  string session_id = 10;
+  string properties_json = 11;
+  string context_json = 12;
+  string sdk_name = 13;
+  string sdk_version = 14;
+  string write_key_prefix = 15;
+}
+
+message AnalyticsIngestionFailure {
+  string event_id = 1;
+  string error_code = 2;
+  string message = 3;
+}
+
+message AnalyticsAggregationBucket {
+  google.protobuf.Timestamp period_start = 1;
+  string event_name = 2;
+  int64 event_count = 3;
+  int64 unique_actors = 4;
+}

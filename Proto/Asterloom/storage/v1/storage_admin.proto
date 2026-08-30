@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package asterloom.storage.admin.v1;
+
+import "Asterloom/storage/v1/storage_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Storage.Admin.V1";
+
+service StorageAdminService {
+  rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/storage/buckets"
+    };
+  }
+
+  rpc GetBucket(GetBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"
+    };
+  }
+
+  rpc CreateBucket(CreateBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets"
+      body: "*"
+    };
+  }
+
+  rpc UpdateBucket(UpdateBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"
+      body: "*"
+    };
+  }
+
+  rpc ArchiveBucket(ArchiveBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
+    option (google.api.http) = {
+      delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}"
+    };
+  }
+
+  rpc RestoreBucket(RestoreBucketRequest) returns (asterloom.storage.v1.StorageBucket) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects"
+    };
+  }
+
+  rpc GetObject(GetObjectRequest) returns (asterloom.storage.v1.StorageObject) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"
+    };
+  }
+
+  rpc UpdateObjectMetadata(UpdateObjectMetadataRequest) returns (asterloom.storage.v1.StorageObject) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}/metadata"
+      body: "*"
+    };
+  }
+
+  rpc CreateUploadSession(CreateUploadSessionRequest) returns (asterloom.storage.v1.StorageUploadSession) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/uploads"
+      body: "*"
+    };
+  }
+
+  rpc CompleteUpload(CompleteUploadRequest) returns (asterloom.storage.v1.StorageObject) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/uploads/{upload_session_id}:complete"
+      body: "*"
+    };
+  }
+
+  rpc CreateDownloadUrl(CreateDownloadUrlRequest) returns (asterloom.storage.v1.StorageTransferTicket) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}:download"
+      body: "*"
+    };
+  }
+
+  rpc CopyObject(CopyObjectRequest) returns (asterloom.storage.v1.StorageObject) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}:copy"
+      body: "*"
+    };
+  }
+
+  rpc DeleteObject(DeleteObjectRequest) returns (asterloom.storage.v1.StorageObject) {
+    option (google.api.http) = {
+      delete: "/api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}"
+    };
+  }
+}
+
+message ListBucketsRequest {
+  string tenant_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string query = 4;
+  bool include_archived = 5;
+}
+
+message ListBucketsResponse {
+  repeated asterloom.storage.v1.StorageBucket buckets = 1;
+  string next_page_token = 2;
+}
+
+message GetBucketRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+}
+
+message CreateBucketRequest {
+  string tenant_id = 1;
+  string key = 2;
+  string display_name = 3;
+  string description = 4;
+  int64 quota_bytes = 5;
+  int64 max_object_size_bytes = 6;
+  repeated string allowed_content_types = 7;
+  asterloom.storage.v1.StorageAccessPolicy access_policy = 8;
+}
+
+message UpdateBucketRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string display_name = 3;
+  string description = 4;
+  int64 quota_bytes = 5;
+  int64 max_object_size_bytes = 6;
+  repeated string allowed_content_types = 7;
+  asterloom.storage.v1.StorageAccessPolicy access_policy = 8;
+  int64 expected_version = 9;
+}
+
+message ArchiveBucketRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  int64 expected_version = 3;
+}
+
+message RestoreBucketRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  int64 expected_version = 3;
+}
+
+message ListObjectsRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  string query = 5;
+  bool include_deleted = 6;
+}
+
+message ListObjectsResponse {
+  repeated asterloom.storage.v1.StorageObject objects = 1;
+  string next_page_token = 2;
+}
+
+message GetObjectRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string object_id = 3;
+}
+
+message UpdateObjectMetadataRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string object_id = 3;
+  string file_name = 4;
+  map<string, string> custom_metadata = 5;
+  int64 expected_version = 6;
+}
+
+message CreateUploadSessionRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string application_id = 3;
+  string environment_id = 4;
+  string object_key = 5;
+  string file_name = 6;
+  string content_type = 7;
+  int64 size_bytes = 8;
+  string sha256 = 9;
+  map<string, string> custom_metadata = 10;
+}
+
+message CompleteUploadRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string upload_session_id = 3;
+  int64 expected_object_version = 4;
+}
+
+message CreateDownloadUrlRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string object_id = 3;
+  int32 lifetime_seconds = 4;
+}
+
+message CopyObjectRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string object_id = 3;
+  string target_bucket_id = 4;
+  string object_key = 5;
+  string file_name = 6;
+  map<string, string> custom_metadata = 7;
+}
+
+message DeleteObjectRequest {
+  string tenant_id = 1;
+  string bucket_id = 2;
+  string object_id = 3;
+  int64 expected_version = 4;
+}

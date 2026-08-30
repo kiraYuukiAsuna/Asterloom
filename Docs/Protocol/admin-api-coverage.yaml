@@ -1,0 +1,1362 @@
+version: 1
+apis:
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: GetPlatformInfo
+    category: admin
+    http: GET /api/v1/platform/info
+    permission: platform.info.read
+    uiRoute: /
+    uiAction: view-platform-info
+    e2eTest: tests/e2e/platform-info.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ListTenants
+    category: admin
+    http: GET /api/v1/tenants
+    permission: platform.tenant.read
+    uiRoute: /tenants
+    uiAction: list-tenants
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: CreateTenant
+    category: admin
+    http: POST /api/v1/tenants
+    permission: platform.tenant.create
+    uiRoute: /tenants
+    uiAction: create-tenant
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: UpdateTenant
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}
+    permission: platform.tenant.update
+    uiRoute: /tenants
+    uiAction: update-tenant
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ArchiveTenant
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}
+    permission: platform.tenant.archive
+    uiRoute: /tenants
+    uiAction: archive-tenant
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: RestoreTenant
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}:restore
+    permission: platform.tenant.restore
+    uiRoute: /tenants
+    uiAction: restore-tenant
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ListApplications
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications
+    permission: platform.application.read
+    uiRoute: /tenants
+    uiAction: list-applications
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: CreateApplication
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications
+    permission: platform.application.create
+    uiRoute: /tenants
+    uiAction: create-application
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: UpdateApplication
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}
+    permission: platform.application.update
+    uiRoute: /tenants
+    uiAction: update-application
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ArchiveApplication
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}
+    permission: platform.application.archive
+    uiRoute: /tenants
+    uiAction: archive-application
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: RestoreApplication
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}:restore
+    permission: platform.application.restore
+    uiRoute: /tenants
+    uiAction: restore-application
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ListEnvironments
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments
+    permission: platform.environment.read
+    uiRoute: /tenants
+    uiAction: list-environments
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: CreateEnvironment
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments
+    permission: platform.environment.create
+    uiRoute: /tenants
+    uiAction: create-environment
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: UpdateEnvironment
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}
+    permission: platform.environment.update
+    uiRoute: /tenants
+    uiAction: update-environment
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ArchiveEnvironment
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}
+    permission: platform.environment.archive
+    uiRoute: /tenants
+    uiAction: archive-environment
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: RestoreEnvironment
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}:restore
+    permission: platform.environment.restore
+    uiRoute: /tenants
+    uiAction: restore-environment
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: ListTenantMemberships
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/memberships
+    permission: platform.tenant.membership.read
+    uiRoute: /tenants
+    uiAction: list-tenant-memberships
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: SetTenantMembership
+    category: admin
+    http: PUT /api/v1/tenants/{tenant_id}/memberships/{actor_id}
+    permission: platform.tenant.membership.set
+    uiRoute: /tenants
+    uiAction: set-tenant-membership
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.platform.admin.v1.PlatformAdminService
+    rpc: RemoveTenantMembership
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/memberships/{actor_id}
+    permission: platform.tenant.membership.remove
+    uiRoute: /tenants
+    uiAction: remove-tenant-membership
+    e2eTest: tests/e2e/platform-resources.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ListPermissions
+    category: admin
+    http: GET /api/v1/authorization/permissions
+    permission: authorization.permission.read
+    uiRoute: /authorization/roles
+    uiAction: list-permissions
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ListRoles
+    category: admin
+    http: GET /api/v1/authorization/roles
+    permission: authorization.role.read
+    uiRoute: /authorization/roles
+    uiAction: list-roles
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: CreateRole
+    category: admin
+    http: POST /api/v1/authorization/roles
+    permission: authorization.role.create
+    uiRoute: /authorization/roles
+    uiAction: create-role
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: UpdateRole
+    category: admin
+    http: PATCH /api/v1/authorization/roles/{role_id}
+    permission: authorization.role.update
+    uiRoute: /authorization/roles
+    uiAction: update-role
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ArchiveRole
+    category: admin
+    http: DELETE /api/v1/authorization/roles/{role_id}
+    permission: authorization.role.archive
+    uiRoute: /authorization/roles
+    uiAction: archive-role
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: RestoreRole
+    category: admin
+    http: POST /api/v1/authorization/roles/{role_id}:restore
+    permission: authorization.role.restore
+    uiRoute: /authorization/roles
+    uiAction: restore-role
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ListRoleBindings
+    category: admin
+    http: GET /api/v1/authorization/role-bindings
+    permission: authorization.binding.read
+    uiRoute: /authorization/roles
+    uiAction: list-role-bindings
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: SetRoleBinding
+    category: admin
+    http: PUT /api/v1/authorization/role-bindings/{binding_id}
+    permission: authorization.binding.set
+    uiRoute: /authorization/roles
+    uiAction: set-role-binding
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: RemoveRoleBinding
+    category: admin
+    http: DELETE /api/v1/authorization/role-bindings/{binding_id}
+    permission: authorization.binding.remove
+    uiRoute: /authorization/roles
+    uiAction: remove-role-binding
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ListPolicyRules
+    category: admin
+    http: GET /api/v1/authorization/policies
+    permission: authorization.policy.read
+    uiRoute: /authorization/roles
+    uiAction: list-policy-rules
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: CreatePolicyRule
+    category: admin
+    http: POST /api/v1/authorization/policies
+    permission: authorization.policy.create
+    uiRoute: /authorization/roles
+    uiAction: create-policy-rule
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: UpdatePolicyRule
+    category: admin
+    http: PATCH /api/v1/authorization/policies/{policy_rule_id}
+    permission: authorization.policy.update
+    uiRoute: /authorization/roles
+    uiAction: update-policy-rule
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ArchivePolicyRule
+    category: admin
+    http: DELETE /api/v1/authorization/policies/{policy_rule_id}
+    permission: authorization.policy.archive
+    uiRoute: /authorization/roles
+    uiAction: archive-policy-rule
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: RestorePolicyRule
+    category: admin
+    http: POST /api/v1/authorization/policies/{policy_rule_id}:restore
+    permission: authorization.policy.restore
+    uiRoute: /authorization/roles
+    uiAction: restore-policy-rule
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ListPolicyRevisions
+    category: admin
+    http: GET /api/v1/authorization/revisions
+    permission: authorization.revision.read
+    uiRoute: /authorization/roles
+    uiAction: list-policy-revisions
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: SimulateAuthorization
+    category: admin
+    http: POST /api/v1/authorization:simulate
+    permission: authorization.simulation.execute
+    uiRoute: /authorization/roles
+    uiAction: simulate-authorization
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.v1.AuthorizationService
+    rpc: CheckPermission
+    category: runtime
+    http: POST /api/v1/authorization:check
+    sdkTest: Backend/Tests/Asterloom.ContractTests/PlatformApiContractTests.cs
+    uiRoute: /authorization/roles
+    uiAction: check-permission
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.audit.admin.v1.AuditAdminService
+    rpc: ListAuditEvents
+    category: admin
+    http: GET /api/v1/audit/events
+    permission: audit.event.read
+    uiRoute: /audit
+    uiAction: list-audit-events
+    e2eTest: tests/e2e/audit.spec.ts
+  - service: asterloom.audit.admin.v1.AuditAdminService
+    rpc: GetAuditEvent
+    category: admin
+    http: GET /api/v1/audit/events/{audit_event_id}
+    permission: audit.event.read
+    uiRoute: /audit
+    uiAction: get-audit-event
+    e2eTest: tests/e2e/audit.spec.ts
+  - service: asterloom.audit.admin.v1.AuditAdminService
+    rpc: ExportAuditEvents
+    category: admin
+    http: POST /api/v1/audit/events:export
+    permission: audit.event.export
+    uiRoute: /audit
+    uiAction: export-audit-events
+    e2eTest: tests/e2e/audit.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ListUsers
+    category: admin
+    http: GET /api/v1/identity/users
+    permission: identity.user.read
+    uiRoute: /identity/users
+    uiAction: list-users
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: GetUser
+    category: admin
+    http: GET /api/v1/identity/users/{user_id}
+    permission: identity.user.read
+    uiRoute: /identity/users
+    uiAction: get-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: InviteUser
+    category: admin
+    http: POST /api/v1/identity/users:invite
+    permission: identity.user.invite
+    uiRoute: /identity/users
+    uiAction: invite-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ResendUserInvitation
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}:resend-invitation
+    permission: identity.user.invite
+    uiRoute: /identity/users
+    uiAction: resend-user-invitation
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: UpdateUser
+    category: admin
+    http: PATCH /api/v1/identity/users/{user_id}
+    permission: identity.user.update
+    uiRoute: /identity/users
+    uiAction: update-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: SetUserRoles
+    category: admin
+    http: PUT /api/v1/identity/users/{user_id}/roles
+    permission: identity.user.roles.set
+    uiRoute: /identity/users
+    uiAction: set-user-roles
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: SuspendUser
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}:suspend
+    permission: identity.user.suspend
+    uiRoute: /identity/users
+    uiAction: suspend-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ReactivateUser
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}:reactivate
+    permission: identity.user.reactivate
+    uiRoute: /identity/users
+    uiAction: reactivate-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ArchiveUser
+    category: admin
+    http: DELETE /api/v1/identity/users/{user_id}
+    permission: identity.user.archive
+    uiRoute: /identity/users
+    uiAction: archive-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: RestoreUser
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}:restore
+    permission: identity.user.restore
+    uiRoute: /identity/users
+    uiAction: restore-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ListUserSessions
+    category: admin
+    http: GET /api/v1/identity/users/{user_id}/sessions
+    permission: identity.session.read
+    uiRoute: /identity/users
+    uiAction: list-user-sessions
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: RevokeUserSession
+    category: admin
+    http: DELETE /api/v1/identity/users/{user_id}/sessions/{session_id}
+    permission: identity.session.revoke
+    uiRoute: /identity/users
+    uiAction: revoke-user-session
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: RevokeAllUserSessions
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}/sessions:revoke-all
+    permission: identity.session.revoke
+    uiRoute: /identity/users
+    uiAction: revoke-all-user-sessions
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ListClients
+    category: admin
+    http: GET /api/v1/identity/clients
+    permission: identity.client.read
+    uiRoute: /identity/users
+    uiAction: list-clients
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: GetClient
+    category: admin
+    http: GET /api/v1/identity/clients/{client_id}
+    permission: identity.client.read
+    uiRoute: /identity/users
+    uiAction: get-client
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: CreateClient
+    category: admin
+    http: POST /api/v1/identity/clients
+    permission: identity.client.create
+    uiRoute: /identity/users
+    uiAction: create-client
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: UpdateClient
+    category: admin
+    http: PATCH /api/v1/identity/clients/{client_id}
+    permission: identity.client.update
+    uiRoute: /identity/users
+    uiAction: update-client
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: RotateClientSecret
+    category: admin
+    http: POST /api/v1/identity/clients/{client_id}:rotate-secret
+    permission: identity.client.secret.rotate
+    uiRoute: /identity/users
+    uiAction: rotate-client-secret
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: DeleteClient
+    category: admin
+    http: DELETE /api/v1/identity/clients/{client_id}
+    permission: identity.client.delete
+    uiRoute: /identity/users
+    uiAction: delete-client
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ListScopes
+    category: admin
+    http: GET /api/v1/identity/scopes
+    permission: identity.scope.read
+    uiRoute: /identity/users
+    uiAction: list-scopes
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: GetScope
+    category: admin
+    http: GET /api/v1/identity/scopes/{scope_id}
+    permission: identity.scope.read
+    uiRoute: /identity/users
+    uiAction: get-scope
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: CreateScope
+    category: admin
+    http: POST /api/v1/identity/scopes
+    permission: identity.scope.create
+    uiRoute: /identity/users
+    uiAction: create-scope
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: UpdateScope
+    category: admin
+    http: PATCH /api/v1/identity/scopes/{scope_id}
+    permission: identity.scope.update
+    uiRoute: /identity/users
+    uiAction: update-scope
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: DeleteScope
+    category: admin
+    http: DELETE /api/v1/identity/scopes/{scope_id}
+    permission: identity.scope.delete
+    uiRoute: /identity/users
+    uiAction: delete-scope
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: ListTargetingAttributes
+    category: admin
+    http: GET /api/v1/targeting/attributes
+    permission: targeting.attribute.read
+    uiRoute: /targeting/segments
+    uiAction: list-targeting-attributes
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: ListSegments
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments
+    permission: targeting.segment.read
+    uiRoute: /targeting/segments
+    uiAction: list-segments
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: GetSegment
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}
+    permission: targeting.segment.read
+    uiRoute: /targeting/segments
+    uiAction: get-segment
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: CreateSegment
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments
+    permission: targeting.segment.create
+    uiRoute: /targeting/segments
+    uiAction: create-segment
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: UpdateSegment
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}
+    permission: targeting.segment.update
+    uiRoute: /targeting/segments
+    uiAction: update-segment
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: ArchiveSegment
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}
+    permission: targeting.segment.archive
+    uiRoute: /targeting/segments
+    uiAction: archive-segment
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: RestoreSegment
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}:restore
+    permission: targeting.segment.restore
+    uiRoute: /targeting/segments
+    uiAction: restore-segment
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.targeting.admin.v1.TargetingAdminService
+    rpc: SimulateTargeting
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting:simulate
+    permission: targeting.simulation.execute
+    uiRoute: /targeting/segments
+    uiAction: simulate-targeting
+    e2eTest: tests/e2e/targeting.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: ListFlags
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags
+    permission: feature.flag.read
+    uiRoute: /features
+    uiAction: list-flags
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: GetFlag
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}
+    permission: feature.flag.read
+    uiRoute: /features
+    uiAction: get-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: CreateFlag
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags
+    permission: feature.flag.create
+    uiRoute: /features
+    uiAction: create-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: UpdateFlagDraft
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/draft
+    permission: feature.flag.update
+    uiRoute: /features
+    uiAction: update-flag-draft
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: ValidateFlagDraft
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:validate
+    permission: feature.flag.validate
+    uiRoute: /features
+    uiAction: validate-flag-draft
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: PublishFlag
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:publish
+    permission: feature.flag.publish
+    uiRoute: /features
+    uiAction: publish-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: ListFlagRevisions
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/revisions
+    permission: feature.revision.read
+    uiRoute: /features
+    uiAction: list-flag-revisions
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: RollbackFlag
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:rollback
+    permission: feature.flag.rollback
+    uiRoute: /features
+    uiAction: rollback-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: ArchiveFlag
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}
+    permission: feature.flag.archive
+    uiRoute: /features
+    uiAction: archive-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: RestoreFlag
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:restore
+    permission: feature.flag.restore
+    uiRoute: /features
+    uiAction: restore-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.admin.v1.FeatureAdminService
+    rpc: SimulateFlag
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:simulate
+    permission: feature.simulation.execute
+    uiRoute: /features
+    uiAction: simulate-flag
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.feature.v1.FeatureService
+    rpc: EvaluateFlag
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_key}:evaluate
+    permission: feature.flag.evaluate
+    uiRoute: /features
+    uiAction: evaluate-flag
+    sdkTest: Backend/Tests/Asterloom.ContractTests/FeatureContractTests.cs
+    e2eTest: tests/e2e/features.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: ListConfigEntries
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries
+    permission: config.entry.read
+    uiRoute: /config
+    uiAction: list-config-entries
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: GetConfigEntry
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}
+    permission: config.entry.read
+    uiRoute: /config
+    uiAction: get-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: CreateConfigEntry
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries
+    permission: config.entry.create
+    uiRoute: /config
+    uiAction: create-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: UpdateConfigDraft
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/draft
+    permission: config.entry.update
+    uiRoute: /config
+    uiAction: update-config-draft
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: ValidateConfigDraft
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:validate
+    permission: config.entry.validate
+    uiRoute: /config
+    uiAction: validate-config-draft
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: DiffConfigDraft
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/diff
+    permission: config.diff.read
+    uiRoute: /config
+    uiAction: diff-config-draft
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: PublishConfigEntry
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:publish
+    permission: config.entry.publish
+    uiRoute: /config
+    uiAction: publish-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: ListConfigRevisions
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/revisions
+    permission: config.revision.read
+    uiRoute: /config
+    uiAction: list-config-revisions
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: RollbackConfigEntry
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:rollback
+    permission: config.entry.rollback
+    uiRoute: /config
+    uiAction: rollback-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: ArchiveConfigEntry
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}
+    permission: config.entry.archive
+    uiRoute: /config
+    uiAction: archive-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: RestoreConfigEntry
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:restore
+    permission: config.entry.restore
+    uiRoute: /config
+    uiAction: restore-config-entry
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: PreviewConfigValue
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:preview
+    permission: config.preview.execute
+    uiRoute: /config
+    uiAction: preview-config-value
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.admin.v1.ConfigAdminService
+    rpc: ListConfigSnapshots
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/snapshots
+    permission: config.snapshot.history.read
+    uiRoute: /config
+    uiAction: list-config-snapshots
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.v1.ConfigService
+    rpc: GetConfigSnapshot
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:snapshot
+    permission: config.snapshot.read
+    uiRoute: /config
+    uiAction: get-config-snapshot
+    sdkTest: Backend/Tests/Asterloom.ContractTests/ConfigContractTests.cs
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: ListBuckets
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/storage/buckets
+    permission: storage.bucket.read
+    uiRoute: /storage/buckets
+    uiAction: list-storage-buckets
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: GetBucket
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}
+    permission: storage.bucket.read
+    uiRoute: /storage/buckets
+    uiAction: get-storage-bucket
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: CreateBucket
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets
+    permission: storage.bucket.create
+    uiRoute: /storage/buckets
+    uiAction: create-storage-bucket
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: UpdateBucket
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}
+    permission: storage.bucket.update
+    uiRoute: /storage/buckets
+    uiAction: update-storage-bucket
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: ArchiveBucket
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}
+    permission: storage.bucket.archive
+    uiRoute: /storage/buckets
+    uiAction: archive-storage-bucket
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: RestoreBucket
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}:restore
+    permission: storage.bucket.restore
+    uiRoute: /storage/buckets
+    uiAction: restore-storage-bucket
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: ListObjects
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects
+    permission: storage.object.read
+    uiRoute: /storage/objects
+    uiAction: list-storage-objects
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: GetObject
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}
+    permission: storage.object.read
+    uiRoute: /storage/objects
+    uiAction: get-storage-object
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: UpdateObjectMetadata
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}/metadata
+    permission: storage.object.metadata.update
+    uiRoute: /storage/objects
+    uiAction: update-storage-object-metadata
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: CreateUploadSession
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/uploads
+    permission: storage.object.upload
+    uiRoute: /storage/objects
+    uiAction: create-storage-upload-session
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: CompleteUpload
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/uploads/{upload_session_id}:complete
+    permission: storage.object.upload
+    uiRoute: /storage/objects
+    uiAction: complete-storage-upload
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: CreateDownloadUrl
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}:download
+    permission: storage.object.download
+    uiRoute: /storage/objects
+    uiAction: create-storage-download-url
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: CopyObject
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}:copy
+    permission: storage.object.copy
+    uiRoute: /storage/objects
+    uiAction: copy-storage-object
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.storage.admin.v1.StorageAdminService
+    rpc: DeleteObject
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/storage/buckets/{bucket_id}/objects/{object_id}
+    permission: storage.object.delete
+    uiRoute: /storage/objects
+    uiAction: delete-storage-object
+    e2eTest: tests/e2e/storage.spec.ts
+  - service: asterloom.config.v1.ConfigService
+    rpc: GetServerConfigSnapshot
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:server-snapshot
+    permission: config.snapshot.server.read
+    uiRoute: /config
+    uiAction: get-server-config-snapshot
+    sdkTest: Backend/Tests/Asterloom.ContractTests/ConfigContractTests.cs
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.config.v1.ConfigService
+    rpc: CheckConfigUpdates
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config:check-updates
+    permission: config.update.check
+    uiRoute: /config
+    uiAction: check-config-updates
+    sdkTest: Backend/Tests/Asterloom.ContractTests/ConfigContractTests.cs
+    e2eTest: tests/e2e/config.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ListSigningKeys
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/release/signing-keys
+    permission: release.signing-key.read
+    uiRoute: /artifacts
+    uiAction: list-release-signing-keys
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: CreateSigningKey
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/release/signing-keys
+    permission: release.signing-key.create
+    uiRoute: /artifacts
+    uiAction: create-release-signing-key
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ArchiveSigningKey
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}
+    permission: release.signing-key.archive
+    uiRoute: /artifacts
+    uiAction: archive-release-signing-key
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: RestoreSigningKey
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}:restore
+    permission: release.signing-key.restore
+    uiRoute: /artifacts
+    uiAction: restore-release-signing-key
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ListChannels
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels
+    permission: release.channel.read
+    uiRoute: /channels
+    uiAction: list-release-channels
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: GetChannel
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}
+    permission: release.channel.read
+    uiRoute: /channels
+    uiAction: get-release-channel
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: CreateChannel
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels
+    permission: release.channel.create
+    uiRoute: /channels
+    uiAction: create-release-channel
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: UpdateChannel
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}
+    permission: release.channel.update
+    uiRoute: /channels
+    uiAction: update-release-channel
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ArchiveChannel
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}
+    permission: release.channel.archive
+    uiRoute: /channels
+    uiAction: archive-release-channel
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: RestoreChannel
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}:restore
+    permission: release.channel.restore
+    uiRoute: /channels
+    uiAction: restore-release-channel
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ListArtifacts
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts
+    permission: release.artifact.read
+    uiRoute: /artifacts
+    uiAction: list-release-artifacts
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: GetArtifact
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}
+    permission: release.artifact.read
+    uiRoute: /artifacts
+    uiAction: get-release-artifact
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: CreateArtifactUpload
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts:begin-upload
+    permission: release.artifact.upload
+    uiRoute: /artifacts
+    uiAction: create-release-artifact-upload
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: CompleteArtifactUpload
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}:complete
+    permission: release.artifact.upload
+    uiRoute: /artifacts
+    uiAction: complete-release-artifact-upload
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ArchiveArtifact
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}
+    permission: release.artifact.archive
+    uiRoute: /artifacts
+    uiAction: archive-release-artifact
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ListReleases
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases
+    permission: release.release.read
+    uiRoute: /releases
+    uiAction: list-desktop-releases
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: GetRelease
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}
+    permission: release.release.read
+    uiRoute: /releases
+    uiAction: get-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: CreateRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases
+    permission: release.release.create
+    uiRoute: /releases
+    uiAction: create-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: UpdateReleaseDraft
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}
+    permission: release.release.update
+    uiRoute: /releases
+    uiAction: update-desktop-release-draft
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: ValidateRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:validate
+    permission: release.release.validate
+    uiRoute: /releases
+    uiAction: validate-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: PublishRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:publish
+    permission: release.release.publish
+    uiRoute: /releases
+    uiAction: publish-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: PauseRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:pause
+    permission: release.release.pause
+    uiRoute: /releases
+    uiAction: pause-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: PromoteRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:promote
+    permission: release.release.promote
+    uiRoute: /releases
+    uiAction: promote-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: RollbackRelease
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:rollback
+    permission: release.release.rollback
+    uiRoute: /releases
+    uiAction: rollback-desktop-release
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: GetReleaseManifest
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}/manifest
+    permission: release.manifest.read
+    uiRoute: /releases
+    uiAction: get-release-manifest
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.admin.v1.ReleaseAdminService
+    rpc: SimulateUpdate
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release:simulate
+    permission: release.simulation.execute
+    uiRoute: /releases
+    uiAction: simulate-release-update
+    e2eTest: tests/e2e/releases.spec.ts
+  - service: asterloom.release.v1.ReleaseService
+    rpc: CheckForUpdate
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release:check
+    sdkTest: Backend/Tests/Asterloom.ContractTests/ReleaseContractTests.cs
+    notApplicableReason: Runtime desktop clients use Asterloom.Sdk.Release; the Web Console uses the Admin simulation RPC.
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: ListEventSchemas
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas
+    permission: analytics.schema.read
+    uiRoute: /analytics/schemas
+    uiAction: list-analytics-schemas
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: GetEventSchema
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    permission: analytics.schema.read
+    uiRoute: /analytics/schemas
+    uiAction: get-analytics-schema
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: CreateEventSchema
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas
+    permission: analytics.schema.create
+    uiRoute: /analytics/schemas
+    uiAction: create-analytics-schema
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: UpdateEventSchema
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    permission: analytics.schema.update
+    uiRoute: /analytics/schemas
+    uiAction: update-analytics-schema
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: ArchiveEventSchema
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    permission: analytics.schema.archive
+    uiRoute: /analytics/schemas
+    uiAction: archive-analytics-schema
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: RestoreEventSchema
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}:restore
+    permission: analytics.schema.restore
+    uiRoute: /analytics/schemas
+    uiAction: restore-analytics-schema
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: ListWriteKeys
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys
+    permission: analytics.write-key.read
+    uiRoute: /analytics/schemas
+    uiAction: list-analytics-write-keys
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: CreateWriteKey
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys
+    permission: analytics.write-key.create
+    uiRoute: /analytics/schemas
+    uiAction: create-analytics-write-key
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: RotateWriteKey
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:rotate
+    permission: analytics.write-key.rotate
+    uiRoute: /analytics/schemas
+    uiAction: rotate-analytics-write-key
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: RevokeWriteKey
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:revoke
+    permission: analytics.write-key.revoke
+    uiRoute: /analytics/schemas
+    uiAction: revoke-analytics-write-key
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: ListEvents
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events
+    permission: analytics.event.read
+    uiRoute: /analytics/explorer
+    uiAction: list-analytics-events
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: GetEvent
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events/{analytics_event_id}
+    permission: analytics.event.read
+    uiRoute: /analytics/explorer
+    uiAction: get-analytics-event
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: QueryAnalytics
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics:query
+    permission: analytics.query.execute
+    uiRoute: /analytics/explorer
+    uiAction: query-analytics-aggregation
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: UpdateRetention
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}/retention
+    permission: analytics.retention.update
+    uiRoute: /analytics/schemas
+    uiAction: update-analytics-retention
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.admin.v1.AnalyticsAdminService
+    rpc: ExportEvents
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events:export
+    permission: analytics.event.export
+    uiRoute: /analytics/explorer
+    uiAction: export-analytics-events
+    e2eTest: tests/e2e/analytics.spec.ts
+  - service: asterloom.analytics.v1.AnalyticsService
+    rpc: IngestEvents
+    category: runtime
+    http: POST /api/v1/analytics/events:batch
+    sdkTest: Backend/Tests/Asterloom.ContractTests/AnalyticsContractTests.cs
+    notApplicableReason: Product clients use Asterloom.Sdk.Analytics with an environment-scoped write key; the Web Console only manages and explores analytics data.
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: ListSources
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources
+    permission: telemetry.source.read
+    uiRoute: /telemetry/sources
+    uiAction: list-telemetry-sources
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: GetSource
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}
+    permission: telemetry.source.read
+    uiRoute: /telemetry/sources
+    uiAction: get-telemetry-source
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: CreateSource
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources
+    permission: telemetry.source.create
+    uiRoute: /telemetry/sources
+    uiAction: create-telemetry-source
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: UpdateSource
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}
+    permission: telemetry.source.update
+    uiRoute: /telemetry/sources
+    uiAction: update-telemetry-source
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: ArchiveSource
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}
+    permission: telemetry.source.archive
+    uiRoute: /telemetry/sources
+    uiAction: archive-telemetry-source
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: RestoreSource
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}:restore
+    permission: telemetry.source.restore
+    uiRoute: /telemetry/sources
+    uiAction: restore-telemetry-source
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: GetTelemetrySettings
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings
+    permission: telemetry.settings.read
+    uiRoute: /telemetry/sources
+    uiAction: get-telemetry-settings
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: UpdateTelemetrySettings
+    category: admin
+    http: PUT /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings
+    permission: telemetry.settings.update
+    uiRoute: /telemetry/sources
+    uiAction: update-telemetry-settings
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: GetCollectorHealth
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/collector/health
+    permission: telemetry.health.read
+    uiRoute: /telemetry/health
+    uiAction: get-telemetry-collector-health
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: ListRecentErrors
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/errors
+    permission: telemetry.error.read
+    uiRoute: /telemetry/health
+    uiAction: list-telemetry-errors
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: GetDiagnosticLink
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry:diagnostic-link
+    permission: telemetry.diagnostic.read
+    uiRoute: /telemetry/health
+    uiAction: get-telemetry-diagnostic-link
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.operations.admin.v1.OperationsAdminService
+    rpc: ListApis
+    category: admin
+    http: GET /api/v1/operations/apis
+    permission: operations.api.read
+    uiRoute: /operations/apis
+    uiAction: list-operation-apis
+    e2eTest: tests/e2e/operations.spec.ts
+  - service: asterloom.operations.admin.v1.OperationsAdminService
+    rpc: GetOperationsHealth
+    category: admin
+    http: GET /api/v1/operations/health
+    permission: operations.health.read
+    uiRoute: /operations/health
+    uiAction: get-operations-health
+    e2eTest: tests/e2e/operations.spec.ts
+  - service: asterloom.operations.admin.v1.OperationsAdminService
+    rpc: GetOpenApiDocument
+    category: admin
+    http: GET /api/v1/operations/openapi
+    permission: operations.openapi.read
+    uiRoute: /operations/apis
+    uiAction: get-operations-openapi
+    e2eTest: tests/e2e/operations.spec.ts

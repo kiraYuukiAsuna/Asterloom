@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package asterloom.feature.admin.v1;
+
+import "Asterloom/feature/v1/feature_types.proto";
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Feature.Admin.V1";
+
+// Manages feature flag drafts and immutable published revisions.
+service FeatureAdminService {
+  rpc ListFlags(ListFlagsRequest) returns (ListFlagsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags"
+    };
+  }
+
+  rpc GetFlag(GetFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"
+    };
+  }
+
+  rpc CreateFlag(CreateFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags"
+      body: "*"
+    };
+  }
+
+  rpc UpdateFlagDraft(UpdateFlagDraftRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/draft"
+      body: "*"
+    };
+  }
+
+  rpc ValidateFlagDraft(ValidateFlagDraftRequest) returns (asterloom.feature.v1.FeatureValidationResult) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:validate"
+      body: "*"
+    };
+  }
+
+  rpc PublishFlag(PublishFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:publish"
+      body: "*"
+    };
+  }
+
+  rpc ListFlagRevisions(ListFlagRevisionsRequest) returns (ListFlagRevisionsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}/revisions"
+    };
+  }
+
+  rpc RollbackFlag(RollbackFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:rollback"
+      body: "*"
+    };
+  }
+
+  rpc ArchiveFlag(ArchiveFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}"
+    };
+  }
+
+  rpc RestoreFlag(RestoreFlagRequest) returns (asterloom.feature.v1.FeatureFlag) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc SimulateFlag(SimulateFlagRequest) returns (asterloom.feature.v1.FeatureEvaluationDetails) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_id}:simulate"
+      body: "*"
+    };
+  }
+}
+
+message ListFlagsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+
+message ListFlagsResponse {
+  repeated asterloom.feature.v1.FeatureFlag flags = 1;
+  string next_page_token = 2;
+}
+
+message GetFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+}
+
+message CreateFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.feature.v1.FeatureValueKind value_kind = 7;
+  asterloom.feature.v1.FeatureDefinition definition = 8;
+}
+
+message UpdateFlagDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.feature.v1.FeatureDefinition definition = 7;
+  int64 expected_version = 8;
+}
+
+message ValidateFlagDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+}
+
+message PublishFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  int64 expected_version = 5;
+}
+
+message ListFlagRevisionsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListFlagRevisionsResponse {
+  repeated asterloom.feature.v1.FeatureRevision revisions = 1;
+  string next_page_token = 2;
+}
+
+message RollbackFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  int64 revision = 5;
+  int64 expected_version = 6;
+}
+
+message ArchiveFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  int64 expected_version = 5;
+}
+
+message RestoreFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  int64 expected_version = 5;
+}
+
+message SimulateFlagRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_id = 4;
+  bool use_draft = 5;
+  asterloom.targeting.v1.EvaluationContext context = 6;
+}

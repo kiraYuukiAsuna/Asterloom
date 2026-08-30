@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package asterloom.telemetry.admin.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Telemetry.Admin.V1";
+
+import "asterloom/telemetry/v1/telemetry_types.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+service TelemetryAdminService {
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources" };
+  }
+  rpc GetSource(GetSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}" };
+  }
+  rpc CreateSource(CreateSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources"
+      body: "*"
+    };
+  }
+  rpc UpdateSource(UpdateSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}"
+      body: "*"
+    };
+  }
+  rpc ArchiveSource(ArchiveSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
+    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}" };
+  }
+  rpc RestoreSource(RestoreSourceRequest) returns (asterloom.telemetry.v1.TelemetrySource) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/sources/{source_id}:restore"
+      body: "*"
+    };
+  }
+  rpc GetTelemetrySettings(GetTelemetrySettingsRequest) returns (asterloom.telemetry.v1.TelemetrySettings) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings" };
+  }
+  rpc UpdateTelemetrySettings(UpdateTelemetrySettingsRequest) returns (asterloom.telemetry.v1.TelemetrySettings) {
+    option (google.api.http) = {
+      put: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/settings"
+      body: "*"
+    };
+  }
+  rpc GetCollectorHealth(GetCollectorHealthRequest) returns (asterloom.telemetry.v1.CollectorHealth) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/collector/health" };
+  }
+  rpc ListRecentErrors(ListRecentErrorsRequest) returns (ListRecentErrorsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/errors" };
+  }
+  rpc GetDiagnosticLink(GetDiagnosticLinkRequest) returns (asterloom.telemetry.v1.DiagnosticLink) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry:diagnostic-link"
+      body: "*"
+    };
+  }
+}
+
+message ListSourcesRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+message ListSourcesResponse {
+  repeated asterloom.telemetry.v1.TelemetrySource sources = 1;
+  string next_page_token = 2;
+}
+message GetSourceRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string source_id = 4;
+}
+message CreateSourceRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+  string service_name = 7;
+  string resource_attributes_json = 8;
+}
+message UpdateSourceRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string source_id = 4;
+  string display_name = 5;
+  string description = 6;
+  string service_name = 7;
+  string resource_attributes_json = 8;
+  int64 expected_version = 9;
+}
+message ArchiveSourceRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string source_id = 4;
+  int64 expected_version = 5;
+}
+message RestoreSourceRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string source_id = 4;
+  int64 expected_version = 5;
+}
+message GetTelemetrySettingsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+}
+message UpdateTelemetrySettingsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  double sampling_ratio = 4;
+  bool traces_enabled = 5;
+  bool metrics_enabled = 6;
+  bool logs_enabled = 7;
+  string exporter_endpoint = 8;
+  asterloom.telemetry.v1.OtlpProtocol exporter_protocol = 9;
+  string diagnostics_base_url = 10;
+  int64 expected_version = 11;
+}
+message GetCollectorHealthRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+}
+message ListRecentErrorsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string service_name = 6;
+  string trace_id = 7;
+}
+message ListRecentErrorsResponse {
+  repeated asterloom.telemetry.v1.TelemetryError errors = 1;
+  string next_page_token = 2;
+}
+message GetDiagnosticLinkRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string trace_id = 4;
+  google.protobuf.Timestamp from_at = 5;
+  google.protobuf.Timestamp to_at = 6;
+}

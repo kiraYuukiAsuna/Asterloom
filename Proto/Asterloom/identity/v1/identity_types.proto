@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package asterloom.identity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Identity.V1";
+
+message IdentityUser {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  IdentityUserStatus status = 4;
+  int64 version = 5;
+  repeated string roles = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp archived_at = 9;
+}
+
+message UserInvitation {
+  IdentityUser user = 1;
+  string invitation_url = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message OidcClient {
+  string id = 1;
+  string client_id = 2;
+  string display_name = 3;
+  OidcClientType client_type = 4;
+  repeated OidcGrantType grant_types = 5;
+  repeated string redirect_uris = 6;
+  repeated string post_logout_redirect_uris = 7;
+  repeated string scopes = 8;
+  string version = 9;
+  OidcApplicationType application_type = 10;
+}
+
+message OidcClientCredential {
+  OidcClient client = 1;
+  string client_secret = 2;
+}
+
+message OidcScope {
+  string id = 1;
+  string name = 2;
+  string display_name = 3;
+  string description = 4;
+  repeated string resources = 5;
+  string version = 6;
+}
+
+message IdentitySession {
+  string id = 1;
+  string user_id = 2;
+  string client_id = 3;
+  string client_display_name = 4;
+  repeated string scopes = 5;
+  IdentitySessionStatus status = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+enum IdentityUserStatus {
+  IDENTITY_USER_STATUS_UNSPECIFIED = 0;
+  IDENTITY_USER_STATUS_PENDING = 1;
+  IDENTITY_USER_STATUS_ACTIVE = 2;
+  IDENTITY_USER_STATUS_SUSPENDED = 3;
+  IDENTITY_USER_STATUS_ARCHIVED = 4;
+}
+
+enum OidcClientType {
+  OIDC_CLIENT_TYPE_UNSPECIFIED = 0;
+  OIDC_CLIENT_TYPE_PUBLIC = 1;
+  OIDC_CLIENT_TYPE_CONFIDENTIAL = 2;
+}
+
+enum OidcApplicationType {
+  OIDC_APPLICATION_TYPE_UNSPECIFIED = 0;
+  OIDC_APPLICATION_TYPE_WEB = 1;
+  OIDC_APPLICATION_TYPE_NATIVE = 2;
+}
+
+enum OidcGrantType {
+  OIDC_GRANT_TYPE_UNSPECIFIED = 0;
+  OIDC_GRANT_TYPE_AUTHORIZATION_CODE = 1;
+  OIDC_GRANT_TYPE_CLIENT_CREDENTIALS = 2;
+  OIDC_GRANT_TYPE_REFRESH_TOKEN = 3;
+}
+
+enum IdentitySessionStatus {
+  IDENTITY_SESSION_STATUS_UNSPECIFIED = 0;
+  IDENTITY_SESSION_STATUS_VALID = 1;
+  IDENTITY_SESSION_STATUS_REVOKED = 2;
+}

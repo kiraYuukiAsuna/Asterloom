@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package asterloom.analytics.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Analytics.V1";
+
+import "asterloom/analytics/v1/analytics_types.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+service AnalyticsService {
+  rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/analytics/events:batch"
+      body: "*"
+    };
+  }
+}
+
+message IngestEventsRequest {
+  repeated AnalyticsEventInput events = 1;
+}
+
+message AnalyticsEventInput {
+  string event_id = 1;
+  string event_name = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  string actor_id = 4;
+  string anonymous_id = 5;
+  string session_id = 6;
+  string properties_json = 7;
+  string context_json = 8;
+  string sdk_name = 9;
+  string sdk_version = 10;
+}
+
+message IngestEventsResponse {
+  int32 accepted = 1;
+  int32 rejected = 2;
+  int32 deduplicated = 3;
+  repeated AnalyticsIngestionFailure failures = 4;
+}

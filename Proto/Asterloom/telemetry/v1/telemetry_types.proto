@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package asterloom.telemetry.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Telemetry.V1";
+
+import "google/protobuf/timestamp.proto";
+
+message TelemetryScope {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+}
+
+enum TelemetryResourceStatus {
+  TELEMETRY_RESOURCE_STATUS_UNSPECIFIED = 0;
+  TELEMETRY_RESOURCE_STATUS_ACTIVE = 1;
+  TELEMETRY_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum OtlpProtocol {
+  OTLP_PROTOCOL_UNSPECIFIED = 0;
+  OTLP_PROTOCOL_GRPC = 1;
+  OTLP_PROTOCOL_HTTP_PROTOBUF = 2;
+}
+
+enum CollectorHealthStatus {
+  COLLECTOR_HEALTH_STATUS_UNSPECIFIED = 0;
+  COLLECTOR_HEALTH_STATUS_HEALTHY = 1;
+  COLLECTOR_HEALTH_STATUS_DEGRADED = 2;
+  COLLECTOR_HEALTH_STATUS_UNAVAILABLE = 3;
+}
+
+message TelemetrySource {
+  string id = 1;
+  TelemetryScope scope = 2;
+  string key = 3;
+  string display_name = 4;
+  string description = 5;
+  string service_name = 6;
+  string resource_attributes_json = 7;
+  TelemetryResourceStatus status = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp archived_at = 12;
+}
+
+message TelemetrySettings {
+  TelemetryScope scope = 1;
+  double sampling_ratio = 2;
+  bool traces_enabled = 3;
+  bool metrics_enabled = 4;
+  bool logs_enabled = 5;
+  string exporter_endpoint = 6;
+  OtlpProtocol exporter_protocol = 7;
+  string diagnostics_base_url = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CollectorHealth {
+  CollectorHealthStatus status = 1;
+  string endpoint = 2;
+  google.protobuf.Timestamp checked_at = 3;
+  int64 latency_milliseconds = 4;
+  string message = 5;
+}
+
+message TelemetryError {
+  string id = 1;
+  TelemetryScope scope = 2;
+  string service_name = 3;
+  string exception_type = 4;
+  string message = 5;
+  string grpc_method = 6;
+  string trace_id = 7;
+  string span_id = 8;
+  string request_id = 9;
+  google.protobuf.Timestamp occurred_at = 10;
+}
+
+message DiagnosticLink {
+  string url = 1;
+  string trace_id = 2;
+  google.protobuf.Timestamp from_at = 3;
+  google.protobuf.Timestamp to_at = 4;
+}

@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package asterloom.config.admin.v1;
+
+import "Asterloom/config/v1/config_types.proto";
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Config.Admin.V1";
+
+service ConfigAdminService {
+  rpc ListConfigEntries(ListConfigEntriesRequest) returns (ListConfigEntriesResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries"};
+  }
+  rpc GetConfigEntry(GetConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}"};
+  }
+  rpc CreateConfigEntry(CreateConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries" body: "*"};
+  }
+  rpc UpdateConfigDraft(UpdateConfigDraftRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/draft" body: "*"};
+  }
+  rpc ValidateConfigDraft(ValidateConfigDraftRequest) returns (asterloom.config.v1.ConfigValidationResult) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:validate" body: "*"};
+  }
+  rpc DiffConfigDraft(DiffConfigDraftRequest) returns (asterloom.config.v1.ConfigDiff) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/diff"};
+  }
+  rpc PublishConfigEntry(PublishConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:publish" body: "*"};
+  }
+  rpc ListConfigRevisions(ListConfigRevisionsRequest) returns (ListConfigRevisionsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}/revisions"};
+  }
+  rpc RollbackConfigEntry(RollbackConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:rollback" body: "*"};
+  }
+  rpc ArchiveConfigEntry(ArchiveConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}"};
+  }
+  rpc RestoreConfigEntry(RestoreConfigEntryRequest) returns (asterloom.config.v1.ConfigEntry) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:restore" body: "*"};
+  }
+  rpc PreviewConfigValue(PreviewConfigValueRequest) returns (asterloom.config.v1.ConfigEffectiveValue) {
+    option (google.api.http) = {post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/entries/{entry_id}:preview" body: "*"};
+  }
+  rpc ListConfigSnapshots(ListConfigSnapshotsRequest) returns (ListConfigSnapshotsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/config/snapshots"};
+  }
+}
+
+message ListConfigEntriesRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+message ListConfigEntriesResponse {
+  repeated asterloom.config.v1.ConfigEntry entries = 1;
+  string next_page_token = 2;
+}
+message GetConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+}
+message CreateConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.config.v1.ConfigValueKind value_kind = 7;
+  asterloom.config.v1.ConfigVisibility visibility = 8;
+  asterloom.config.v1.ConfigDefinition definition = 9;
+}
+message UpdateConfigDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.config.v1.ConfigVisibility visibility = 7;
+  asterloom.config.v1.ConfigDefinition definition = 8;
+  int64 expected_version = 9;
+}
+message ValidateConfigDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+}
+message DiffConfigDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+}
+message PublishConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  int64 expected_version = 5;
+}
+message ListConfigRevisionsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+message ListConfigRevisionsResponse {
+  repeated asterloom.config.v1.ConfigRevision revisions = 1;
+  string next_page_token = 2;
+}
+message RollbackConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  int64 revision = 5;
+  int64 expected_version = 6;
+}
+message ArchiveConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  int64 expected_version = 5;
+}
+message RestoreConfigEntryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  int64 expected_version = 5;
+}
+message PreviewConfigValueRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string entry_id = 4;
+  bool use_draft = 5;
+  asterloom.targeting.v1.EvaluationContext context = 6;
+}
+message ListConfigSnapshotsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+message ListConfigSnapshotsResponse {
+  repeated asterloom.config.v1.ConfigSnapshotMetadata snapshots = 1;
+  string next_page_token = 2;
+}

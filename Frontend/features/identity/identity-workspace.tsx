@@ -1,0 +1,1467 @@
+"use client";
+
+import {
+  Archive,
+  Ban,
+  Check,
+  CircleAlert,
+  Clipboard,
+  Eye,
+  KeyRound,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { type FormEvent, type ReactNode, useState } from "react";
+import { toast } from "sonner";
+import useSWR from "swr";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  archiveUser,
+  createClient,
+  createScope,
+  deleteClient,
+  deleteScope,
+  getClient,
+  getScope,
+  getUser,
+  identityErrorMessage,
+  inviteUser,
+  listClients,
+  listScopes,
+  listUsers,
+  listUserSessions,
+  passportRoles,
+  reactivateUser,
+  resendInvitation,
+  restoreUser,
+  revokeAllUserSessions,
+  revokeUserSession,
+  rotateClientSecret,
+  setUserRoles,
+  suspendUser,
+  updateClient,
+  updateScope,
+  updateUser,
+  type IdentitySessionRecord,
+  type IdentityUserRecord,
+  type OidcApplicationType,
+  type OidcClientRecord,
+  type OidcClientType,
+  type OidcGrantType,
+  type OidcScopeRecord,
+  type PassportRole,
+} from "@/lib/api/identity-management";
+import { useHydrated } from "@/lib/ui/use-hydrated";
+import { cn } from "@/lib/utils/cn";
+
+const inputClassName =
+  "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-400/45 focus:ring-2 focus:ring-cyan-400/15 disabled:opacity-50";
+const textAreaClassName = cn(inputClassName, "h-24 resize-y py-2 font-mono text-xs");
+const labelClassName =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-500";
+
+const pendingStatus = "IDENTITY_USER_STATUS_PENDING";
+const activeStatus = "IDENTITY_USER_STATUS_ACTIVE";
+const suspendedStatus = "IDENTITY_USER_STATUS_SUSPENDED";
+const archivedStatus = "IDENTITY_USER_STATUS_ARCHIVED";
+const validSession = "IDENTITY_SESSION_STATUS_VALID";
+const publicClient = "OIDC_CLIENT_TYPE_PUBLIC";
+const confidentialClient = "OIDC_CLIENT_TYPE_CONFIDENTIAL";
+const webApplication = "OIDC_APPLICATION_TYPE_WEB";
+const nativeApplication = "OIDC_APPLICATION_TYPE_NATIVE";
+const authorizationCode = "OIDC_GRANT_TYPE_AUTHORIZATION_CODE";
+const clientCredentials = "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS";
+const refreshToken = "OIDC_GRANT_TYPE_REFRESH_TOKEN";
+
+type WorkspaceTab = "users" | "clients" | "scopes";
+type Reveal = {
+  expiresAt?: string;
+  label: string;
+  value: string;
+};
+type MutationRunner = <T>(
+  key: string,
+  work: () => Promise<T>,
+  refresh: Array<() => Promise<unknown>>,
+  successMessage: string,
+) => Promise<T | undefined>;
+
+export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
+  const hydrated = useHydrated();
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("users");
+  const [pending, setPending] = useState("");
+  const [reveal, setReveal] = useState<Reveal>();
+  const [userQuery, setUserQuery] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [clientQuery, setClientQuery] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [scopeQuery, setScopeQuery] = useState("");
+  const [selectedScopeId, setSelectedScopeId] = useState("");
+
+  const users = useSWR(
+    ["identity-users", userQuery, includeArchived],
+    () => listUsers({ includeArchived, pageSize: 100, query: userQuery }),
+    { keepPreviousData: true },
+  );
+  const user = useSWR(
+    selectedUserId ? ["identity-user", selectedUserId] : null,
+    () => getUser(selectedUserId),
+  );
+  const sessions = useSWR(
+    selectedUserId ? ["identity-user-sessions", selectedUserId] : null,
+    () => listUserSessions(selectedUserId, { includeRevoked: true, pageSize: 100 }),
+  );
+  const clients = useSWR(
+    ["identity-clients", clientQuery],
+    () => listClients({ pageSize: 100, query: clientQuery }),
+    { keepPreviousData: true },
+  );
+  const client = useSWR(
+    selectedClientId ? ["identity-client", selectedClientId] : null,
+    () => getClient(selectedClientId),
+  );
+  const scopes = useSWR(
+    ["identity-scopes", scopeQuery],
+    () => listScopes({ pageSize: 100, query: scopeQuery }),
+    { keepPreviousData: true },
+  );
+  const scope = useSWR(
+    selectedScopeId ? ["identity-scope", selectedScopeId] : null,
+    () => getScope(selectedScopeId),
+  );
+
+  async function runMutation<T>(
+    key: string,
+    work: () => Promise<T>,
+    refresh: Array<() => Promise<unknown>>,
+    successMessage: string,
+  ): Promise<T | undefined> {
+    setPending(key);
+    try {
+      const result = await work();
+      await Promise.all(refresh.map((reload) => reload()));
+      toast.success(successMessage);
+      return result;
+    } catch (error) {
+      await Promise.allSettled(refresh.map((reload) => reload()));
+      toast.error(identityErrorMessage(error));
+      return undefined;
+    } finally {
+      setPending("");
+    }
+  }
+
+  const tabs: Array<{ id: WorkspaceTab; label: string; icon: typeof Users }> = [
+    { id: "users", label: "Users & sessions", icon: Users },
+    { id: "clients", label: "OIDC clients", icon: KeyRound },
+    { id: "scopes", label: "API scopes", icon: ShieldCheck },
+  ];
+
+  return (
+    <div
+      aria-busy={!hydrated}
+      className={cn("space-y-6", !hydrated && "pointer-events-none")}
+      data-hydrated={hydrated ? "true" : "false"}
+      data-identity-workspace
+    >
+      <section className="overflow-hidden rounded-3xl border border-cyan-300/10 bg-[linear-gradient(135deg,rgba(6,182,212,0.14),rgba(15,23,42,0.86)_55%,rgba(2,6,23,0.97))] p-6 sm:p-8">
+        <Badge className="border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
+          <ShieldCheck aria-hidden="true" className="size-3" />
+          Passport administration
+        </Badge>
+        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+          Identity control center
+        </h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+          Invite and govern users, terminate durable OIDC sessions, and manage every
+          client, grant, redirect URI, scope, and secret exposed by Passport.
+        </p>
+      </section>
+
+      {reveal && (
+        <CredentialReveal onClose={() => setReveal(undefined)} reveal={reveal} />
+      )}
+
+      <nav
+        aria-label="Identity workspace"
+        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-3"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              className={cn(
+                "flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition",
+                activeTab === tab.id
+                  ? "bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/20"
+                  : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200",
+              )}
+              data-testid={`identity-tab-${tab.id}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="size-4" /> {tab.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {activeTab === "users" && (
+        <UsersPanel
+          csrfToken={csrfToken}
+          error={users.error}
+          includeArchived={includeArchived}
+          onIncludeArchivedChange={setIncludeArchived}
+          onQueryChange={setUserQuery}
+          onReveal={setReveal}
+          onSelectUser={setSelectedUserId}
+          pending={pending}
+          query={userQuery}
+          reloadSessions={sessions.mutate}
+          reloadUser={user.mutate}
+          reloadUsers={users.mutate}
+          runMutation={runMutation}
+          selectedUser={user.data}
+          sessions={sessions.data?.sessions ?? []}
+          users={users.data?.users ?? []}
+        />
+      )}
+      {activeTab === "clients" && (
+        <ClientsPanel
+          clients={clients.data?.clients ?? []}
+          csrfToken={csrfToken}
+          error={clients.error}
+          onQueryChange={setClientQuery}
+          onReveal={setReveal}
+          onSelectClient={setSelectedClientId}
+          pending={pending}
+          query={clientQuery}
+          reloadClient={client.mutate}
+          reloadClients={clients.mutate}
+          runMutation={runMutation}
+          scopeNames={(scopes.data?.scopes ?? []).map((item) => item.name)}
+          selectedClient={client.data}
+        />
+      )}
+      {activeTab === "scopes" && (
+        <ScopesPanel
+          csrfToken={csrfToken}
+          error={scopes.error}
+          onQueryChange={setScopeQuery}
+          onSelectScope={setSelectedScopeId}
+          pending={pending}
+          query={scopeQuery}
+          reloadScope={scope.mutate}
+          reloadScopes={scopes.mutate}
+          runMutation={runMutation}
+          scopes={scopes.data?.scopes ?? []}
+          selectedScope={scope.data}
+        />
+      )}
+    </div>
+  );
+}
+
+function UsersPanel({
+  csrfToken,
+  error,
+  includeArchived,
+  onIncludeArchivedChange,
+  onQueryChange,
+  onReveal,
+  onSelectUser,
+  pending,
+  query,
+  reloadSessions,
+  reloadUser,
+  reloadUsers,
+  runMutation,
+  selectedUser,
+  sessions,
+  users,
+}: {
+  csrfToken: string;
+  error: unknown;
+  includeArchived: boolean;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onQueryChange: (value: string) => void;
+  onReveal: (reveal: Reveal) => void;
+  onSelectUser: (id: string) => void;
+  pending: string;
+  query: string;
+  reloadSessions: () => Promise<unknown>;
+  reloadUser: () => Promise<unknown>;
+  reloadUsers: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  selectedUser?: IdentityUserRecord;
+  sessions: IdentitySessionRecord[];
+  users: IdentityUserRecord[];
+}) {
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+      <div className="space-y-5">
+        <InviteUserCard
+          csrfToken={csrfToken}
+          onReveal={onReveal}
+          pending={pending}
+          reloadUsers={reloadUsers}
+          runMutation={runMutation}
+        />
+        <Card data-ui-action="list-users">
+          <CardHeader>
+            <CardTitle>Passport users</CardTitle>
+            <CardDescription>Search active, invited, suspended, and archived accounts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <SearchInput onChange={onQueryChange} placeholder="Name or email" value={query} />
+              <label className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+                <input
+                  checked={includeArchived}
+                  className="accent-cyan-400"
+                  onChange={(event) => onIncludeArchivedChange(event.target.checked)}
+                  type="checkbox"
+                />
+                Include archived
+              </label>
+            </div>
+            <ResourceError error={error} />
+            <div className="mt-4 max-h-[48rem] space-y-2 overflow-y-auto pr-1">
+              {users.map((user) => (
+                <button
+                  className="flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition hover:border-cyan-300/20 hover:bg-cyan-300/[0.04]"
+                  data-ui-action="get-user"
+                  key={user.id}
+                  onClick={() => onSelectUser(user.id)}
+                  type="button"
+                >
+                  <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-cyan-400/10 text-sm font-semibold text-cyan-300">
+                    {user.displayName.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-200">{user.displayName}</p>
+                    <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  </div>
+                  <UserStatusBadge status={user.status} />
+                </button>
+              ))}
+              {users.length === 0 && <EmptyState text="No users match this view." />}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {selectedUser ? (
+        <UserInspector
+          csrfToken={csrfToken}
+          key={`${selectedUser.id}-${selectedUser.version}`}
+          onReveal={onReveal}
+          pending={pending}
+          reloadSessions={reloadSessions}
+          reloadUser={reloadUser}
+          reloadUsers={reloadUsers}
+          runMutation={runMutation}
+          sessions={sessions}
+          user={selectedUser}
+        />
+      ) : (
+        <SelectionPlaceholder text="Select a user to load its authoritative detail and sessions." />
+      )}
+    </div>
+  );
+}
+
+function InviteUserCard({
+  csrfToken,
+  onReveal,
+  pending,
+  reloadUsers,
+  runMutation,
+}: {
+  csrfToken: string;
+  onReveal: (reveal: Reveal) => void;
+  pending: string;
+  reloadUsers: () => Promise<unknown>;
+  runMutation: MutationRunner;
+}) {
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [roles, setRoles] = useState<PassportRole[]>(["Viewer"]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const invitation = await runMutation(
+      "invite-user",
+      () => inviteUser(csrfToken, { displayName, email, roles }),
+      [reloadUsers],
+      "User invited.",
+    );
+    if (!invitation) return;
+    onReveal({
+      expiresAt: invitation.expiresAt,
+      label: `Invitation for ${invitation.user.email}`,
+      value: invitation.invitationUrl,
+    });
+    setEmail("");
+    setDisplayName("");
+    setRoles(["Viewer"]);
+  }
+
+  return (
+    <Card data-ui-action="invite-user">
+      <CardHeader>
+        <CardTitle>Invite user</CardTitle>
+        <CardDescription>The activation URL is displayed once for secure delivery.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-3" onSubmit={submit}>
+          <Field label="Email">
+            <input
+              className={inputClassName}
+              name="inviteEmail"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
+          </Field>
+          <Field label="Display name">
+            <input
+              className={inputClassName}
+              name="inviteDisplayName"
+              onChange={(event) => setDisplayName(event.target.value)}
+              required
+              value={displayName}
+            />
+          </Field>
+          <RoleChecks onChange={setRoles} roles={roles} />
+          <div className="flex justify-end">
+            <Button disabled={pending !== ""} type="submit">
+              {pending === "invite-user" ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <UserPlus className="size-4" />
+              )}
+              Send invitation
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UserInspector({
+  csrfToken,
+  onReveal,
+  pending,
+  reloadSessions,
+  reloadUser,
+  reloadUsers,
+  runMutation,
+  sessions,
+  user,
+}: {
+  csrfToken: string;
+  onReveal: (reveal: Reveal) => void;
+  pending: string;
+  reloadSessions: () => Promise<unknown>;
+  reloadUser: () => Promise<unknown>;
+  reloadUsers: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  sessions: IdentitySessionRecord[];
+  user: IdentityUserRecord;
+}) {
+  const [displayName, setDisplayName] = useState(user.displayName);
+  const [roles, setRoles] = useState<PassportRole[]>(user.roles);
+  const refresh = [reloadUsers, reloadUser];
+
+  async function lifecycle(
+    key: string,
+    action: () => Promise<IdentityUserRecord>,
+    message: string,
+  ) {
+    await runMutation(key, action, [...refresh, reloadSessions], message);
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card data-ui-action="update-user">
+        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>{user.displayName}</CardTitle>
+            <CardDescription>{user.email}</CardDescription>
+          </div>
+          <UserStatusBadge status={user.status} />
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Display name">
+              <input
+                className={inputClassName}
+                name="userDisplayName"
+                onChange={(event) => setDisplayName(event.target.value)}
+                value={displayName}
+              />
+            </Field>
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                disabled={pending !== "" || user.status === archivedStatus}
+                onClick={() =>
+                  void lifecycle(
+                    `update-user-${user.id}`,
+                    () => updateUser(csrfToken, user, displayName),
+                    "User profile updated.",
+                  )
+                }
+                type="button"
+                variant="outline"
+              >
+                <Pencil className="size-4" /> Save profile
+              </Button>
+            </div>
+          </div>
+
+          <div data-ui-action="set-user-roles">
+            <RoleChecks onChange={setRoles} roles={roles} />
+            <Button
+              className="mt-3"
+              disabled={pending !== "" || user.status === archivedStatus}
+              onClick={() =>
+                void lifecycle(
+                  `roles-user-${user.id}`,
+                  () => setUserRoles(csrfToken, user, roles),
+                  "Passport roles updated.",
+                )
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ShieldCheck className="size-3.5" /> Save roles
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
+            {user.status === pendingStatus && (
+              <Button
+                data-ui-action="resend-user-invitation"
+                disabled={pending !== ""}
+                onClick={async () => {
+                  const invitation = await runMutation(
+                    `resend-user-${user.id}`,
+                    () => resendInvitation(csrfToken, user),
+                    refresh,
+                    "Invitation regenerated.",
+                  );
+                  if (invitation) {
+                    onReveal({
+                      expiresAt: invitation.expiresAt,
+                      label: `Invitation for ${invitation.user.email}`,
+                      value: invitation.invitationUrl,
+                    });
+                  }
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RefreshCcw className="size-3.5" /> Resend invite
+              </Button>
+            )}
+            {user.status === activeStatus && (
+              <Button
+                data-ui-action="suspend-user"
+                disabled={pending !== ""}
+                onClick={() => {
+                  if (!window.confirm(`Suspend ${user.email} and revoke all sessions?`)) return;
+                  void lifecycle(
+                    `suspend-user-${user.id}`,
+                    () => suspendUser(csrfToken, user),
+                    "User suspended and sessions revoked.",
+                  );
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Ban className="size-3.5" /> Suspend
+              </Button>
+            )}
+            {user.status === suspendedStatus && (
+              <Button
+                data-ui-action="reactivate-user"
+                disabled={pending !== ""}
+                onClick={() =>
+                  void lifecycle(
+                    `reactivate-user-${user.id}`,
+                    () => reactivateUser(csrfToken, user),
+                    "User reactivated.",
+                  )
+                }
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Check className="size-3.5" /> Reactivate
+              </Button>
+            )}
+            {user.status !== archivedStatus ? (
+              <Button
+                data-ui-action="archive-user"
+                disabled={pending !== ""}
+                onClick={() => {
+                  if (!window.confirm(`Archive ${user.email}?`)) return;
+                  void lifecycle(
+                    `archive-user-${user.id}`,
+                    () => archiveUser(csrfToken, user),
+                    "User archived.",
+                  );
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <Archive className="size-3.5" /> Archive
+              </Button>
+            ) : (
+              <Button
+                data-ui-action="restore-user"
+                disabled={pending !== ""}
+                onClick={() =>
+                  void lifecycle(
+                    `restore-user-${user.id}`,
+                    () => restoreUser(csrfToken, user),
+                    "User restored.",
+                  )
+                }
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RotateCcw className="size-3.5" /> Restore
+              </Button>
+            )}
+          </div>
+          <p className="break-all font-mono text-[10px] text-slate-600">
+            {user.id} · version {user.version} · updated {formatTime(user.updatedAt)}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-user-sessions">
+        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>OIDC sessions</CardTitle>
+            <CardDescription>Durable grants and consent records for this subject.</CardDescription>
+          </div>
+          <Button
+            data-ui-action="revoke-all-user-sessions"
+            disabled={pending !== "" || sessions.every((session) => session.status !== validSession)}
+            onClick={() => {
+              if (!window.confirm("Revoke every active session for this user?")) return;
+              void runMutation(
+                `revoke-all-sessions-${user.id}`,
+                () => revokeAllUserSessions(csrfToken, user.id),
+                [reloadSessions],
+                "All active sessions revoked.",
+              );
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Ban className="size-3.5" /> Revoke all
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {sessions.map((session) => (
+            <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3" key={session.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-200">
+                    {session.clientDisplayName || session.clientId || "Unknown client"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatTime(session.createdAt)} · {session.scopes.join(", ") || "no scopes"}
+                  </p>
+                </div>
+                {session.status === validSession ? (
+                  <Button
+                    data-ui-action="revoke-user-session"
+                    disabled={pending !== ""}
+                    onClick={() =>
+                      void runMutation(
+                        `revoke-session-${session.id}`,
+                        () => revokeUserSession(csrfToken, user.id, session.id),
+                        [reloadSessions],
+                        "Session revoked.",
+                      )
+                    }
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Revoke
+                  </Button>
+                ) : (
+                  <Badge variant="planned">Revoked</Badge>
+                )}
+              </div>
+              <p className="mt-2 break-all font-mono text-[10px] text-slate-700">{session.id}</p>
+            </div>
+          ))}
+          {sessions.length === 0 && <EmptyState text="No OIDC sessions for this user." />}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ClientsPanel({
+  clients,
+  csrfToken,
+  error,
+  onQueryChange,
+  onReveal,
+  onSelectClient,
+  pending,
+  query,
+  reloadClient,
+  reloadClients,
+  runMutation,
+  scopeNames,
+  selectedClient,
+}: {
+  clients: OidcClientRecord[];
+  csrfToken: string;
+  error: unknown;
+  onQueryChange: (value: string) => void;
+  onReveal: (reveal: Reveal) => void;
+  onSelectClient: (id: string) => void;
+  pending: string;
+  query: string;
+  reloadClient: () => Promise<unknown>;
+  reloadClients: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  scopeNames: string[];
+  selectedClient?: OidcClientRecord;
+}) {
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="space-y-5">
+        <CreateClientCard
+          csrfToken={csrfToken}
+          onReveal={onReveal}
+          pending={pending}
+          reloadClients={reloadClients}
+          runMutation={runMutation}
+          scopeNames={scopeNames}
+        />
+        <Card data-ui-action="list-clients">
+          <CardHeader>
+            <CardTitle>Registered clients</CardTitle>
+            <CardDescription>Public desktop/browser apps and confidential services.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SearchInput onChange={onQueryChange} placeholder="Client ID or name" value={query} />
+            <ResourceError error={error} />
+            <div className="mt-4 space-y-2">
+              {clients.map((client) => (
+                <button
+                  className="flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition hover:border-cyan-300/20 hover:bg-cyan-300/[0.04]"
+                  data-ui-action="get-client"
+                  key={client.id}
+                  onClick={() => onSelectClient(client.clientId)}
+                  type="button"
+                >
+                  <KeyRound className="size-4 shrink-0 text-cyan-300" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-200">{client.displayName}</p>
+                    <p className="truncate font-mono text-[10px] text-slate-600">{client.clientId}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <Badge variant="planned">
+                      {client.applicationType === nativeApplication ? "Native" : "Web"}
+                    </Badge>
+                    <Badge variant={client.clientType === confidentialClient ? "info" : "planned"}>
+                      {client.clientType === confidentialClient ? "Confidential" : "Public"}
+                    </Badge>
+                  </div>
+                </button>
+              ))}
+              {clients.length === 0 && <EmptyState text="No clients match this view." />}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {selectedClient ? (
+        <ClientInspector
+          client={selectedClient}
+          csrfToken={csrfToken}
+          key={`${selectedClient.id}-${selectedClient.version}`}
+          onReveal={onReveal}
+          pending={pending}
+          reloadClient={reloadClient}
+          reloadClients={reloadClients}
+          runMutation={runMutation}
+          scopeNames={scopeNames}
+        />
+      ) : (
+        <SelectionPlaceholder text="Select a client to call the detail API and edit its grants." />
+      )}
+    </div>
+  );
+}
+
+function CreateClientCard({
+  csrfToken,
+  onReveal,
+  pending,
+  reloadClients,
+  runMutation,
+  scopeNames,
+}: {
+  csrfToken: string;
+  onReveal: (reveal: Reveal) => void;
+  pending: string;
+  reloadClients: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  scopeNames: string[];
+}) {
+  const [clientId, setClientId] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [applicationType, setApplicationType] =
+    useState<OidcApplicationType>(webApplication);
+  const [clientType, setClientType] = useState<OidcClientType>(publicClient);
+  const [grants, setGrants] = useState<OidcGrantType[]>([authorizationCode, refreshToken]);
+  const [redirects, setRedirects] = useState("http://localhost/callback");
+  const [postLogoutRedirects, setPostLogoutRedirects] = useState("");
+  const [scopes, setScopes] = useState("openid, profile, email, roles, asterloom.api");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const credential = await runMutation(
+      "create-client",
+      () =>
+        createClient(csrfToken, {
+          applicationType,
+          clientId,
+          clientType,
+          displayName,
+          grantTypes: grants,
+          postLogoutRedirectUris: parseLines(postLogoutRedirects),
+          redirectUris: parseLines(redirects),
+          scopes: parseCsv(scopes),
+        }),
+      [reloadClients],
+      "OIDC client created.",
+    );
+    if (credential?.clientSecret) {
+      onReveal({ label: `Secret for ${credential.client.clientId}`, value: credential.clientSecret });
+    }
+  }
+
+  return (
+    <Card data-ui-action="create-client">
+      <CardHeader>
+        <CardTitle>Register OIDC client</CardTitle>
+        <CardDescription>Confidential secrets are generated server-side and shown once.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-3" onSubmit={submit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Client ID">
+              <input className={inputClassName} onChange={(e) => setClientId(e.target.value)} required value={clientId} />
+            </Field>
+            <Field label="Display name">
+              <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} required value={displayName} />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Application type">
+              <select
+                className={inputClassName}
+                onChange={(event) => {
+                  const next = event.target.value as OidcApplicationType;
+                  setApplicationType(next);
+                  if (next === nativeApplication) {
+                    setClientType(publicClient);
+                    setGrants([authorizationCode, refreshToken]);
+                    setRedirects("http://localhost/");
+                  }
+                }}
+                value={applicationType}
+              >
+                <option value={webApplication}>Web / service</option>
+                <option value={nativeApplication}>Native desktop / mobile</option>
+              </select>
+            </Field>
+            <Field label="Client type">
+              <select
+                className={inputClassName}
+                disabled={applicationType === nativeApplication}
+                onChange={(event) => setClientType(event.target.value as OidcClientType)}
+                value={clientType}
+              >
+                <option value={publicClient}>Public (PKCE)</option>
+                <option value={confidentialClient}>Confidential</option>
+              </select>
+            </Field>
+          </div>
+          <GrantChecks grants={grants} onChange={setGrants} />
+          <ClientTextFields
+            onPostLogoutRedirectsChange={setPostLogoutRedirects}
+            onRedirectsChange={setRedirects}
+            onScopesChange={setScopes}
+            postLogoutRedirects={postLogoutRedirects}
+            redirects={redirects}
+            scopeNames={scopeNames}
+            scopes={scopes}
+          />
+          <div className="flex justify-end">
+            <Button disabled={pending !== ""} type="submit">
+              <Plus className="size-4" /> Register client
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ClientInspector({
+  client,
+  csrfToken,
+  onReveal,
+  pending,
+  reloadClient,
+  reloadClients,
+  runMutation,
+  scopeNames,
+}: {
+  client: OidcClientRecord;
+  csrfToken: string;
+  onReveal: (reveal: Reveal) => void;
+  pending: string;
+  reloadClient: () => Promise<unknown>;
+  reloadClients: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  scopeNames: string[];
+}) {
+  const [displayName, setDisplayName] = useState(client.displayName);
+  const [grants, setGrants] = useState<OidcGrantType[]>(client.grantTypes);
+  const [redirects, setRedirects] = useState(client.redirectUris.join("\n"));
+  const [postLogoutRedirects, setPostLogoutRedirects] = useState(
+    client.postLogoutRedirectUris.join("\n"),
+  );
+  const [scopes, setScopes] = useState(client.scopes.join(", "));
+  const refresh = [reloadClients, reloadClient];
+
+  return (
+    <Card data-ui-action="update-client">
+      <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>{client.displayName}</CardTitle>
+          <CardDescription>{client.clientId}</CardDescription>
+        </div>
+        <div className="flex gap-1.5">
+          <Badge variant="planned">
+            {client.applicationType === nativeApplication ? "Native" : "Web"}
+          </Badge>
+          <Badge variant={client.clientType === confidentialClient ? "info" : "planned"}>
+            {client.clientType === confidentialClient ? "Confidential" : "Public"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Field label="Display name">
+          <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
+        </Field>
+        <GrantChecks grants={grants} onChange={setGrants} />
+        <ClientTextFields
+          onPostLogoutRedirectsChange={setPostLogoutRedirects}
+          onRedirectsChange={setRedirects}
+          onScopesChange={setScopes}
+          postLogoutRedirects={postLogoutRedirects}
+          redirects={redirects}
+          scopeNames={scopeNames}
+          scopes={scopes}
+        />
+        <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
+          {client.clientType === confidentialClient && (
+            <Button
+              data-ui-action="rotate-client-secret"
+              disabled={pending !== ""}
+              onClick={async () => {
+                if (!window.confirm(`Rotate the secret for ${client.clientId}?`)) return;
+                const credential = await runMutation(
+                  `rotate-client-${client.id}`,
+                  () => rotateClientSecret(csrfToken, client),
+                  refresh,
+                  "Client secret rotated.",
+                );
+                if (credential?.clientSecret) {
+                  onReveal({ label: `New secret for ${client.clientId}`, value: credential.clientSecret });
+                }
+              }}
+              type="button"
+              variant="outline"
+            >
+              <RefreshCcw className="size-4" /> Rotate secret
+            </Button>
+          )}
+          <Button
+            disabled={pending !== ""}
+            onClick={() =>
+              void runMutation(
+                `update-client-${client.id}`,
+                () =>
+                  updateClient(csrfToken, client, {
+                    displayName,
+                    grantTypes: grants,
+                    postLogoutRedirectUris: parseLines(postLogoutRedirects),
+                    redirectUris: parseLines(redirects),
+                    scopes: parseCsv(scopes),
+                  }),
+                refresh,
+                "OIDC client updated.",
+              )
+            }
+            type="button"
+          >
+            <Pencil className="size-4" /> Save client
+          </Button>
+          <Button
+            data-ui-action="delete-client"
+            disabled={pending !== ""}
+            onClick={() => {
+              if (!window.confirm(`Permanently delete ${client.clientId}?`)) return;
+              void runMutation(
+                `delete-client-${client.id}`,
+                () => deleteClient(csrfToken, client),
+                [reloadClients],
+                "OIDC client deleted.",
+              );
+            }}
+            type="button"
+            variant="ghost"
+          >
+            <Trash2 className="size-4" /> Delete
+          </Button>
+        </div>
+        <p className="break-all font-mono text-[10px] text-slate-600">
+          {client.id} · version {client.version}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScopesPanel({
+  csrfToken,
+  error,
+  onQueryChange,
+  onSelectScope,
+  pending,
+  query,
+  reloadScope,
+  reloadScopes,
+  runMutation,
+  scopes,
+  selectedScope,
+}: {
+  csrfToken: string;
+  error: unknown;
+  onQueryChange: (value: string) => void;
+  onSelectScope: (id: string) => void;
+  pending: string;
+  query: string;
+  reloadScope: () => Promise<unknown>;
+  reloadScopes: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  scopes: OidcScopeRecord[];
+  selectedScope?: OidcScopeRecord;
+}) {
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="space-y-5">
+        <CreateScopeCard csrfToken={csrfToken} pending={pending} reloadScopes={reloadScopes} runMutation={runMutation} />
+        <Card data-ui-action="list-scopes">
+          <CardHeader>
+            <CardTitle>OIDC scopes</CardTitle>
+            <CardDescription>Named access boundaries and their target API resources.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SearchInput onChange={onQueryChange} placeholder="Scope name" value={query} />
+            <ResourceError error={error} />
+            <div className="mt-4 space-y-2">
+              {scopes.map((scope) => (
+                <button
+                  className="flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition hover:border-cyan-300/20 hover:bg-cyan-300/[0.04]"
+                  data-ui-action="get-scope"
+                  key={scope.id}
+                  onClick={() => onSelectScope(scope.id)}
+                  type="button"
+                >
+                  <ShieldCheck className="size-4 shrink-0 text-cyan-300" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-mono text-xs text-slate-200">{scope.name}</p>
+                    <p className="truncate text-xs text-slate-500">{scope.displayName}</p>
+                  </div>
+                  <Badge variant="planned">{scope.resources.length} resources</Badge>
+                </button>
+              ))}
+              {scopes.length === 0 && <EmptyState text="No scopes match this view." />}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {selectedScope ? (
+        <ScopeInspector
+          csrfToken={csrfToken}
+          key={`${selectedScope.id}-${selectedScope.version}`}
+          pending={pending}
+          reloadScope={reloadScope}
+          reloadScopes={reloadScopes}
+          runMutation={runMutation}
+          scope={selectedScope}
+        />
+      ) : (
+        <SelectionPlaceholder text="Select a scope to load its authoritative detail." />
+      )}
+    </div>
+  );
+}
+
+function CreateScopeCard({
+  csrfToken,
+  pending,
+  reloadScopes,
+  runMutation,
+}: {
+  csrfToken: string;
+  pending: string;
+  reloadScopes: () => Promise<unknown>;
+  runMutation: MutationRunner;
+}) {
+  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [description, setDescription] = useState("");
+  const [resources, setResources] = useState("");
+  return (
+    <Card data-ui-action="create-scope">
+      <CardHeader>
+        <CardTitle>Create API scope</CardTitle>
+        <CardDescription>Scopes can be assigned to clients after creation.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void runMutation(
+              "create-scope",
+              () => createScope(csrfToken, { description, displayName, name, resources: parseCsv(resources) }),
+              [reloadScopes],
+              "OIDC scope created.",
+            );
+          }}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Scope name">
+              <input className={inputClassName} onChange={(e) => setName(e.target.value)} required value={name} />
+            </Field>
+            <Field label="Display name">
+              <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} required value={displayName} />
+            </Field>
+          </div>
+          <Field label="Description">
+            <input className={inputClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
+          </Field>
+          <Field label="Resources (comma separated)">
+            <input className={inputClassName} onChange={(e) => setResources(e.target.value)} placeholder="my-api, my-worker" value={resources} />
+          </Field>
+          <div className="flex justify-end">
+            <Button disabled={pending !== ""} type="submit"><Plus className="size-4" /> Create scope</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScopeInspector({
+  csrfToken,
+  pending,
+  reloadScope,
+  reloadScopes,
+  runMutation,
+  scope,
+}: {
+  csrfToken: string;
+  pending: string;
+  reloadScope: () => Promise<unknown>;
+  reloadScopes: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  scope: OidcScopeRecord;
+}) {
+  const [displayName, setDisplayName] = useState(scope.displayName);
+  const [description, setDescription] = useState(scope.description);
+  const [resources, setResources] = useState(scope.resources.join(", "));
+  const refresh = [reloadScopes, reloadScope];
+  return (
+    <Card data-ui-action="update-scope">
+      <CardHeader>
+        <CardTitle>{scope.displayName}</CardTitle>
+        <CardDescription>{scope.name}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Field label="Display name">
+          <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
+        </Field>
+        <Field label="Description">
+          <textarea className={textAreaClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
+        </Field>
+        <Field label="Resources (comma separated)">
+          <input className={inputClassName} onChange={(e) => setResources(e.target.value)} value={resources} />
+        </Field>
+        <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
+          <Button
+            disabled={pending !== ""}
+            onClick={() =>
+              void runMutation(
+                `update-scope-${scope.id}`,
+                () => updateScope(csrfToken, scope, { description, displayName, resources: parseCsv(resources) }),
+                refresh,
+                "OIDC scope updated.",
+              )
+            }
+            type="button"
+          ><Pencil className="size-4" /> Save scope</Button>
+          <Button
+            data-ui-action="delete-scope"
+            disabled={pending !== ""}
+            onClick={() => {
+              if (!window.confirm(`Delete scope ${scope.name}?`)) return;
+              void runMutation(
+                `delete-scope-${scope.id}`,
+                () => deleteScope(csrfToken, scope),
+                [reloadScopes],
+                "OIDC scope deleted.",
+              );
+            }}
+            type="button"
+            variant="ghost"
+          ><Trash2 className="size-4" /> Delete</Button>
+        </div>
+        <p className="break-all font-mono text-[10px] text-slate-600">{scope.id} · version {scope.version}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RoleChecks({
+  onChange,
+  roles,
+}: {
+  onChange: (roles: PassportRole[]) => void;
+  roles: PassportRole[];
+}) {
+  return (
+    <fieldset className="rounded-xl border border-white/8 p-3">
+      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+        Trusted Passport roles
+      </legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {passportRoles.map((role) => (
+          <label className="flex items-center gap-2 text-xs text-slate-400" key={role}>
+            <input
+              checked={roles.includes(role)}
+              className="accent-cyan-400"
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...roles, role]
+                    : roles.filter((candidate) => candidate !== role),
+                )
+              }
+              type="checkbox"
+            />
+            {role}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function GrantChecks({
+  grants,
+  onChange,
+}: {
+  grants: OidcGrantType[];
+  onChange: (grants: OidcGrantType[]) => void;
+}) {
+  const options: Array<[OidcGrantType, string]> = [
+    [authorizationCode, "Authorization code + PKCE"],
+    [clientCredentials, "Client credentials"],
+    [refreshToken, "Refresh token"],
+  ];
+  return (
+    <fieldset className="rounded-xl border border-white/8 p-3">
+      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Grant types</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map(([value, label]) => (
+          <label className="flex items-center gap-2 text-xs text-slate-400" key={value}>
+            <input
+              checked={grants.includes(value)}
+              className="accent-cyan-400"
+              onChange={(event) =>
+                onChange(event.target.checked ? [...grants, value] : grants.filter((item) => item !== value))
+              }
+              type="checkbox"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function ClientTextFields({
+  onPostLogoutRedirectsChange,
+  onRedirectsChange,
+  onScopesChange,
+  postLogoutRedirects,
+  redirects,
+  scopeNames,
+  scopes,
+}: {
+  onPostLogoutRedirectsChange: (value: string) => void;
+  onRedirectsChange: (value: string) => void;
+  onScopesChange: (value: string) => void;
+  postLogoutRedirects: string;
+  redirects: string;
+  scopeNames: string[];
+  scopes: string;
+}) {
+  return (
+    <>
+      <Field label="Redirect URIs (one per line)">
+        <textarea className={textAreaClassName} onChange={(e) => onRedirectsChange(e.target.value)} value={redirects} />
+      </Field>
+      <Field label="Post-logout redirect URIs (one per line)">
+        <textarea className={textAreaClassName} onChange={(e) => onPostLogoutRedirectsChange(e.target.value)} value={postLogoutRedirects} />
+      </Field>
+      <Field label="Scopes (comma separated)">
+        <input className={inputClassName} list="identity-scope-names" onChange={(e) => onScopesChange(e.target.value)} value={scopes} />
+        <datalist id="identity-scope-names">{scopeNames.map((name) => <option key={name} value={name} />)}</datalist>
+      </Field>
+    </>
+  );
+}
+
+function CredentialReveal({ onClose, reveal }: { onClose: () => void; reveal: Reveal }) {
+  async function copy() {
+    await navigator.clipboard.writeText(reveal.value);
+    toast.success("Copied to clipboard.");
+  }
+  return (
+    <Card className="border-amber-300/20 bg-amber-300/[0.055]" data-testid="identity-credential-reveal">
+      <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>{reveal.label}</CardTitle>
+          <CardDescription>
+            This value is returned once. Copy it now and store it in an approved secret channel.
+            {reveal.expiresAt ? ` Expires ${formatTime(reveal.expiresAt)}.` : ""}
+          </CardDescription>
+        </div>
+        <Button onClick={onClose} size="sm" type="button" variant="ghost">Dismiss</Button>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start gap-2 rounded-xl border border-amber-300/15 bg-slate-950/70 p-3">
+          <code className="min-w-0 flex-1 break-all text-xs leading-5 text-amber-200">{reveal.value}</code>
+          <Button aria-label="Copy credential" onClick={() => void copy()} size="icon" type="button" variant="outline">
+            <Clipboard className="size-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UserStatusBadge({ status }: { status: IdentityUserRecord["status"] }) {
+  const label = status.split("_").at(-1)?.toLowerCase() ?? "unknown";
+  return <Badge variant={status === activeStatus ? "success" : status === pendingStatus ? "info" : "planned"}>{label}</Badge>;
+}
+
+function SearchInput({ onChange, placeholder, value }: { onChange: (value: string) => void; placeholder: string; value: string }) {
+  return (
+    <label className="relative block min-w-0 flex-1">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" />
+      <input className={cn(inputClassName, "pl-9")} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type="search" value={value} />
+    </label>
+  );
+}
+
+function Field({ children, label }: { children: ReactNode; label: string }) {
+  return <label><span className={labelClassName}>{label}</span>{children}</label>;
+}
+
+function ResourceError({ error }: { error: unknown }) {
+  if (!error) return null;
+  return (
+    <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.06] p-3 text-xs text-rose-300">
+      <CircleAlert className="mt-0.5 size-4 shrink-0" /> {identityErrorMessage(error)}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="rounded-xl border border-dashed border-white/10 p-7 text-center text-sm text-slate-600">{text}</div>;
+}
+
+function SelectionPlaceholder({ text }: { text: string }) {
+  return (
+    <Card className="grid min-h-72 place-items-center border-dashed">
+      <div className="max-w-sm p-8 text-center">
+        <Eye className="mx-auto size-6 text-slate-700" />
+        <p className="mt-3 text-sm leading-6 text-slate-500">{text}</p>
+      </div>
+    </Card>
+  );
+}
+
+function parseCsv(value: string): string[] {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function parseLines(value: string): string[] {
+  return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}

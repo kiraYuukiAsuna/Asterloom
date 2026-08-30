@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package asterloom.feature.v1;
+
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Feature.V1";
+
+enum FeatureValueKind {
+  FEATURE_VALUE_KIND_UNSPECIFIED = 0;
+  FEATURE_VALUE_KIND_BOOLEAN = 1;
+  FEATURE_VALUE_KIND_STRING = 2;
+  FEATURE_VALUE_KIND_INTEGER = 3;
+  FEATURE_VALUE_KIND_DOUBLE = 4;
+  FEATURE_VALUE_KIND_OBJECT = 5;
+}
+
+enum FeatureResourceStatus {
+  FEATURE_RESOURCE_STATUS_UNSPECIFIED = 0;
+  FEATURE_RESOURCE_STATUS_ACTIVE = 1;
+  FEATURE_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum FeatureValidationSeverity {
+  FEATURE_VALIDATION_SEVERITY_UNSPECIFIED = 0;
+  FEATURE_VALIDATION_SEVERITY_ERROR = 1;
+  FEATURE_VALIDATION_SEVERITY_WARNING = 2;
+}
+
+enum FeatureEvaluationReason {
+  FEATURE_EVALUATION_REASON_UNSPECIFIED = 0;
+  FEATURE_EVALUATION_REASON_DISABLED = 1;
+  FEATURE_EVALUATION_REASON_TARGETING_MATCH = 2;
+  FEATURE_EVALUATION_REASON_SPLIT = 3;
+  FEATURE_EVALUATION_REASON_DEFAULT = 4;
+  FEATURE_EVALUATION_REASON_PREREQUISITE_FAILED = 5;
+}
+
+message FeatureValue {
+  oneof value {
+    bool boolean_value = 1;
+    string string_value = 2;
+    sint64 integer_value = 3;
+    double double_value = 4;
+    string object_json = 5;
+  }
+}
+
+message FeatureVariant {
+  string key = 1;
+  string display_name = 2;
+  FeatureValue value = 3;
+}
+
+message FeaturePrerequisite {
+  string flag_key = 1;
+  string expected_variant_key = 2;
+}
+
+message FeatureTargetingRule {
+  string id = 1;
+  string segment_id = 2;
+  string variant_key = 3;
+}
+
+message FeatureAllocation {
+  string variant_key = 1;
+  uint32 start = 2;
+  uint32 end = 3;
+}
+
+message FeatureDefinition {
+  bool enabled = 1;
+  string default_variant_key = 2;
+  repeated FeatureVariant variants = 3;
+  repeated FeaturePrerequisite prerequisites = 4;
+  repeated FeatureTargetingRule targeting_rules = 5;
+  repeated FeatureAllocation allocations = 6;
+  string bucketing_salt = 7;
+}
+
+message FeatureFlag {
+  string id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  string environment_id = 4;
+  string key = 5;
+  string display_name = 6;
+  string description = 7;
+  FeatureValueKind value_kind = 8;
+  FeatureResourceStatus status = 9;
+  FeatureDefinition draft_definition = 10;
+  int64 draft_revision = 11;
+  FeatureDefinition published_definition = 12;
+  int64 published_revision = 13;
+  int64 version = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp archived_at = 17;
+  google.protobuf.Timestamp published_at = 18;
+}
+
+message FeatureRevision {
+  string id = 1;
+  string flag_id = 2;
+  int64 revision = 3;
+  FeatureDefinition definition = 4;
+  int64 source_revision = 5;
+  google.protobuf.Timestamp published_at = 6;
+}
+
+message FeatureValidationIssue {
+  FeatureValidationSeverity severity = 1;
+  string code = 2;
+  string path = 3;
+  string message = 4;
+}
+
+message FeatureValidationResult {
+  bool valid = 1;
+  repeated FeatureValidationIssue issues = 2;
+  string definition_hash = 3;
+}
+
+message FeatureEvaluationDetails {
+  string flag_id = 1;
+  string flag_key = 2;
+  int64 revision = 3;
+  FeatureValue value = 4;
+  string variant_key = 5;
+  FeatureEvaluationReason reason = 6;
+  repeated string trace = 7;
+  uint32 bucket = 8;
+  bool bucket_evaluated = 9;
+  string bucketing_version = 10;
+  bool used_draft = 11;
+}
+
+message FeatureEvaluationInput {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string flag_key = 4;
+  FeatureValueKind expected_kind = 5;
+  asterloom.targeting.v1.EvaluationContext context = 6;
+}

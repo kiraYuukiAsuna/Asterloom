@@ -1,0 +1,370 @@
+syntax = "proto3";
+
+package asterloom.platform.admin.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Platform.Admin.V1";
+
+// Manages the global platform hierarchy used by every Asterloom capability.
+service PlatformAdminService {
+  // Returns the running server version and the capabilities known to this build.
+  rpc GetPlatformInfo(google.protobuf.Empty) returns (GetPlatformInfoResponse) {
+    option (google.api.http) = {get: "/api/v1/platform/info"};
+  }
+
+  // Lists tenants visible to the current actor.
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants"};
+  }
+
+  // Creates a tenant. The slug is immutable after creation.
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants"
+      body: "*"
+    };
+  }
+
+  // Updates a tenant using optimistic concurrency.
+  rpc UpdateTenant(UpdateTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}"
+      body: "*"
+    };
+  }
+
+  // Archives a tenant without deleting its durable history.
+  rpc ArchiveTenant(ArchiveTenantRequest) returns (Tenant) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}"};
+  }
+
+  // Restores an archived tenant.
+  rpc RestoreTenant(RestoreTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}:restore"
+      body: "*"
+    };
+  }
+
+  // Lists applications belonging to a tenant.
+  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications"};
+  }
+
+  // Creates an application under a tenant. The slug is immutable.
+  rpc CreateApplication(CreateApplicationRequest) returns (Application) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications"
+      body: "*"
+    };
+  }
+
+  // Updates an application using optimistic concurrency.
+  rpc UpdateApplication(UpdateApplicationRequest) returns (Application) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}"
+      body: "*"
+    };
+  }
+
+  // Archives an application and makes its environments unavailable at runtime.
+  rpc ArchiveApplication(ArchiveApplicationRequest) returns (Application) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}"};
+  }
+
+  // Restores an archived application.
+  rpc RestoreApplication(RestoreApplicationRequest) returns (Application) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}:restore"
+      body: "*"
+    };
+  }
+
+  // Lists environments belonging to an application.
+  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments"};
+  }
+
+  // Creates an environment under an application. The slug is immutable.
+  rpc CreateEnvironment(CreateEnvironmentRequest) returns (Environment) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments"
+      body: "*"
+    };
+  }
+
+  // Updates environment metadata and its protection setting.
+  rpc UpdateEnvironment(UpdateEnvironmentRequest) returns (Environment) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}"
+      body: "*"
+    };
+  }
+
+  // Archives an unprotected environment.
+  rpc ArchiveEnvironment(ArchiveEnvironmentRequest) returns (Environment) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}"};
+  }
+
+  // Restores an archived environment.
+  rpc RestoreEnvironment(RestoreEnvironmentRequest) returns (Environment) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}:restore"
+      body: "*"
+    };
+  }
+
+  // Lists direct memberships for a tenant.
+  rpc ListTenantMemberships(ListTenantMembershipsRequest) returns (ListTenantMembershipsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/memberships"};
+  }
+
+  // Adds or reactivates a tenant membership.
+  rpc SetTenantMembership(SetTenantMembershipRequest) returns (TenantMembership) {
+    option (google.api.http) = {
+      put: "/api/v1/tenants/{tenant_id}/memberships/{actor_id}"
+      body: "*"
+    };
+  }
+
+  // Removes a tenant membership without deleting its history.
+  rpc RemoveTenantMembership(RemoveTenantMembershipRequest) returns (TenantMembership) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/memberships/{actor_id}"};
+  }
+}
+
+message GetPlatformInfoResponse {
+  string name = 1;
+  string version = 2;
+  PlatformStatus status = 3;
+  google.protobuf.Timestamp server_time = 4;
+  repeated PlatformCapability capabilities = 5;
+}
+
+message PlatformCapability {
+  string key = 1;
+  string display_name = 2;
+  CapabilityLifecycle lifecycle = 3;
+}
+
+message Tenant {
+  string id = 1;
+  string slug = 2;
+  string display_name = 3;
+  ResourceStatus status = 4;
+  int64 version = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp archived_at = 8;
+}
+
+message Application {
+  string id = 1;
+  string tenant_id = 2;
+  string slug = 3;
+  string display_name = 4;
+  ResourceStatus status = 5;
+  int64 version = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp archived_at = 9;
+}
+
+message Environment {
+  string id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  string slug = 4;
+  string display_name = 5;
+  EnvironmentType environment_type = 6;
+  bool is_protected = 7;
+  ResourceStatus status = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp archived_at = 12;
+}
+
+message TenantMembership {
+  string tenant_id = 1;
+  string actor_id = 2;
+  MembershipStatus status = 3;
+  int64 version = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message ListTenantsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+  bool include_archived = 4;
+}
+
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  string next_page_token = 2;
+}
+
+message CreateTenantRequest {
+  string slug = 1;
+  string display_name = 2;
+}
+
+message UpdateTenantRequest {
+  string tenant_id = 1;
+  string display_name = 2;
+  int64 expected_version = 3;
+}
+
+message ArchiveTenantRequest {
+  string tenant_id = 1;
+  int64 expected_version = 2;
+}
+
+message RestoreTenantRequest {
+  string tenant_id = 1;
+  int64 expected_version = 2;
+}
+
+message ListApplicationsRequest {
+  string tenant_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string query = 4;
+  bool include_archived = 5;
+}
+
+message ListApplicationsResponse {
+  repeated Application applications = 1;
+  string next_page_token = 2;
+}
+
+message CreateApplicationRequest {
+  string tenant_id = 1;
+  string slug = 2;
+  string display_name = 3;
+}
+
+message UpdateApplicationRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string display_name = 3;
+  int64 expected_version = 4;
+}
+
+message ArchiveApplicationRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  int64 expected_version = 3;
+}
+
+message RestoreApplicationRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  int64 expected_version = 3;
+}
+
+message ListEnvironmentsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  string query = 5;
+  bool include_archived = 6;
+}
+
+message ListEnvironmentsResponse {
+  repeated Environment environments = 1;
+  string next_page_token = 2;
+}
+
+message CreateEnvironmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string slug = 3;
+  string display_name = 4;
+  EnvironmentType environment_type = 5;
+  bool is_protected = 6;
+}
+
+message UpdateEnvironmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string display_name = 4;
+  EnvironmentType environment_type = 5;
+  bool is_protected = 6;
+  int64 expected_version = 7;
+}
+
+message ArchiveEnvironmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int64 expected_version = 4;
+}
+
+message RestoreEnvironmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int64 expected_version = 4;
+}
+
+message ListTenantMembershipsRequest {
+  string tenant_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  bool include_removed = 4;
+}
+
+message ListTenantMembershipsResponse {
+  repeated TenantMembership memberships = 1;
+  string next_page_token = 2;
+}
+
+message SetTenantMembershipRequest {
+  string tenant_id = 1;
+  string actor_id = 2;
+  int64 expected_version = 3;
+}
+
+message RemoveTenantMembershipRequest {
+  string tenant_id = 1;
+  string actor_id = 2;
+  int64 expected_version = 3;
+}
+
+enum PlatformStatus {
+  PLATFORM_STATUS_UNSPECIFIED = 0;
+  PLATFORM_STATUS_OPERATIONAL = 1;
+}
+
+enum CapabilityLifecycle {
+  CAPABILITY_LIFECYCLE_UNSPECIFIED = 0;
+  CAPABILITY_LIFECYCLE_AVAILABLE = 1;
+  CAPABILITY_LIFECYCLE_PLANNED = 2;
+}
+
+enum ResourceStatus {
+  RESOURCE_STATUS_UNSPECIFIED = 0;
+  RESOURCE_STATUS_ACTIVE = 1;
+  RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum EnvironmentType {
+  ENVIRONMENT_TYPE_UNSPECIFIED = 0;
+  ENVIRONMENT_TYPE_DEVELOPMENT = 1;
+  ENVIRONMENT_TYPE_STAGING = 2;
+  ENVIRONMENT_TYPE_PRODUCTION = 3;
+}
+
+enum MembershipStatus {
+  MEMBERSHIP_STATUS_UNSPECIFIED = 0;
+  MEMBERSHIP_STATUS_ACTIVE = 1;
+  MEMBERSHIP_STATUS_REMOVED = 2;
+}

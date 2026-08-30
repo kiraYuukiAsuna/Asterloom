@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.data/
+.git/
+.github/
+.idea/
+.next/
+.vs/
+.vscode/
+Frontend/node_modules/
+Frontend/playwright-report/
+Frontend/test-results/
+TestResults/
+**/*.user
+**/*.suo

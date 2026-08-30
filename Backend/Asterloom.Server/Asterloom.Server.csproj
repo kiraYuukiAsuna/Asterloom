@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Asterloom.Shared\Asterloom.Shared.csproj" />
+    <ProjectReference Include="..\Asterloom.Module\Asterloom.Module.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Identity\Asterloom.Module.Identity.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Authorization\Asterloom.Module.Authorization.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Feature\Asterloom.Module.Feature.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Config\Asterloom.Module.Config.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Release\Asterloom.Module.Release.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Analytics\Asterloom.Module.Analytics.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Telemetry\Asterloom.Module.Telemetry.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Rpc\Asterloom.Module.Rpc.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
+    <ProjectReference Include="..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

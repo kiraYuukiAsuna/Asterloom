@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package asterloom.config.v1;
+
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Config.V1";
+
+enum ConfigValueKind {
+  CONFIG_VALUE_KIND_UNSPECIFIED = 0;
+  CONFIG_VALUE_KIND_BOOLEAN = 1;
+  CONFIG_VALUE_KIND_INTEGER = 2;
+  CONFIG_VALUE_KIND_DOUBLE = 3;
+  CONFIG_VALUE_KIND_STRING = 4;
+  CONFIG_VALUE_KIND_JSON = 5;
+}
+
+enum ConfigVisibility {
+  CONFIG_VISIBILITY_UNSPECIFIED = 0;
+  CONFIG_VISIBILITY_CLIENT = 1;
+  CONFIG_VISIBILITY_SERVER = 2;
+}
+
+enum ConfigResourceStatus {
+  CONFIG_RESOURCE_STATUS_UNSPECIFIED = 0;
+  CONFIG_RESOURCE_STATUS_ACTIVE = 1;
+  CONFIG_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum ConfigValidationSeverity {
+  CONFIG_VALIDATION_SEVERITY_UNSPECIFIED = 0;
+  CONFIG_VALIDATION_SEVERITY_ERROR = 1;
+  CONFIG_VALIDATION_SEVERITY_WARNING = 2;
+}
+
+enum ConfigEvaluationReason {
+  CONFIG_EVALUATION_REASON_UNSPECIFIED = 0;
+  CONFIG_EVALUATION_REASON_TARGETING_MATCH = 1;
+  CONFIG_EVALUATION_REASON_DEFAULT = 2;
+}
+
+message ConfigValue {
+  oneof value {
+    bool boolean_value = 1;
+    sint64 integer_value = 2;
+    double double_value = 3;
+    string string_value = 4;
+    string json_value = 5;
+  }
+}
+
+message ConfigTargetingRule {
+  string id = 1;
+  string segment_id = 2;
+  ConfigValue value = 3;
+}
+
+message ConfigDefinition {
+  string schema_json = 1;
+  ConfigValue default_value = 2;
+  repeated ConfigTargetingRule targeting_rules = 3;
+}
+
+message ConfigEntry {
+  string id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  string environment_id = 4;
+  string key = 5;
+  string display_name = 6;
+  string description = 7;
+  ConfigValueKind value_kind = 8;
+  ConfigVisibility visibility = 9;
+  ConfigResourceStatus status = 10;
+  ConfigDefinition draft_definition = 11;
+  int64 draft_revision = 12;
+  ConfigDefinition published_definition = 13;
+  int64 published_revision = 14;
+  int64 published_snapshot_version = 15;
+  int64 version = 16;
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+  google.protobuf.Timestamp archived_at = 19;
+  google.protobuf.Timestamp published_at = 20;
+}
+
+message ConfigRevision {
+  string id = 1;
+  string entry_id = 2;
+  int64 revision = 3;
+  ConfigDefinition definition = 4;
+  int64 source_revision = 5;
+  int64 snapshot_version = 6;
+  google.protobuf.Timestamp published_at = 7;
+}
+
+message ConfigValidationIssue {
+  ConfigValidationSeverity severity = 1;
+  string code = 2;
+  string path = 3;
+  string message = 4;
+}
+
+message ConfigValidationResult {
+  bool valid = 1;
+  repeated ConfigValidationIssue issues = 2;
+  string definition_hash = 3;
+}
+
+message ConfigDiff {
+  bool changed = 1;
+  string published_json = 2;
+  string draft_json = 3;
+  repeated string changed_paths = 4;
+}
+
+message ConfigEffectiveValue {
+  string entry_id = 1;
+  string key = 2;
+  ConfigValueKind value_kind = 3;
+  ConfigValue value = 4;
+  int64 revision = 5;
+  ConfigEvaluationReason reason = 6;
+  string targeting_rule_id = 7;
+}
+
+message ConfigSnapshotMetadata {
+  string id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  string environment_id = 4;
+  int64 version = 5;
+  int32 entry_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ConfigSnapshotResponse {
+  int64 snapshot_version = 1;
+  string etag = 2;
+  bool not_modified = 3;
+  repeated ConfigEffectiveValue values = 4;
+  google.protobuf.Timestamp generated_at = 5;
+}
+
+message ConfigSnapshotRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  asterloom.targeting.v1.EvaluationContext context = 4;
+  string if_none_match = 5;
+}
+
+message ConfigUpdateCheckRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int64 known_snapshot_version = 4;
+  asterloom.targeting.v1.EvaluationContext context = 5;
+}
+
+message ConfigUpdateStatus {
+  bool changed = 1;
+  int64 current_snapshot_version = 2;
+  string etag = 3;
+  google.protobuf.Timestamp checked_at = 4;
+}

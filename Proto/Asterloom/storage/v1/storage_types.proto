@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package asterloom.storage.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Storage.V1";
+
+enum StorageResourceStatus {
+  STORAGE_RESOURCE_STATUS_UNSPECIFIED = 0;
+  STORAGE_RESOURCE_STATUS_ACTIVE = 1;
+  STORAGE_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum StorageAccessPolicy {
+  STORAGE_ACCESS_POLICY_UNSPECIFIED = 0;
+  STORAGE_ACCESS_POLICY_PRIVATE = 1;
+  STORAGE_ACCESS_POLICY_AUTHENTICATED_READ = 2;
+}
+
+enum StorageObjectStatus {
+  STORAGE_OBJECT_STATUS_UNSPECIFIED = 0;
+  STORAGE_OBJECT_STATUS_PENDING = 1;
+  STORAGE_OBJECT_STATUS_AVAILABLE = 2;
+  STORAGE_OBJECT_STATUS_FAILED = 3;
+  STORAGE_OBJECT_STATUS_DELETED = 4;
+}
+
+enum StorageUploadStatus {
+  STORAGE_UPLOAD_STATUS_UNSPECIFIED = 0;
+  STORAGE_UPLOAD_STATUS_PENDING = 1;
+  STORAGE_UPLOAD_STATUS_UPLOADED = 2;
+  STORAGE_UPLOAD_STATUS_COMPLETED = 3;
+  STORAGE_UPLOAD_STATUS_FAILED = 4;
+  STORAGE_UPLOAD_STATUS_EXPIRED = 5;
+}
+
+message StorageBucket {
+  string id = 1;
+  string tenant_id = 2;
+  string key = 3;
+  string display_name = 4;
+  string description = 5;
+  int64 quota_bytes = 6;
+  int64 max_object_size_bytes = 7;
+  repeated string allowed_content_types = 8;
+  StorageAccessPolicy access_policy = 9;
+  StorageResourceStatus status = 10;
+  int64 used_bytes = 11;
+  int64 object_count = 12;
+  int64 version = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  google.protobuf.Timestamp archived_at = 16;
+}
+
+message StorageObject {
+  string id = 1;
+  string tenant_id = 2;
+  string bucket_id = 3;
+  string application_id = 4;
+  string environment_id = 5;
+  string object_key = 6;
+  string file_name = 7;
+  string content_type = 8;
+  int64 size_bytes = 9;
+  string sha256 = 10;
+  map<string, string> custom_metadata = 11;
+  StorageObjectStatus status = 12;
+  int64 version = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  google.protobuf.Timestamp completed_at = 16;
+  google.protobuf.Timestamp deleted_at = 17;
+}
+
+message StorageTransferTicket {
+  string url = 1;
+  string method = 2;
+  map<string, string> required_headers = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message StorageUploadSession {
+  string id = 1;
+  string tenant_id = 2;
+  string bucket_id = 3;
+  StorageObject object = 4;
+  StorageTransferTicket transfer = 5;
+  StorageUploadStatus status = 6;
+  string failure_reason = 7;
+  int64 version = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp expires_at = 10;
+  google.protobuf.Timestamp completed_at = 11;
+}

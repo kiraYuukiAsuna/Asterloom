@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package asterloom.authorization.v1;
+
+import "Asterloom/authorization/v1/authorization_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Authorization.V1";
+
+service AuthorizationService {
+  rpc CheckPermission(AuthorizationDecisionInput) returns (AuthorizationDecision) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization:check"
+      body: "*"
+    };
+  }
+}

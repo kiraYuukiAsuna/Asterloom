@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package asterloom.operations.admin.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Operations.Admin.V1";
+
+import "asterloom/operations/v1/operations_types.proto";
+import "google/api/annotations.proto";
+
+service OperationsAdminService {
+  rpc ListApis(ListApisRequest) returns (ListApisResponse) {
+    option (google.api.http) = { get: "/api/v1/operations/apis" };
+  }
+  rpc GetOperationsHealth(GetOperationsHealthRequest) returns (asterloom.operations.v1.OperationsHealth) {
+    option (google.api.http) = { get: "/api/v1/operations/health" };
+  }
+  rpc GetOpenApiDocument(GetOpenApiDocumentRequest) returns (asterloom.operations.v1.OpenApiDocument) {
+    option (google.api.http) = { get: "/api/v1/operations/openapi" };
+  }
+}
+
+message ListApisRequest {
+  string query = 1;
+  string category = 2;
+}
+message ListApisResponse {
+  repeated asterloom.operations.v1.ApiEndpoint apis = 1;
+}
+message GetOperationsHealthRequest {}
+message GetOpenApiDocumentRequest {}

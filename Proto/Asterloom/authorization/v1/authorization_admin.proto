@@ -1,0 +1,216 @@
+syntax = "proto3";
+
+package asterloom.authorization.admin.v1;
+
+import "Asterloom/authorization/v1/authorization_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Authorization.Admin.V1";
+
+service AuthorizationAdminService {
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse) {
+    option (google.api.http) = {get: "/api/v1/authorization/permissions"};
+  }
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
+    option (google.api.http) = {get: "/api/v1/authorization/roles"};
+  }
+  rpc CreateRole(CreateRoleRequest) returns (asterloom.authorization.v1.Role) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/roles"
+      body: "*"
+    };
+  }
+  rpc UpdateRole(UpdateRoleRequest) returns (asterloom.authorization.v1.Role) {
+    option (google.api.http) = {
+      patch: "/api/v1/authorization/roles/{role_id}"
+      body: "*"
+    };
+  }
+  rpc ArchiveRole(ArchiveRoleRequest) returns (asterloom.authorization.v1.Role) {
+    option (google.api.http) = {delete: "/api/v1/authorization/roles/{role_id}"};
+  }
+  rpc RestoreRole(RestoreRoleRequest) returns (asterloom.authorization.v1.Role) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/roles/{role_id}:restore"
+      body: "*"
+    };
+  }
+  rpc ListRoleBindings(ListRoleBindingsRequest) returns (ListRoleBindingsResponse) {
+    option (google.api.http) = {get: "/api/v1/authorization/role-bindings"};
+  }
+  rpc SetRoleBinding(SetRoleBindingRequest) returns (asterloom.authorization.v1.RoleBinding) {
+    option (google.api.http) = {
+      put: "/api/v1/authorization/role-bindings/{binding_id}"
+      body: "*"
+    };
+  }
+  rpc RemoveRoleBinding(RemoveRoleBindingRequest) returns (asterloom.authorization.v1.RoleBinding) {
+    option (google.api.http) = {delete: "/api/v1/authorization/role-bindings/{binding_id}"};
+  }
+  rpc ListPolicyRules(ListPolicyRulesRequest) returns (ListPolicyRulesResponse) {
+    option (google.api.http) = {get: "/api/v1/authorization/policies"};
+  }
+  rpc CreatePolicyRule(CreatePolicyRuleRequest) returns (asterloom.authorization.v1.PolicyRule) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/policies"
+      body: "*"
+    };
+  }
+  rpc UpdatePolicyRule(UpdatePolicyRuleRequest) returns (asterloom.authorization.v1.PolicyRule) {
+    option (google.api.http) = {
+      patch: "/api/v1/authorization/policies/{policy_rule_id}"
+      body: "*"
+    };
+  }
+  rpc ArchivePolicyRule(ArchivePolicyRuleRequest) returns (asterloom.authorization.v1.PolicyRule) {
+    option (google.api.http) = {delete: "/api/v1/authorization/policies/{policy_rule_id}"};
+  }
+  rpc RestorePolicyRule(RestorePolicyRuleRequest) returns (asterloom.authorization.v1.PolicyRule) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/policies/{policy_rule_id}:restore"
+      body: "*"
+    };
+  }
+  rpc ListPolicyRevisions(ListPolicyRevisionsRequest) returns (ListPolicyRevisionsResponse) {
+    option (google.api.http) = {get: "/api/v1/authorization/revisions"};
+  }
+  rpc SimulateAuthorization(SimulateAuthorizationRequest) returns (asterloom.authorization.v1.AuthorizationDecision) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization:simulate"
+      body: "*"
+    };
+  }
+}
+
+message ListPermissionsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+}
+
+message ListPermissionsResponse {
+  repeated asterloom.authorization.v1.PermissionDefinition permissions = 1;
+  string next_page_token = 2;
+}
+
+message ListRolesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+  bool include_archived = 4;
+}
+
+message ListRolesResponse {
+  repeated asterloom.authorization.v1.Role roles = 1;
+  string next_page_token = 2;
+}
+
+message CreateRoleRequest {
+  string key = 1;
+  string display_name = 2;
+  string description = 3;
+  repeated string permissions = 4;
+}
+
+message UpdateRoleRequest {
+  string role_id = 1;
+  string display_name = 2;
+  string description = 3;
+  repeated string permissions = 4;
+  int64 expected_version = 5;
+}
+
+message ArchiveRoleRequest {
+  string role_id = 1;
+  int64 expected_version = 2;
+}
+
+message RestoreRoleRequest {
+  string role_id = 1;
+  int64 expected_version = 2;
+}
+
+message ListRoleBindingsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string actor_id = 3;
+  string tenant_id = 4;
+  bool include_archived = 5;
+}
+
+message ListRoleBindingsResponse {
+  repeated asterloom.authorization.v1.RoleBinding role_bindings = 1;
+  string next_page_token = 2;
+}
+
+message SetRoleBindingRequest {
+  string binding_id = 1;
+  string actor_id = 2;
+  string role_id = 3;
+  asterloom.authorization.v1.AuthorizationScope scope = 4;
+  int64 expected_version = 5;
+}
+
+message RemoveRoleBindingRequest {
+  string binding_id = 1;
+  int64 expected_version = 2;
+}
+
+message ListPolicyRulesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+  string tenant_id = 4;
+  bool include_archived = 5;
+}
+
+message ListPolicyRulesResponse {
+  repeated asterloom.authorization.v1.PolicyRule policy_rules = 1;
+  string next_page_token = 2;
+}
+
+message CreatePolicyRuleRequest {
+  string name = 1;
+  asterloom.authorization.v1.PolicyEffect effect = 2;
+  asterloom.authorization.v1.PolicySubjectType subject_type = 3;
+  string subject = 4;
+  asterloom.authorization.v1.AuthorizationScope scope = 5;
+  string permission = 6;
+}
+
+message UpdatePolicyRuleRequest {
+  string policy_rule_id = 1;
+  string name = 2;
+  asterloom.authorization.v1.PolicyEffect effect = 3;
+  asterloom.authorization.v1.PolicySubjectType subject_type = 4;
+  string subject = 5;
+  asterloom.authorization.v1.AuthorizationScope scope = 6;
+  string permission = 7;
+  int64 expected_version = 8;
+}
+
+message ArchivePolicyRuleRequest {
+  string policy_rule_id = 1;
+  int64 expected_version = 2;
+}
+
+message RestorePolicyRuleRequest {
+  string policy_rule_id = 1;
+  int64 expected_version = 2;
+}
+
+message ListPolicyRevisionsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string resource_type = 3;
+  string resource_id = 4;
+}
+
+message ListPolicyRevisionsResponse {
+  repeated asterloom.authorization.v1.PolicyRevision revisions = 1;
+  string next_page_token = 2;
+}
+
+message SimulateAuthorizationRequest {
+  asterloom.authorization.v1.AuthorizationDecisionInput input = 1;
+}

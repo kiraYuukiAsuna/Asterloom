@@ -1,0 +1,3 @@
+[*.cs]
+# EF Core owns this generated migration shape; constant column arrays are intentional.
+dotnet_diagnostic.CA1861.severity = none

@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Asterloom.Module\Asterloom.Module.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
+    <ProjectReference Include="..\Asterloom.Shared\Asterloom.Shared.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Asterloom.Module.Authorization\Asterloom.Module.Authorization.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Feature\Asterloom.Module.Feature.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Config\Asterloom.Module.Config.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Release\Asterloom.Module.Release.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Analytics\Asterloom.Module.Analytics.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Telemetry\Asterloom.Module.Telemetry.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module\Asterloom.Module.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Feature\Asterloom.Sdk.Feature.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Config\Asterloom.Sdk.Config.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Targeting\Asterloom.Sdk.Targeting.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Release\Asterloom.Sdk.Release.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Analytics\Asterloom.Sdk.Analytics.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+  </ItemGroup>
+
+</Project>

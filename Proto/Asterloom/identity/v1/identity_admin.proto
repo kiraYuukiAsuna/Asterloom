@@ -1,0 +1,265 @@
+syntax = "proto3";
+
+package asterloom.identity.admin.v1;
+
+import "Asterloom/identity/v1/identity_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Identity.Admin.V1";
+
+service IdentityAdminService {
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = {get: "/api/v1/identity/users"};
+  }
+  rpc GetUser(GetUserRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {get: "/api/v1/identity/users/{user_id}"};
+  }
+  rpc InviteUser(InviteUserRequest) returns (asterloom.identity.v1.UserInvitation) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users:invite"
+      body: "*"
+    };
+  }
+  rpc ResendUserInvitation(ResendUserInvitationRequest) returns (asterloom.identity.v1.UserInvitation) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}:resend-invitation"
+      body: "*"
+    };
+  }
+  rpc UpdateUser(UpdateUserRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      patch: "/api/v1/identity/users/{user_id}"
+      body: "*"
+    };
+  }
+  rpc SetUserRoles(SetUserRolesRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      put: "/api/v1/identity/users/{user_id}/roles"
+      body: "*"
+    };
+  }
+  rpc SuspendUser(UserVersionRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}:suspend"
+      body: "*"
+    };
+  }
+  rpc ReactivateUser(UserVersionRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}:reactivate"
+      body: "*"
+    };
+  }
+  rpc ArchiveUser(UserVersionRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {delete: "/api/v1/identity/users/{user_id}"};
+  }
+  rpc RestoreUser(UserVersionRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc ListUserSessions(ListUserSessionsRequest) returns (ListUserSessionsResponse) {
+    option (google.api.http) = {get: "/api/v1/identity/users/{user_id}/sessions"};
+  }
+  rpc RevokeUserSession(RevokeUserSessionRequest) returns (asterloom.identity.v1.IdentitySession) {
+    option (google.api.http) = {delete: "/api/v1/identity/users/{user_id}/sessions/{session_id}"};
+  }
+  rpc RevokeAllUserSessions(RevokeAllUserSessionsRequest) returns (RevokeAllUserSessionsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}/sessions:revoke-all"
+      body: "*"
+    };
+  }
+
+  rpc ListClients(ListClientsRequest) returns (ListClientsResponse) {
+    option (google.api.http) = {get: "/api/v1/identity/clients"};
+  }
+  rpc GetClient(GetClientRequest) returns (asterloom.identity.v1.OidcClient) {
+    option (google.api.http) = {get: "/api/v1/identity/clients/{client_id}"};
+  }
+  rpc CreateClient(CreateClientRequest) returns (asterloom.identity.v1.OidcClientCredential) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/clients"
+      body: "*"
+    };
+  }
+  rpc UpdateClient(UpdateClientRequest) returns (asterloom.identity.v1.OidcClient) {
+    option (google.api.http) = {
+      patch: "/api/v1/identity/clients/{client_id}"
+      body: "*"
+    };
+  }
+  rpc RotateClientSecret(RotateClientSecretRequest) returns (asterloom.identity.v1.OidcClientCredential) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/clients/{client_id}:rotate-secret"
+      body: "*"
+    };
+  }
+  rpc DeleteClient(DeleteClientRequest) returns (asterloom.identity.v1.OidcClient) {
+    option (google.api.http) = {delete: "/api/v1/identity/clients/{client_id}"};
+  }
+
+  rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
+    option (google.api.http) = {get: "/api/v1/identity/scopes"};
+  }
+  rpc GetScope(GetScopeRequest) returns (asterloom.identity.v1.OidcScope) {
+    option (google.api.http) = {get: "/api/v1/identity/scopes/{scope_id}"};
+  }
+  rpc CreateScope(CreateScopeRequest) returns (asterloom.identity.v1.OidcScope) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/scopes"
+      body: "*"
+    };
+  }
+  rpc UpdateScope(UpdateScopeRequest) returns (asterloom.identity.v1.OidcScope) {
+    option (google.api.http) = {
+      patch: "/api/v1/identity/scopes/{scope_id}"
+      body: "*"
+    };
+  }
+  rpc DeleteScope(DeleteScopeRequest) returns (asterloom.identity.v1.OidcScope) {
+    option (google.api.http) = {delete: "/api/v1/identity/scopes/{scope_id}"};
+  }
+}
+
+message ListUsersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+  bool include_archived = 4;
+}
+
+message ListUsersResponse {
+  repeated asterloom.identity.v1.IdentityUser users = 1;
+  string next_page_token = 2;
+}
+
+message GetUserRequest { string user_id = 1; }
+
+message InviteUserRequest {
+  string email = 1;
+  string display_name = 2;
+  repeated string roles = 3;
+}
+
+message ResendUserInvitationRequest {
+  string user_id = 1;
+  int64 expected_version = 2;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  string display_name = 2;
+  int64 expected_version = 3;
+}
+
+message SetUserRolesRequest {
+  string user_id = 1;
+  repeated string roles = 2;
+  int64 expected_version = 3;
+}
+
+message UserVersionRequest {
+  string user_id = 1;
+  int64 expected_version = 2;
+}
+
+message ListUserSessionsRequest {
+  string user_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  bool include_revoked = 4;
+}
+
+message ListUserSessionsResponse {
+  repeated asterloom.identity.v1.IdentitySession sessions = 1;
+  string next_page_token = 2;
+}
+
+message RevokeUserSessionRequest {
+  string user_id = 1;
+  string session_id = 2;
+}
+
+message RevokeAllUserSessionsRequest { string user_id = 1; }
+
+message RevokeAllUserSessionsResponse { int64 revoked_sessions = 1; }
+
+message ListClientsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+}
+
+message ListClientsResponse {
+  repeated asterloom.identity.v1.OidcClient clients = 1;
+  string next_page_token = 2;
+}
+
+message GetClientRequest { string client_id = 1; }
+
+message CreateClientRequest {
+  string client_id = 1;
+  string display_name = 2;
+  asterloom.identity.v1.OidcClientType client_type = 3;
+  repeated asterloom.identity.v1.OidcGrantType grant_types = 4;
+  repeated string redirect_uris = 5;
+  repeated string post_logout_redirect_uris = 6;
+  repeated string scopes = 7;
+  asterloom.identity.v1.OidcApplicationType application_type = 8;
+}
+
+message UpdateClientRequest {
+  string client_id = 1;
+  string display_name = 2;
+  repeated asterloom.identity.v1.OidcGrantType grant_types = 3;
+  repeated string redirect_uris = 4;
+  repeated string post_logout_redirect_uris = 5;
+  repeated string scopes = 6;
+  string expected_version = 7;
+}
+
+message RotateClientSecretRequest {
+  string client_id = 1;
+  string expected_version = 2;
+}
+
+message DeleteClientRequest {
+  string client_id = 1;
+  string expected_version = 2;
+}
+
+message ListScopesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string query = 3;
+}
+
+message ListScopesResponse {
+  repeated asterloom.identity.v1.OidcScope scopes = 1;
+  string next_page_token = 2;
+}
+
+message GetScopeRequest { string scope_id = 1; }
+
+message CreateScopeRequest {
+  string name = 1;
+  string display_name = 2;
+  string description = 3;
+  repeated string resources = 4;
+}
+
+message UpdateScopeRequest {
+  string scope_id = 1;
+  string display_name = 2;
+  string description = 3;
+  repeated string resources = 4;
+  string expected_version = 5;
+}
+
+message DeleteScopeRequest {
+  string scope_id = 1;
+  string expected_version = 2;
+}

@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: #020617;
+  --color-foreground: #e2e8f0;
+}
+
+:root {
+  color-scheme: dark;
+  background: #020617;
+}
+
+* {
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+html {
+  min-width: 320px;
+  background: #020617;
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 78% -10%, rgb(14 165 233 / 0.12), transparent 30rem),
+    radial-gradient(circle at 8% 95%, rgb(16 185 129 / 0.055), transparent 26rem),
+    #020617;
+  color: #e2e8f0;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgb(56 189 248 / 0.28);
+  color: white;
+}
+
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(2 6 23 / 0.78);
+  backdrop-filter: blur(8px);
+}
+
+[cmdk-group-heading] {
+  padding: 0.5rem 0.75rem;
+  color: #64748b;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}

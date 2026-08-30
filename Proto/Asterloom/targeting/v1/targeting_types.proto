@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package asterloom.targeting.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Targeting.V1";
+
+// A durable, reusable audience segment scoped to one application environment.
+message Segment {
+  string id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  string environment_id = 4;
+  string key = 5;
+  string display_name = 6;
+  string description = 7;
+  TargetingRule rule = 8;
+  TargetingResourceStatus status = 9;
+  int64 version = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp archived_at = 13;
+}
+
+// A flat rule. Conditions are evaluated in declaration order and short-circuit.
+message TargetingRule {
+  TargetingMatchMode match_mode = 1;
+  repeated TargetingCondition conditions = 2;
+}
+
+message TargetingCondition {
+  string id = 1;
+  string attribute = 2;
+  TargetingValueKind value_kind = 3;
+  TargetingOperator operator = 4;
+  repeated TargetingValue values = 5;
+  bool case_sensitive = 6;
+}
+
+message TargetingValue {
+  oneof value {
+    string text = 1;
+    bool truth = 2;
+    double numeric = 3;
+  }
+}
+
+// Runtime input. Sensitive values must never be emitted to logs or traces.
+message EvaluationContext {
+  string targeting_key = 1;
+  string user_id = 2;
+  string client_version = 3;
+  string platform = 4;
+  string region = 5;
+  string language = 6;
+  repeated TargetingAttribute attributes = 7;
+}
+
+message TargetingAttribute {
+  string key = 1;
+  TargetingValue value = 2;
+}
+
+message TargetingAttributeDefinition {
+  string key = 1;
+  string display_name = 2;
+  TargetingValueKind value_kind = 3;
+  bool built_in = 4;
+  bool required = 5;
+}
+
+message TargetingOperatorDefinition {
+  TargetingOperator operator = 1;
+  string display_name = 2;
+  repeated TargetingValueKind supported_value_kinds = 3;
+  int32 minimum_values = 4;
+  int32 maximum_values = 5;
+}
+
+message TargetingConditionTrace {
+  string condition_id = 1;
+  bool matched = 2;
+  TargetingConditionReason reason = 3;
+}
+
+message BucketAllocation {
+  string variant = 1;
+  uint32 start = 2;
+  uint32 end = 3;
+}
+
+message BucketPreview {
+  string resource_type = 1;
+  string resource_key = 2;
+  string salt = 3;
+  repeated BucketAllocation allocations = 4;
+}
+
+message TargetingSimulationResult {
+  string segment_id = 1;
+  string segment_key = 2;
+  int64 segment_version = 3;
+  bool matched = 4;
+  string reason = 5;
+  repeated TargetingConditionTrace condition_traces = 6;
+  bool bucket_evaluated = 7;
+  uint32 bucket = 8;
+  string selected_variant = 9;
+  string bucket_namespace = 10;
+  string bucketing_version = 11;
+}
+
+enum TargetingResourceStatus {
+  TARGETING_RESOURCE_STATUS_UNSPECIFIED = 0;
+  TARGETING_RESOURCE_STATUS_ACTIVE = 1;
+  TARGETING_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum TargetingMatchMode {
+  TARGETING_MATCH_MODE_UNSPECIFIED = 0;
+  TARGETING_MATCH_MODE_ALL = 1;
+  TARGETING_MATCH_MODE_ANY = 2;
+}
+
+enum TargetingValueKind {
+  TARGETING_VALUE_KIND_UNSPECIFIED = 0;
+  TARGETING_VALUE_KIND_TEXT = 1;
+  TARGETING_VALUE_KIND_TRUTH = 2;
+  TARGETING_VALUE_KIND_NUMERIC = 3;
+}
+
+enum TargetingOperator {
+  TARGETING_OPERATOR_UNSPECIFIED = 0;
+  TARGETING_OPERATOR_EQUALS = 1;
+  TARGETING_OPERATOR_NOT_EQUALS = 2;
+  TARGETING_OPERATOR_ONE_OF = 3;
+  TARGETING_OPERATOR_NOT_ONE_OF = 4;
+  TARGETING_OPERATOR_CONTAINS = 5;
+  TARGETING_OPERATOR_STARTS_WITH = 6;
+  TARGETING_OPERATOR_ENDS_WITH = 7;
+  TARGETING_OPERATOR_GREATER_THAN = 8;
+  TARGETING_OPERATOR_GREATER_THAN_OR_EQUAL = 9;
+  TARGETING_OPERATOR_LESS_THAN = 10;
+  TARGETING_OPERATOR_LESS_THAN_OR_EQUAL = 11;
+  TARGETING_OPERATOR_EXISTS = 12;
+  TARGETING_OPERATOR_NOT_EXISTS = 13;
+  TARGETING_OPERATOR_SEMANTIC_VERSION_EQUALS = 14;
+  TARGETING_OPERATOR_SEMANTIC_VERSION_GREATER_THAN = 15;
+  TARGETING_OPERATOR_SEMANTIC_VERSION_LESS_THAN = 16;
+}
+
+enum TargetingConditionReason {
+  TARGETING_CONDITION_REASON_UNSPECIFIED = 0;
+  TARGETING_CONDITION_REASON_MATCHED = 1;
+  TARGETING_CONDITION_REASON_NOT_MATCHED = 2;
+  TARGETING_CONDITION_REASON_MISSING_ATTRIBUTE = 3;
+  TARGETING_CONDITION_REASON_TYPE_MISMATCH = 4;
+  TARGETING_CONDITION_REASON_INVALID_ATTRIBUTE_VALUE = 5;
+}

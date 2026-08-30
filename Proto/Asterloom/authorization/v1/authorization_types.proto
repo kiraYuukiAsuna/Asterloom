@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package asterloom.authorization.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Authorization.V1";
+
+message AuthorizationScope {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+}
+
+message PermissionDefinition {
+  string key = 1;
+  string display_name = 2;
+  string description = 3;
+  string module = 4;
+}
+
+message Role {
+  string id = 1;
+  string key = 2;
+  string display_name = 3;
+  string description = 4;
+  repeated string permissions = 5;
+  bool is_system = 6;
+  AuthorizationResourceStatus status = 7;
+  int64 version = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  google.protobuf.Timestamp archived_at = 11;
+}
+
+message RoleBinding {
+  string id = 1;
+  string actor_id = 2;
+  string role_id = 3;
+  string role_key = 4;
+  AuthorizationScope scope = 5;
+  AuthorizationResourceStatus status = 6;
+  int64 version = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  google.protobuf.Timestamp archived_at = 10;
+}
+
+message PolicyRule {
+  string id = 1;
+  string name = 2;
+  PolicyEffect effect = 3;
+  PolicySubjectType subject_type = 4;
+  string subject = 5;
+  AuthorizationScope scope = 6;
+  string permission = 7;
+  AuthorizationResourceStatus status = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp archived_at = 12;
+}
+
+message PolicyRevision {
+  string id = 1;
+  int64 revision_number = 2;
+  string change_type = 3;
+  string resource_type = 4;
+  string resource_id = 5;
+  string snapshot_hash = 6;
+  string change_summary = 7;
+  string created_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message AuthorizationDecisionInput {
+  string actor_id = 1;
+  AuthorizationScope scope = 2;
+  string permission = 3;
+  repeated string trusted_roles = 4;
+}
+
+message AuthorizationDecision {
+  bool allowed = 1;
+  string reason = 2;
+  repeated string matched_policy_ids = 3;
+  repeated string matched_role_keys = 4;
+}
+
+enum AuthorizationResourceStatus {
+  AUTHORIZATION_RESOURCE_STATUS_UNSPECIFIED = 0;
+  AUTHORIZATION_RESOURCE_STATUS_ACTIVE = 1;
+  AUTHORIZATION_RESOURCE_STATUS_ARCHIVED = 2;
+}
+
+enum PolicyEffect {
+  POLICY_EFFECT_UNSPECIFIED = 0;
+  POLICY_EFFECT_ALLOW = 1;
+  POLICY_EFFECT_DENY = 2;
+}
+
+enum PolicySubjectType {
+  POLICY_SUBJECT_TYPE_UNSPECIFIED = 0;
+  POLICY_SUBJECT_TYPE_ACTOR = 1;
+  POLICY_SUBJECT_TYPE_ROLE = 2;
+  POLICY_SUBJECT_TYPE_ANY = 3;
+}

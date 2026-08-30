@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "algorithm": "sha256-first-uint64be-mod-100000",
+  "vectors": [
+    {
+      "name": "basic",
+      "namespace": "feature:new-home:11111111-1111-7111-8111-111111111111",
+      "salt": "stable-salt",
+      "targetingKey": "user-123",
+      "firstEightBytesHex": "d19061c2b5d21248",
+      "bucket": 66120
+    },
+    {
+      "name": "empty-salt",
+      "namespace": "config:limits:22222222-2222-7222-8222-222222222222",
+      "salt": "",
+      "targetingKey": "account-42",
+      "firstEightBytesHex": "7966cbf570963a3f",
+      "bucket": 86719
+    },
+    {
+      "name": "unicode",
+      "namespace": "release:桌面版:33333333-3333-7333-8333-333333333333",
+      "salt": "盐-v1",
+      "targetingKey": "用户-甲",
+      "firstEightBytesHex": "ae2cad79df95e95c",
+      "bucket": 21564
+    },
+    {
+      "name": "case-sensitive",
+      "namespace": "feature:Search:44444444-4444-7444-8444-444444444444",
+      "salt": "Salt",
+      "targetingKey": "User",
+      "firstEightBytesHex": "1638f0feadcb8105",
+      "bucket": 65957
+    },
+    {
+      "name": "case-sensitive-lower",
+      "namespace": "feature:search:44444444-4444-7444-8444-444444444444",
+      "salt": "salt",
+      "targetingKey": "user",
+      "firstEightBytesHex": "0e857cd90b2ad8a6",
+      "bucket": 13158
+    },
+    {
+      "name": "long-targeting-key",
+      "namespace": "release:stable:55555555-5555-7555-8555-555555555555",
+      "salt": "2026-08-30",
+      "targetingKey": "device/region/cn/channel/stable/build/100",
+      "firstEightBytesHex": "13feb477b9ea03d2",
+      "bucket": 66674
+    },
+    {
+      "name": "nul-delimiter-boundary",
+      "namespace": "feature:a:66666666-6666-7666-8666-666666666666",
+      "salt": "b",
+      "targetingKey": "c",
+      "firstEightBytesHex": "7d3530d1dfde8faf",
+      "bucket": 59823
+    }
+  ]
+}

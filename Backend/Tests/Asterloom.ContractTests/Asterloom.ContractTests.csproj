@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="OpenFeature" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Asterloom.Sdk.Authorization\Asterloom.Sdk.Authorization.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Config\Asterloom.Sdk.Config.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Feature\Asterloom.Sdk.Feature.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Targeting\Asterloom.Sdk.Targeting.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Storage\Asterloom.Sdk.Storage.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Release\Asterloom.Sdk.Release.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Analytics\Asterloom.Sdk.Analytics.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Telemetry\Asterloom.Module.Telemetry.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Server\Asterloom.Server.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Shared\Asterloom.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

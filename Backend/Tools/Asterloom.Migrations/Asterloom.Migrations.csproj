@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Asterloom.Module.Authorization\Asterloom.Module.Authorization.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module\Asterloom.Module.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Identity\Asterloom.Module.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

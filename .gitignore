@@ -1,0 +1,42 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+TestResults/
+coverage/
+coverage.*
+
+# Node / Next.js
+Frontend/node_modules/
+Frontend/.next/
+Frontend/out/
+Frontend/coverage/
+Frontend/playwright-report/
+Frontend/test-results/
+Frontend/lib/api/generated/.kiota.log
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
+
+# Local Compose overrides
+.env
+
+# IDE and operating system
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local deployment data and secrets
+.data/
+Deploy/Secrets/
+*.pfx
+*.key
+*.pem
+
+# Generated protocol artifacts
+Docs/Protocol/openapi/*.generated.json

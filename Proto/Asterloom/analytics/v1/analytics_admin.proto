@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package asterloom.analytics.admin.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Analytics.Admin.V1";
+
+import "asterloom/analytics/v1/analytics_types.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+service AnalyticsAdminService {
+  rpc ListEventSchemas(ListEventSchemasRequest) returns (ListEventSchemasResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas" };
+  }
+  rpc GetEventSchema(GetEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}" };
+  }
+  rpc CreateEventSchema(CreateEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas"
+      body: "*"
+    };
+  }
+  rpc UpdateEventSchema(UpdateEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}"
+      body: "*"
+    };
+  }
+  rpc ArchiveEventSchema(ArchiveEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}" };
+  }
+  rpc RestoreEventSchema(RestoreEventSchemaRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}:restore"
+      body: "*"
+    };
+  }
+  rpc ListWriteKeys(ListWriteKeysRequest) returns (ListWriteKeysResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys" };
+  }
+  rpc CreateWriteKey(CreateWriteKeyRequest) returns (asterloom.analytics.v1.AnalyticsWriteKeyCredential) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys"
+      body: "*"
+    };
+  }
+  rpc RotateWriteKey(RotateWriteKeyRequest) returns (asterloom.analytics.v1.AnalyticsWriteKeyCredential) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:rotate"
+      body: "*"
+    };
+  }
+  rpc RevokeWriteKey(RevokeWriteKeyRequest) returns (asterloom.analytics.v1.AnalyticsWriteKey) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:revoke"
+      body: "*"
+    };
+  }
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events" };
+  }
+  rpc GetEvent(GetEventRequest) returns (asterloom.analytics.v1.AnalyticsEvent) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events/{analytics_event_id}" };
+  }
+  rpc QueryAnalytics(QueryAnalyticsRequest) returns (QueryAnalyticsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics:query"
+      body: "*"
+    };
+  }
+  rpc UpdateRetention(UpdateRetentionRequest) returns (asterloom.analytics.v1.EventSchema) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}/retention"
+      body: "*"
+    };
+  }
+  rpc ExportEvents(ExportEventsRequest) returns (ExportEventsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events:export"
+      body: "*"
+    };
+  }
+}
+
+message ListEventSchemasRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+message ListEventSchemasResponse {
+  repeated asterloom.analytics.v1.EventSchema event_schemas = 1;
+  string next_page_token = 2;
+}
+message GetEventSchemaRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_schema_id = 4;
+}
+message CreateEventSchemaRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+  string schema_json = 7;
+  int32 retention_days = 8;
+}
+message UpdateEventSchemaRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_schema_id = 4;
+  string display_name = 5;
+  string description = 6;
+  string schema_json = 7;
+  int64 expected_version = 8;
+}
+message ArchiveEventSchemaRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_schema_id = 4;
+  int64 expected_version = 5;
+}
+message RestoreEventSchemaRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_schema_id = 4;
+  int64 expected_version = 5;
+}
+message ListWriteKeysRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  bool include_revoked = 4;
+}
+message ListWriteKeysResponse { repeated asterloom.analytics.v1.AnalyticsWriteKey write_keys = 1; }
+message CreateWriteKeyRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string name = 4;
+}
+message RotateWriteKeyRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string write_key_id = 4;
+  int64 expected_version = 5;
+}
+message RevokeWriteKeyRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string write_key_id = 4;
+  int64 expected_version = 5;
+}
+message ListEventsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string event_name = 6;
+  string actor_id = 7;
+  string event_id = 8;
+  google.protobuf.Timestamp from_at = 9;
+  google.protobuf.Timestamp to_at = 10;
+}
+message ListEventsResponse {
+  repeated asterloom.analytics.v1.AnalyticsEvent events = 1;
+  string next_page_token = 2;
+}
+message GetEventRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string analytics_event_id = 4;
+}
+message QueryAnalyticsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  repeated string event_names = 4;
+  google.protobuf.Timestamp from_at = 5;
+  google.protobuf.Timestamp to_at = 6;
+  string interval = 7;
+}
+message QueryAnalyticsResponse { repeated asterloom.analytics.v1.AnalyticsAggregationBucket buckets = 1; }
+message UpdateRetentionRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_schema_id = 4;
+  int32 retention_days = 5;
+  int64 expected_version = 6;
+}
+message ExportEventsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string event_name = 4;
+  string actor_id = 5;
+  google.protobuf.Timestamp from_at = 6;
+  google.protobuf.Timestamp to_at = 7;
+  int32 maximum_rows = 8;
+}
+message ExportEventsResponse {
+  string file_name = 1;
+  string content_type = 2;
+  bytes content = 3;
+  int32 exported_rows = 4;
+}

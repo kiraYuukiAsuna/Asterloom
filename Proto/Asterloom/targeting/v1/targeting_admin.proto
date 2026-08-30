@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package asterloom.targeting.admin.v1;
+
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Targeting.Admin.V1";
+
+// Manages reusable targeting segments and provides the authoritative simulator.
+service TargetingAdminService {
+  rpc ListTargetingAttributes(google.protobuf.Empty) returns (ListTargetingAttributesResponse) {
+    option (google.api.http) = {get: "/api/v1/targeting/attributes"};
+  }
+
+  rpc ListSegments(ListSegmentsRequest) returns (ListSegmentsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments"
+    };
+  }
+
+  rpc GetSegment(GetSegmentRequest) returns (asterloom.targeting.v1.Segment) {
+    option (google.api.http) = {
+      get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"
+    };
+  }
+
+  rpc CreateSegment(CreateSegmentRequest) returns (asterloom.targeting.v1.Segment) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments"
+      body: "*"
+    };
+  }
+
+  rpc UpdateSegment(UpdateSegmentRequest) returns (asterloom.targeting.v1.Segment) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"
+      body: "*"
+    };
+  }
+
+  rpc ArchiveSegment(ArchiveSegmentRequest) returns (asterloom.targeting.v1.Segment) {
+    option (google.api.http) = {
+      delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}"
+    };
+  }
+
+  rpc RestoreSegment(RestoreSegmentRequest) returns (asterloom.targeting.v1.Segment) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting/segments/{segment_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc SimulateTargeting(SimulateTargetingRequest) returns (asterloom.targeting.v1.TargetingSimulationResult) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/targeting:simulate"
+      body: "*"
+    };
+  }
+}
+
+message ListTargetingAttributesResponse {
+  repeated asterloom.targeting.v1.TargetingAttributeDefinition attributes = 1;
+  repeated asterloom.targeting.v1.TargetingOperatorDefinition operators = 2;
+  int32 maximum_custom_attributes = 3;
+  int32 maximum_conditions = 4;
+  string bucketing_version = 5;
+  uint32 bucket_count = 6;
+}
+
+message ListSegmentsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+
+message ListSegmentsResponse {
+  repeated asterloom.targeting.v1.Segment segments = 1;
+  string next_page_token = 2;
+}
+
+message GetSegmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string segment_id = 4;
+}
+
+message CreateSegmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.targeting.v1.TargetingRule rule = 7;
+}
+
+message UpdateSegmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string segment_id = 4;
+  string display_name = 5;
+  string description = 6;
+  asterloom.targeting.v1.TargetingRule rule = 7;
+  int64 expected_version = 8;
+}
+
+message ArchiveSegmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string segment_id = 4;
+  int64 expected_version = 5;
+}
+
+message RestoreSegmentRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string segment_id = 4;
+  int64 expected_version = 5;
+}
+
+message SimulateTargetingRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string segment_id = 4;
+  asterloom.targeting.v1.EvaluationContext context = 5;
+  asterloom.targeting.v1.BucketPreview bucket_preview = 6;
+}

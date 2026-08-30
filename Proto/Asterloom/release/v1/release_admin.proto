@@ -1,0 +1,370 @@
+syntax = "proto3";
+
+package asterloom.release.admin.v1;
+
+import "Asterloom/release/v1/release_types.proto";
+import "Asterloom/targeting/v1/targeting_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Release.Admin.V1";
+
+service ReleaseAdminService {
+  rpc ListSigningKeys(ListSigningKeysRequest) returns (ListSigningKeysResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/release/signing-keys" };
+  }
+  rpc CreateSigningKey(CreateSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/release/signing-keys"
+      body: "*"
+    };
+  }
+  rpc ArchiveSigningKey(ArchiveSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
+    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}" };
+  }
+  rpc RestoreSigningKey(RestoreSigningKeyRequest) returns (asterloom.release.v1.ReleaseSigningKey) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/release/signing-keys/{signing_key_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels" };
+  }
+  rpc GetChannel(GetChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}" };
+  }
+  rpc CreateChannel(CreateChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels"
+      body: "*"
+    };
+  }
+  rpc UpdateChannel(UpdateChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}"
+      body: "*"
+    };
+  }
+  rpc ArchiveChannel(ArchiveChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
+    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}" };
+  }
+  rpc RestoreChannel(RestoreChannelRequest) returns (asterloom.release.v1.ReleaseChannel) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/channels/{channel_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts" };
+  }
+  rpc GetArtifact(GetArtifactRequest) returns (asterloom.release.v1.ReleaseArtifact) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}" };
+  }
+  rpc CreateArtifactUpload(CreateArtifactUploadRequest) returns (asterloom.release.v1.ArtifactUpload) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts:begin-upload"
+      body: "*"
+    };
+  }
+  rpc CompleteArtifactUpload(CompleteArtifactUploadRequest) returns (asterloom.release.v1.ReleaseArtifact) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}:complete"
+      body: "*"
+    };
+  }
+  rpc ArchiveArtifact(ArchiveArtifactRequest) returns (asterloom.release.v1.ReleaseArtifact) {
+    option (google.api.http) = { delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release/artifacts/{artifact_id}" };
+  }
+
+  rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases" };
+  }
+  rpc GetRelease(GetReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}" };
+  }
+  rpc CreateRelease(CreateReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases"
+      body: "*"
+    };
+  }
+  rpc UpdateReleaseDraft(UpdateReleaseDraftRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}"
+      body: "*"
+    };
+  }
+  rpc ValidateRelease(ValidateReleaseRequest) returns (asterloom.release.v1.ReleaseValidationResult) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:validate"
+      body: "*"
+    };
+  }
+  rpc PublishRelease(PublishReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:publish"
+      body: "*"
+    };
+  }
+  rpc PauseRelease(PauseReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:pause"
+      body: "*"
+    };
+  }
+  rpc PromoteRelease(PromoteReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:promote"
+      body: "*"
+    };
+  }
+  rpc RollbackRelease(RollbackReleaseRequest) returns (asterloom.release.v1.DesktopRelease) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}:rollback"
+      body: "*"
+    };
+  }
+  rpc GetReleaseManifest(GetReleaseManifestRequest) returns (asterloom.release.v1.ReleaseManifest) {
+    option (google.api.http) = { get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/releases/{release_id}/manifest" };
+  }
+  rpc SimulateUpdate(SimulateUpdateRequest) returns (asterloom.release.v1.UpdateDecision) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/release:simulate"
+      body: "*"
+    };
+  }
+}
+
+message ListSigningKeysRequest {
+  string tenant_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string query = 4;
+  bool include_archived = 5;
+}
+message ListSigningKeysResponse {
+  repeated asterloom.release.v1.ReleaseSigningKey signing_keys = 1;
+  string next_page_token = 2;
+}
+message CreateSigningKeyRequest {
+  string tenant_id = 1;
+  string key = 2;
+  string display_name = 3;
+  string public_key_pem = 4;
+}
+message ArchiveSigningKeyRequest {
+  string tenant_id = 1;
+  string signing_key_id = 2;
+  int64 expected_version = 3;
+}
+message RestoreSigningKeyRequest {
+  string tenant_id = 1;
+  string signing_key_id = 2;
+  int64 expected_version = 3;
+}
+
+message ListChannelsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+message ListChannelsResponse {
+  repeated asterloom.release.v1.ReleaseChannel channels = 1;
+  string next_page_token = 2;
+}
+message GetChannelRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_id = 4;
+}
+message CreateChannelRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string key = 4;
+  string display_name = 5;
+  string description = 6;
+}
+message UpdateChannelRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_id = 4;
+  string display_name = 5;
+  string description = 6;
+  int64 expected_version = 7;
+}
+message ArchiveChannelRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_id = 4;
+  int64 expected_version = 5;
+}
+message RestoreChannelRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_id = 4;
+  int64 expected_version = 5;
+}
+
+message ListArtifactsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_archived = 7;
+}
+message ListArtifactsResponse {
+  repeated asterloom.release.v1.ReleaseArtifact artifacts = 1;
+  string next_page_token = 2;
+}
+message GetArtifactRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string artifact_id = 4;
+}
+message CreateArtifactUploadRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_version = 4;
+  string target_runtime_id = 5;
+  asterloom.release.v1.ReleaseArtifactKind artifact_kind = 6;
+  string delta_from_version = 7;
+  string file_name = 8;
+  string content_type = 9;
+  int64 size_bytes = 10;
+  string sha256 = 11;
+  string signing_key_id = 12;
+  string signature = 13;
+}
+message CompleteArtifactUploadRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string artifact_id = 4;
+  int64 expected_version = 5;
+}
+message ArchiveArtifactRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string artifact_id = 4;
+  int64 expected_version = 5;
+}
+
+message ListReleasesRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string query = 6;
+  bool include_inactive = 7;
+}
+message ListReleasesResponse {
+  repeated asterloom.release.v1.DesktopRelease releases = 1;
+  string next_page_token = 2;
+}
+message GetReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+}
+message CreateReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_id = 4;
+  string release_version = 5;
+  string display_name = 6;
+  string release_notes = 7;
+  repeated string artifact_ids = 8;
+  uint32 rollout_basis_points = 9;
+  string target_segment_id = 10;
+  bool mandatory = 11;
+  string minimum_version = 12;
+}
+message UpdateReleaseDraftRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+  string display_name = 5;
+  string release_notes = 6;
+  repeated string artifact_ids = 7;
+  uint32 rollout_basis_points = 8;
+  string target_segment_id = 9;
+  bool mandatory = 10;
+  string minimum_version = 11;
+  int64 expected_version = 12;
+}
+message ValidateReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+}
+message PublishReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+  string manifest_signing_key_id = 5;
+  string manifest_signature = 6;
+  int64 expected_version = 7;
+  int64 expected_channel_version = 8;
+}
+message PauseReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+  int64 expected_version = 5;
+}
+message PromoteReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+  uint32 rollout_basis_points = 5;
+  int64 expected_version = 6;
+}
+message RollbackReleaseRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+  string target_release_id = 5;
+  int64 expected_version = 6;
+  int64 expected_target_version = 7;
+  int64 expected_channel_version = 8;
+}
+message GetReleaseManifestRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string release_id = 4;
+}
+message SimulateUpdateRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string channel_key = 4;
+  string current_version = 5;
+  string target_runtime_id = 6;
+  asterloom.targeting.v1.EvaluationContext context = 7;
+}

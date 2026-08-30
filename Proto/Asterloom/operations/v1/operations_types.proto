@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package asterloom.operations.v1;
+
+option csharp_namespace = "Asterloom.Protocol.Operations.V1";
+
+import "google/protobuf/timestamp.proto";
+
+message ApiEndpoint {
+  string service = 1;
+  string rpc = 2;
+  string category = 3;
+  string http_method = 4;
+  string http_path = 5;
+  string request_type = 6;
+  string response_type = 7;
+  bool deprecated = 8;
+}
+
+enum DependencyHealthStatus {
+  DEPENDENCY_HEALTH_STATUS_UNSPECIFIED = 0;
+  DEPENDENCY_HEALTH_STATUS_HEALTHY = 1;
+  DEPENDENCY_HEALTH_STATUS_DEGRADED = 2;
+  DEPENDENCY_HEALTH_STATUS_UNHEALTHY = 3;
+}
+
+message DependencyHealth {
+  string name = 1;
+  DependencyHealthStatus status = 2;
+  int64 duration_milliseconds = 3;
+  string description = 4;
+  repeated string tags = 5;
+}
+
+message OperationsHealth {
+  DependencyHealthStatus status = 1;
+  google.protobuf.Timestamp checked_at = 2;
+  int64 duration_milliseconds = 3;
+  repeated DependencyHealth dependencies = 4;
+}
+
+message OpenApiDocument {
+  string content_type = 1;
+  string content = 2;
+  string sha256 = 3;
+  google.protobuf.Timestamp generated_at = 4;
+}

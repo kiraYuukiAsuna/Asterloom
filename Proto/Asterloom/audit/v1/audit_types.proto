@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package asterloom.audit.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Audit.V1";
+
+message AuditEvent {
+  string id = 1;
+  string actor_id = 2;
+  string tenant_id = 3;
+  string application_id = 4;
+  string environment_id = 5;
+  string operation = 6;
+  string resource_type = 7;
+  string resource_id = 8;
+  string request_id = 9;
+  AuditOutcome outcome = 10;
+  string error_code = 11;
+  string change_summary = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+enum AuditOutcome {
+  AUDIT_OUTCOME_UNSPECIFIED = 0;
+  AUDIT_OUTCOME_SUCCEEDED = 1;
+  AUDIT_OUTCOME_DENIED = 2;
+  AUDIT_OUTCOME_FAILED = 3;
+}

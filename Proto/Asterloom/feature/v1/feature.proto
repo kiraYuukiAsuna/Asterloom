@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package asterloom.feature.v1;
+
+import "Asterloom/feature/v1/feature_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Feature.V1";
+
+// Resolves immutable published feature flag revisions for applications and services.
+service FeatureService {
+  rpc EvaluateFlag(FeatureEvaluationInput) returns (FeatureEvaluationDetails) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/flags/{flag_key}:evaluate"
+      body: "*"
+    };
+  }
+}
