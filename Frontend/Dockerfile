@@ -25,6 +25,11 @@ ENV HOSTNAME=0.0.0.0 \
 
 EXPOSE 3000
 
+# The runtime only needs the Node binary. Removing npm also keeps its build-time
+# dependency tree (which is not used by the application) out of the final image.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
+
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
