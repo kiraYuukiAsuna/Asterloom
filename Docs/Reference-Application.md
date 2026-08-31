@@ -17,6 +17,7 @@
 ```text
 Reference Client
   ├─ Passport (OIDC authorization code + PKCE / client credentials)
+  ├─ Business account demo → Reference Backend BFF
   ├─ Asterloom gRPC + JSON/HTTP
   │    ├─ Authorization
   │    ├─ Targeting / Feature / Rollout
@@ -35,17 +36,25 @@ Reference Client
 
 ## 2. 命令
 
-客户端包含三个命令：
+客户端包含五个命令：
 
 ```bash
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-login user@example.com
 ```
 
 - `provision`：创建独立的 tenant/application/environment，以及分群、已发布 Feature Flag、已发布动态配置、存储桶、签名密钥、更新通道、签名更新包、Analytics Schema/Write Key 和 Telemetry Source；敏感状态只写入被 Git 忽略的 `reference-state.json`。
 - `doctor`：逐项运行诊断。某项失败不会阻止后续能力，进程最终以非零退出码表示存在失败；加 `--json` 可供 CI 和监控采集。
 - `login`：启动系统浏览器，以 OIDC Authorization Code + PKCE 登录 Passport，并验证 token/refresh token。此命令用于桌面交互验证，不在无界面的容器中执行。
+- `account-demo`：通过参考后台真实执行业务用户注册、邮箱确认、密码登录、读取服务端 Session 和退出。
+- `account-login`：使用已有全局账号登录参考业务，并验证应用绑定的 `tenant_id`、`application_id` 和全局 `sub`。
+
+两个 `account-*` 命令从 `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` 读取密码，避免密码进入命令历史。
+`account-demo` 若没有接入真实邮件发送，需要在执行 Provision 脚本前显式设置
+`ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN=true` 并重建参考后台；该开关默认关闭，禁止在公开生产入口启用。
 
 服务身份和原生客户端由管理面完成一次性注册：
 
@@ -53,7 +62,12 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
 bash Deploy/Scripts/Provision-Reference-App.sh
 ```
 
-该脚本使用 Web BFF 登录，不把管理员 access token 暴露给浏览器脚本；它创建/轮换 `asterloom-reference-service` 密钥、创建 `asterloom-reference-native`，并把服务身份绑定到全局 `super-administrator`。生成的密钥只保存在 `.data/reference-app/reference.env`，权限为 `0600`；可写状态单独位于 `.data/reference-app/state`，生产容器仍以非 root UID 1654 运行。
+该脚本使用 Web BFF 登录，不把管理员 access token 暴露给浏览器脚本；它创建/轮换
+`asterloom-reference-service`、创建 `asterloom-reference-native`，并创建独立的
+`asterloom-reference-business` Confidential Client。业务 Client 绑定到专用 Platform Application，启用
+Client Credentials、Password、Refresh Token、可信注册和登录自动加入。生成的密钥只保存在
+`.data/reference-app/reference.env`，权限为 `0600`；可写状态单独位于 `.data/reference-app/state`，生产容器仍以
+非 root UID 1654 运行。
 
 ## 3. 环境变量
 
@@ -66,6 +80,7 @@ bash Deploy/Scripts/Provision-Reference-App.sh
 | `ASTERLOOM_REFERENCE_BACKEND_URL` | 否 | 参考后台 JSON Transcoding 地址。 |
 | `ASTERLOOM_REFERENCE_BACKEND_GRPC_URL` | 否 | 参考后台原生 gRPC 地址。 |
 | `ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID` | 否 | public native OIDC client ID。 |
+| `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` | account 命令需要 | 业务账号演练密码，只从环境读取。 |
 | `ASTERLOOM_REFERENCE_STATE_FILE` | 否 | provision 产生的状态文件。 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | 否 | OTLP Collector 地址；未设置时禁用导出。 |
 
@@ -75,7 +90,7 @@ bash Deploy/Scripts/Provision-Reference-App.sh
 
 | 能力 | 真实操作 | 成功条件 |
 | --- | --- | --- |
-| Identity | OIDC discovery、client credentials、受保护 Identity API；另有交互登录命令 | 能取得 token，受保护 API 返回成功；PKCE 登录能形成 principal。 |
+| Identity | OIDC discovery、client credentials、受保护 Identity API；另有 PKCE 和业务账号命令 | 能取得服务 Token；PKCE 能形成 principal；业务注册/确认/密码登录/BFF Session 全链路成功。 |
 | Authorization | `AsterloomAuthorizationClient.CheckPermissionAsync` | 服务身份在指定 scope 获得 `feature.flag.evaluate`。 |
 | Targeting | `AsterloomTargetingAdminClient.ListSegmentsAsync` | PostgreSQL 中创建的 segment 可由 gRPC SDK 读取。 |
 | Feature Flag | `AsterloomFeatureProvider` | CN context 命中 segment 并返回 `on/true`。 |
@@ -103,8 +118,8 @@ bash Deploy/Scripts/Provision-Reference-App.sh
 生产执行：
 
 ```bash
-docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml up -d reference-backend
 bash Deploy/Scripts/Provision-Reference-App.sh
+docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml up -d --force-recreate reference-backend
 docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \
   --profile reference run --rm --no-deps reference-client provision --json
 docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \
@@ -133,8 +148,8 @@ Web 的多个 `An unexpected error occurred.` 并非前端统一主题问题，�
 ## 7. 2026-08-31 验收基线
 
 - 生产 `provision` 成功创建全套资源，`doctor` 13/13 通过。
-- .NET Unit 46、Integration 9、Contract 20，共 75 项通过。
-- Web Vitest 29 项、生产 Chromium Playwright E2E 15 项全部通过；E2E 覆盖全部管理能力、Passport/BFF 和浅色主题。
+- .NET Unit 49、Integration 9、Contract 21，共 79 项通过。
+- Web Vitest 34 项、本地 Chromium Playwright E2E 17 项全部通过；E2E 覆盖全部管理能力、Passport/BFF、统一账号应用成员关系和浅色主题。
 - ESLint、TypeScript、Next.js production build 与生产 Smoke Test 全部通过。
 
 ## 8. Web 生产回归

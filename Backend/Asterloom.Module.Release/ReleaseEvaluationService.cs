@@ -178,6 +178,8 @@ public sealed partial class ReleaseEvaluationService(
             }
         }
         var belowMinimum = currentVersion.CompareTo(minimumVersion) < 0;
+        var fullArtifact = runtimeArtifacts.FirstOrDefault(
+            static artifact => artifact.ArtifactKind == ReleaseArtifactKind.Full);
         var selected = belowMinimum
             ? null
             : runtimeArtifacts.FirstOrDefault(artifact =>
@@ -186,8 +188,14 @@ public sealed partial class ReleaseEvaluationService(
                     artifact.DeltaFromVersion,
                     currentVersion.Original,
                     StringComparison.Ordinal));
-        selected ??= runtimeArtifacts.FirstOrDefault(
-            static artifact => artifact.ArtifactKind == ReleaseArtifactKind.Full);
+        selected ??= fullArtifact;
+        // Velopack requires the target full package in the feed even when a direct
+        // delta is available. It uses that package as the recovery path if delta
+        // reconstruction or validation fails.
+        if (selected?.ArtifactKind == ReleaseArtifactKind.Delta && fullArtifact is null)
+        {
+            selected = null;
+        }
         if (selected is null)
         {
             trace.Add("artifact:no_compatible_artifact");
@@ -202,18 +210,34 @@ public sealed partial class ReleaseEvaluationService(
         }
         trace.Add($"artifact:{selected.ArtifactKind.ToString().ToLowerInvariant()}:{selected.TargetRuntimeId}");
 
+        var downloadableArtifacts = selected.ArtifactKind == ReleaseArtifactKind.Delta
+            ? new[] { fullArtifact!, selected }
+            : [selected];
+        if (selected.ArtifactKind == ReleaseArtifactKind.Delta)
+        {
+            trace.Add($"artifact:fallback_full:{fullArtifact!.TargetRuntimeId}");
+        }
+
         var manifest = await managementService.GetReleaseManifestAsync(
             request.Scope.TenantId.ToString("D"),
             request.Scope.ApplicationId.ToString("D"),
             request.Scope.EnvironmentId.ToString("D"),
             release.Id.ToString("D"),
             cancellationToken);
-        StorageTransferTicket download = await storage.CreateDownloadUrlAsync(
-            request.Scope.TenantId.ToString("D"),
-            selected.StorageBucketId.ToString("D"),
-            selected.StorageObjectId.ToString("D"),
-            lifetimeSeconds: 300,
-            cancellationToken);
+        var artifactDownloads = new List<ReleaseArtifactDownload>(downloadableArtifacts.Length);
+        foreach (var artifact in downloadableArtifacts)
+        {
+            var ticket = await storage.CreateDownloadUrlAsync(
+                request.Scope.TenantId.ToString("D"),
+                artifact.StorageBucketId.ToString("D"),
+                artifact.StorageObjectId.ToString("D"),
+                lifetimeSeconds: 300,
+                cancellationToken);
+            artifactDownloads.Add(new ReleaseArtifactDownload(artifact, ticket));
+        }
+        var download = artifactDownloads
+            .Single(item => item.Artifact.Id == selected.Id)
+            .Download;
         return new UpdateDecision(
             UpdateAvailable: true,
             UpdateDecisionReason.UpdateAvailable,
@@ -222,6 +246,7 @@ public sealed partial class ReleaseEvaluationService(
             manifest,
             selected,
             download,
+            artifactDownloads,
             Mandatory: release.Mandatory || belowMinimum,
             BucketEvaluated: true,
             bucket,
@@ -295,6 +320,7 @@ public sealed partial class ReleaseEvaluationService(
             Manifest: null,
             SelectedArtifact: null,
             Download: null,
+            ArtifactDownloads: [],
             Mandatory: false,
             bucketEvaluated,
             bucket,

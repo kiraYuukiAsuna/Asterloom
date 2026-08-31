@@ -37,7 +37,11 @@ Global
 A parent binding or policy covers child requests; an Environment scope matches only that Environment. An
 Environment requires Application and Tenant, and an Application requires Tenant.
 
-Tenant Membership controls visibility while roles and policies control actions. Most users need both.
+Identity Application Membership controls whether a user may enter an application, while roles and policies control
+actions inside it. Most business users need both. An application-bound user token is constrained to its
+`tenant_id`/`application_id`; it cannot request a decision for another application, and a removed membership is
+rejected immediately. Client Credentials tokens represent the bound service client and do not require a user
+membership.
 
 ## 3. Web workflow
 
@@ -74,6 +78,9 @@ if (!decision.Allowed)
 ```
 
 This improves UX but never replaces server enforcement. Hiding a button is not access control.
+
+The `actorId` must match the authenticated token subject. Business application A cannot ask for business B's scope,
+even if it sends B's identifiers in the request body.
 
 ## 5. System and custom roles
 

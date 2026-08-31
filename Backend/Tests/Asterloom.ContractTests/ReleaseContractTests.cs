@@ -10,6 +10,9 @@ using Asterloom.Sdk.Release;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Velopack;
+using Velopack.Locators;
+using Velopack.Logging;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Asterloom.ContractTests;
@@ -214,13 +217,24 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
             }));
         Assert.Equal("DESKTOP_RELEASE_STATUS_PUBLISHED", firstRelease.Status);
 
-        var secondArtifact = await UploadArtifactAsync(
+        var secondFullBytes = "contract release two full"u8.ToArray();
+        var secondDeltaBytes = "contract release two delta from one"u8.ToArray();
+        var secondFullArtifact = await UploadArtifactAsync(
             client,
             resources,
             signingKey,
             rsa,
             "2.0.0",
-            "contract release two"u8.ToArray());
+            secondFullBytes);
+        var secondDeltaArtifact = await UploadArtifactAsync(
+            client,
+            resources,
+            signingKey,
+            rsa,
+            "2.0.0",
+            secondDeltaBytes,
+            AsterloomReleaseArtifactKind.Delta,
+            deltaFromVersion: "1.0.0");
         var secondRelease = await SendAsync<ReleaseJson>(client.PostAsJsonAsync(
             releasePath,
             new
@@ -229,7 +243,7 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
                 releaseVersion = "2.0.0",
                 displayName = "Version 2.0.0",
                 releaseNotes = "Second contract release.",
-                artifactIds = new[] { secondArtifact.Id },
+                artifactIds = new[] { secondFullArtifact.Id, secondDeltaArtifact.Id },
                 rolloutBasisPoints = 100_000,
                 mandatory = true,
                 minimumVersion = "1.0.0",
@@ -247,6 +261,116 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
                 expectedVersion = secondRelease.Version,
                 expectedChannelVersion = channel.Version,
             }));
+
+        var deltaDecision = await sdk.CheckForUpdateAsync(
+            "stable",
+            "1.0.0",
+            AsterloomReleaseContext.Create(
+                sdkScope,
+                "sdk-delta-user",
+                clientVersion: "1.0.0",
+                platform: "windows"));
+        Assert.Equal(AsterloomReleaseArtifactKind.Delta, deltaDecision.SelectedArtifact!.ArtifactKind);
+        Assert.Equal(Guid.Parse(secondDeltaArtifact.Id), deltaDecision.SelectedArtifact.Id);
+        Assert.Collection(
+            deltaDecision.ArtifactDownloads.OrderBy(item => item.Artifact.ArtifactKind),
+            item => Assert.Equal(AsterloomReleaseArtifactKind.Full, item.Artifact.ArtifactKind),
+            item => Assert.Equal(AsterloomReleaseArtifactKind.Delta, item.Artifact.ArtifactKind));
+
+        await using (var fullDownload = new MemoryStream())
+        {
+            await sdk.DownloadArtifactToAsync(
+                deltaDecision,
+                Guid.Parse(secondFullArtifact.Id),
+                fullDownload);
+            Assert.Equal(secondFullBytes, fullDownload.ToArray());
+        }
+        await using (var deltaDownload = new MemoryStream())
+        {
+            await sdk.DownloadArtifactToAsync(
+                deltaDecision,
+                Guid.Parse(secondDeltaArtifact.Id),
+                deltaDownload);
+            Assert.Equal(secondDeltaBytes, deltaDownload.ToArray());
+        }
+
+        var tempDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"asterloom-velopack-contract-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        try
+        {
+            var logger = new TestLogger();
+            var updateSource = new AsterloomVelopackUpdateSource(
+                sdk,
+                version => AsterloomReleaseContext.Create(
+                    sdkScope,
+                    "velopack-delta-user",
+                    clientVersion: version,
+                    platform: "windows"));
+            var localRelease = new VelopackAsset
+            {
+                PackageId = "asterloom-contract-app",
+                Version = SemanticVersion.Parse("1.0.0"),
+                Type = VelopackAssetType.Full,
+                FileName = "desktop-1.0.0-full.nupkg",
+                SHA256 = Convert.ToHexString(SHA256.HashData(firstBytes)),
+                Size = firstBytes.LongLength,
+            };
+            await File.WriteAllBytesAsync(
+                Path.Combine(tempDirectory, localRelease.FileName),
+                firstBytes);
+            var locator = new TestVelopackLocator(
+                "asterloom-contract-app",
+                "1.0.0",
+                tempDirectory,
+                tempDirectory,
+                tempDirectory,
+                Path.Combine(tempDirectory, "Update.exe"),
+                "stable",
+                logger,
+                localRelease,
+                Path.Combine(tempDirectory, "asterloom-contract-app.exe"));
+            var updateManager = new UpdateManager(
+                updateSource,
+                new UpdateOptions { ExplicitChannel = "stable" },
+                locator);
+            var update = await updateManager.CheckForUpdatesAsync();
+            Assert.NotNull(update);
+            Assert.Equal(SemanticVersion.Parse("2.0.0"), update.TargetFullRelease.Version);
+            Assert.Equal(VelopackAssetType.Full, update.TargetFullRelease.Type);
+            Assert.Single(update.DeltasToTarget);
+            Assert.Equal(VelopackAssetType.Delta, update.DeltasToTarget[0].Type);
+            await updateManager.DownloadUpdatesAsync(update, _ => { });
+            Assert.Equal(
+                secondFullBytes,
+                await File.ReadAllBytesAsync(
+                    Path.Combine(tempDirectory, update.TargetFullRelease.FileName)));
+
+            var feed = await updateSource.GetReleaseFeed(
+                logger,
+                "asterloom-contract-app",
+                "stable",
+                latestLocalRelease: localRelease);
+            Assert.Equal(2, feed.Assets.Length);
+            foreach (var asset in feed.Assets)
+            {
+                var destination = Path.Combine(tempDirectory, asset.FileName);
+                await updateSource.DownloadReleaseEntry(
+                    logger,
+                    asset,
+                    destination,
+                    _ => { });
+                Assert.Equal(
+                    asset.Type == VelopackAssetType.Full ? secondFullBytes : secondDeltaBytes,
+                    await File.ReadAllBytesAsync(destination));
+            }
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+
         channel = (await client.GetFromJsonAsync<ChannelJson>($"{channelPath}/{channel.Id}"))!;
         firstRelease = (await client.GetFromJsonAsync<ReleaseJson>(
             $"{releasePath}/{firstRelease.Id}"))!;
@@ -271,7 +395,9 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
         SigningKeyJson signingKey,
         RSA rsa,
         string version,
-        byte[] content)
+        byte[] content,
+        AsterloomReleaseArtifactKind artifactKind = AsterloomReleaseArtifactKind.Full,
+        string? deltaFromVersion = null)
     {
         var scopePath = ScopePath(resources);
         var sha256 = Convert.ToHexStringLower(SHA256.HashData(content));
@@ -281,8 +407,11 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
             {
                 releaseVersion = version,
                 targetRuntimeId = "win-x64",
-                artifactKind = "RELEASE_ARTIFACT_KIND_FULL",
-                fileName = $"desktop-{version}-full.nupkg",
+                artifactKind = artifactKind == AsterloomReleaseArtifactKind.Full
+                    ? "RELEASE_ARTIFACT_KIND_FULL"
+                    : "RELEASE_ARTIFACT_KIND_DELTA",
+                deltaFromVersion = deltaFromVersion ?? string.Empty,
+                fileName = $"desktop-{version}-{(artifactKind == AsterloomReleaseArtifactKind.Full ? "full" : $"delta-{deltaFromVersion}")}.nupkg",
                 contentType = "application/octet-stream",
                 sizeBytes = content.LongLength,
                 sha256,
@@ -476,4 +605,11 @@ public sealed class ReleaseContractTests : IClassFixture<WebApplicationFactory<P
     private sealed record ValidationJson(bool Valid, ManifestJson CandidateManifest);
 
     private sealed record DecisionJson(bool UpdateAvailable, string Reason);
+
+    private sealed class TestLogger : IVelopackLogger
+    {
+        public void Log(VelopackLogLevel logLevel, string? message, Exception? exception)
+        {
+        }
+    }
 }

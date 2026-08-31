@@ -23,6 +23,39 @@ namespace Asterloom.Modules.Identity.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Asterloom.Modules.Identity.Model.AsterloomApplicationMembership", b =>
+                {
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ApplicationId", "UserId");
+
+                    b.HasIndex("TenantId", "ApplicationId", "Status");
+
+                    b.HasIndex("UserId", "Status", "ApplicationId");
+
+                    b.ToTable("ApplicationMemberships", "identity");
+                });
+
             modelBuilder.Entity("Asterloom.Modules.Identity.Model.AsterloomUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -447,6 +480,17 @@ namespace Asterloom.Modules.Identity.Persistence.Migrations
                     b.HasIndex("ApplicationId", "Status", "Subject", "Type");
 
                     b.ToTable("OpenIddictTokens", "identity");
+                });
+
+            modelBuilder.Entity("Asterloom.Modules.Identity.Model.AsterloomApplicationMembership", b =>
+                {
+                    b.HasOne("Asterloom.Modules.Identity.Model.AsterloomUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

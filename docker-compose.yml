@@ -84,6 +84,9 @@ services:
       dockerfile: Dockerfile.reference
       target: backend
     image: asterloom-reference-backend:local
+    env_file:
+      - path: ./.data/reference-app/reference.env
+        required: false
     environment:
       ConnectionStrings__ReferenceApp: Host=postgres;Port=5432;Database=asterloom;Username=asterloom;Password=${POSTGRES_PASSWORD:-asterloom-dev};GSS Encryption Mode=Disable
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317

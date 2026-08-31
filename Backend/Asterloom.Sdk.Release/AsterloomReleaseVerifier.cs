@@ -60,7 +60,8 @@ public static class AsterloomReleaseVerifier
         {
             if (decision.Manifest is not null
                 || decision.SelectedArtifact is not null
-                || decision.Download is not null)
+                || decision.Download is not null
+                || decision.ArtifactDownloads is { Count: > 0 })
             {
                 throw Integrity("A no-update decision unexpectedly contains update material.");
             }
@@ -75,21 +76,81 @@ public static class AsterloomReleaseVerifier
         }
 
         VerifyManifest(decision.Manifest, trustedPublicKeysByFingerprint);
-        var signedArtifact = decision.Manifest.Artifacts.FirstOrDefault(
-            artifact => artifact.ArtifactId == decision.SelectedArtifact.Id)
-            ?? throw Integrity("The selected artifact is not part of the signed manifest.");
-        if (!string.Equals(
-                decision.SelectedArtifact.ReleaseVersion,
-                decision.Manifest.ReleaseVersion,
-                StringComparison.Ordinal)
-            || !ArtifactMatches(decision.SelectedArtifact, signedArtifact))
+        var downloads = GetArtifactDownloads(decision);
+        if (downloads.Count == 0
+            || downloads.Select(static item => item.Artifact.Id).Distinct().Count()
+                != downloads.Count)
         {
-            throw Integrity("The selected artifact differs from the signed manifest entry.");
+            throw Integrity("The update artifact download set is empty or contains duplicates.");
         }
-        if (decision.Download.ExpiresAt <= DateTimeOffset.UtcNow)
+
+        foreach (var delivery in downloads)
         {
-            throw Integrity("The update download ticket has already expired.");
+            var signedArtifact = decision.Manifest.Artifacts.FirstOrDefault(
+                artifact => artifact.ArtifactId == delivery.Artifact.Id)
+                ?? throw Integrity("A downloadable artifact is not part of the signed manifest.");
+            if (!string.Equals(
+                    delivery.Artifact.ReleaseVersion,
+                    decision.Manifest.ReleaseVersion,
+                    StringComparison.Ordinal)
+                || !string.Equals(
+                    delivery.Artifact.TargetRuntimeId,
+                    decision.SelectedArtifact.TargetRuntimeId,
+                    StringComparison.Ordinal)
+                || !ArtifactMatches(delivery.Artifact, signedArtifact))
+            {
+                throw Integrity("A downloadable artifact differs from the signed manifest entry.");
+            }
+            if (delivery.Download.ExpiresAt <= DateTimeOffset.UtcNow)
+            {
+                throw Integrity("An update download ticket has already expired.");
+            }
         }
+
+        var selectedDownloads = downloads
+            .Where(item => item.Artifact.Id == decision.SelectedArtifact.Id)
+            .ToArray();
+        if (selectedDownloads.Length != 1
+            || !ArtifactMatches(decision.SelectedArtifact, selectedDownloads[0].Artifact)
+            || !TicketMatches(decision.Download, selectedDownloads[0].Download))
+        {
+            throw Integrity(
+                "The selected artifact and ticket do not match the downloadable artifact set.");
+        }
+
+        // Decisions emitted by current servers deliberately expose only the
+        // target full package and, when selected, its exact direct delta. This
+        // shape prevents Velopack from interpreting unrelated deltas as a chain.
+        if (decision.ArtifactDownloads is { Count: > 0 } advertisedDownloads)
+        {
+            var fullCount = advertisedDownloads.Count(item =>
+                item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Full);
+            var deltaCount = advertisedDownloads.Count(item =>
+                item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Delta);
+            if (fullCount != 1
+                || (decision.SelectedArtifact.ArtifactKind == AsterloomReleaseArtifactKind.Delta
+                    ? advertisedDownloads.Count != 2
+                        || deltaCount != 1
+                        || string.IsNullOrWhiteSpace(decision.SelectedArtifact.DeltaFromVersion)
+                    : advertisedDownloads.Count != 1 || deltaCount != 0))
+            {
+                throw Integrity(
+                    "The update artifact set must contain the target full package and only the selected direct delta, when applicable.");
+            }
+        }
+    }
+
+    internal static IReadOnlyList<AsterloomReleaseArtifactDownload> GetArtifactDownloads(
+        AsterloomUpdateDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        if (decision.ArtifactDownloads is { Count: > 0 })
+        {
+            return decision.ArtifactDownloads;
+        }
+        return decision.SelectedArtifact is not null && decision.Download is not null
+            ? [new AsterloomReleaseArtifactDownload(decision.SelectedArtifact, decision.Download)]
+            : [];
     }
 
     public static void VerifyManifest(
@@ -221,6 +282,35 @@ public static class AsterloomReleaseVerifier
         && string.Equals(selected.Sha256, signed.Sha256, StringComparison.OrdinalIgnoreCase)
         && string.Equals(selected.Signature, signed.Signature, StringComparison.Ordinal)
         && selected.SigningKeyId == signed.SigningKeyId;
+
+    private static bool ArtifactMatches(
+        AsterloomReleaseArtifact left,
+        AsterloomReleaseArtifact right) =>
+        left.Id == right.Id
+        && string.Equals(left.ReleaseVersion, right.ReleaseVersion, StringComparison.Ordinal)
+        && string.Equals(left.TargetRuntimeId, right.TargetRuntimeId, StringComparison.Ordinal)
+        && left.ArtifactKind == right.ArtifactKind
+        && string.Equals(
+            left.DeltaFromVersion ?? string.Empty,
+            right.DeltaFromVersion ?? string.Empty,
+            StringComparison.Ordinal)
+        && string.Equals(left.FileName, right.FileName, StringComparison.Ordinal)
+        && string.Equals(left.ContentType, right.ContentType, StringComparison.Ordinal)
+        && left.SizeBytes == right.SizeBytes
+        && string.Equals(left.Sha256, right.Sha256, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(left.Signature, right.Signature, StringComparison.Ordinal)
+        && left.SigningKeyId == right.SigningKeyId;
+
+    private static bool TicketMatches(
+        AsterloomReleaseTransferTicket left,
+        AsterloomReleaseTransferTicket right) =>
+        left.Url.Equals(right.Url)
+        && string.Equals(left.Method.Method, right.Method.Method, StringComparison.OrdinalIgnoreCase)
+        && left.ExpiresAt == right.ExpiresAt
+        && left.RequiredHeaders.Count == right.RequiredHeaders.Count
+        && left.RequiredHeaders.All(pair =>
+            right.RequiredHeaders.TryGetValue(pair.Key, out var value)
+            && string.Equals(pair.Value, value, StringComparison.Ordinal));
 
     private static bool ArtifactMatches(
         ManifestPayloadArtifact payload,

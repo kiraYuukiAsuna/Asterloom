@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Asterloom.ReferenceApp.Backend;
+using Asterloom.Sdk.Identity;
 using Asterloom.Sdk.Telemetry;
 using Npgsql;
 
@@ -20,6 +21,25 @@ builder.Services.AddSingleton(provider =>
     return NpgsqlDataSource.Create(connectionString);
 });
 builder.Services.AddSingleton<ReferenceAppStore>();
+var referenceIdentity = ReferenceIdentityOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(referenceIdentity);
+if (referenceIdentity.Enabled)
+{
+    builder.Services.AddAsterloomIdentityClient(options =>
+    {
+        options.Issuer = referenceIdentity.PassportIssuer;
+        options.ClientId = referenceIdentity.ClientId;
+        options.ClientSecret = referenceIdentity.ClientSecret;
+        options.RegistrationId = "asterloom-reference-business-backend";
+        options.EnableServiceCredentials = true;
+        options.EnablePasswordAuthentication = true;
+        options.RequestRefreshTokens = true;
+        options.AllowInsecureHttpForDevelopment =
+            referenceIdentity.AllowInsecureHttpForDevelopment;
+    });
+    builder.Services.AddSingleton<ReferenceIdentityGateway>();
+    builder.Services.AddSingleton<ReferenceIdentitySessionStore>();
+}
 
 var telemetry = AsterloomTelemetryOptions.FromConfiguration(
     builder.Configuration,
@@ -39,10 +59,15 @@ await app.Services.GetRequiredService<ReferenceAppStore>().InitializeAsync(
     app.Lifetime.ApplicationStopping);
 
 app.MapGrpcService<ReferenceAppGrpcService>();
+if (referenceIdentity.Enabled)
+{
+    app.MapReferenceIdentityEndpoints();
+}
 app.MapGet("/healthz", () => Results.Ok(new
 {
     status = "healthy",
     service = "asterloom.reference.backend",
+    identityBffEnabled = referenceIdentity.Enabled,
 }));
 
 app.Run();

@@ -34,30 +34,49 @@ public sealed class AsterloomVelopackUpdateSource(
             return new VelopackAssetFeed { Assets = [] };
         }
 
-        var artifact = decision.SelectedArtifact!;
-        var asset = new VelopackAsset
+        var downloads = AsterloomReleaseVerifier.GetArtifactDownloads(decision);
+        if (decision.SelectedArtifact!.ArtifactKind == AsterloomReleaseArtifactKind.Delta
+            && !downloads.Any(item =>
+                item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Full))
         {
-            PackageId = string.IsNullOrWhiteSpace(appId)
-                ? client.Options.PackageId
-                : appId,
-            Version = SemanticVersion.Parse(decision.Manifest!.ReleaseVersion),
-            Type = artifact.ArtifactKind == AsterloomReleaseArtifactKind.Full
-                ? VelopackAssetType.Full
-                : VelopackAssetType.Delta,
-            FileName = artifact.FileName,
-            SHA1 = string.Empty,
-            SHA256 = artifact.Sha256,
-            Size = artifact.SizeBytes,
-            NotesMarkdown = decision.Manifest.ReleaseNotes,
-            NotesHTML = string.Empty,
-        };
-        _downloads[Key(asset)] = new(
-            channel,
-            currentVersion,
-            context,
-            decision,
-            stagingId);
-        return new VelopackAssetFeed { Assets = [asset] };
+            throw new AsterloomReleaseIntegrityException(
+                "A delta update cannot be offered to Velopack without its target full-package fallback.");
+        }
+
+        var packageId = string.IsNullOrWhiteSpace(appId)
+            ? client.Options.PackageId
+            : appId;
+        var version = SemanticVersion.Parse(decision.Manifest!.ReleaseVersion);
+        var assets = new List<VelopackAsset>(downloads.Count);
+        foreach (var delivery in downloads.OrderBy(static item => item.Artifact.ArtifactKind))
+        {
+            var artifact = delivery.Artifact;
+            var asset = new VelopackAsset
+            {
+                PackageId = packageId,
+                Version = version,
+                Type = artifact.ArtifactKind == AsterloomReleaseArtifactKind.Full
+                    ? VelopackAssetType.Full
+                    : VelopackAssetType.Delta,
+                FileName = artifact.FileName,
+                SHA1 = string.Empty,
+                // Velopack's package checksum path compares against its uppercase
+                // hex output, so normalize the signed digest for its asset model.
+                SHA256 = artifact.Sha256.ToUpperInvariant(),
+                Size = artifact.SizeBytes,
+                NotesMarkdown = decision.Manifest.ReleaseNotes,
+                NotesHTML = string.Empty,
+            };
+            _downloads[Key(asset)] = new(
+                channel,
+                currentVersion,
+                context,
+                decision,
+                artifact.Id,
+                stagingId);
+            assets.Add(asset);
+        }
+        return new VelopackAssetFeed { Assets = assets.ToArray() };
     }
 
     public async Task DownloadReleaseEntry(
@@ -78,14 +97,20 @@ public sealed class AsterloomVelopackUpdateSource(
         }
 
         var decision = state.Decision;
-        if (decision.Download!.ExpiresAt <= DateTimeOffset.UtcNow.AddSeconds(15))
+        var delivery = AsterloomReleaseVerifier.GetArtifactDownloads(decision)
+            .FirstOrDefault(item => item.Artifact.Id == state.ArtifactId)
+            ?? throw new InvalidOperationException(
+                "The selected Velopack asset is no longer present in the update decision.");
+        if (delivery.Download.ExpiresAt <= DateTimeOffset.UtcNow.AddSeconds(15))
         {
             decision = await client.CheckForUpdateAsync(
                 state.Channel,
                 state.CurrentVersion,
                 state.Context,
                 cancelToken).ConfigureAwait(false);
-            var artifact = decision.SelectedArtifact;
+            delivery = AsterloomReleaseVerifier.GetArtifactDownloads(decision)
+                .FirstOrDefault(item => item.Artifact.Id == state.ArtifactId);
+            var artifact = delivery?.Artifact;
             if (!decision.UpdateAvailable
                 || artifact is null
                 || !string.Equals(artifact.FileName, releaseEntry.FileName, StringComparison.Ordinal)
@@ -96,17 +121,23 @@ public sealed class AsterloomVelopackUpdateSource(
             }
             _downloads[Key(releaseEntry)] = state with { Decision = decision };
         }
-        await client.DownloadToFileAsync(decision, localFile, progress, cancelToken)
+        await client.DownloadArtifactToFileAsync(
+                decision,
+                state.ArtifactId,
+                localFile,
+                progress,
+                cancelToken)
             .ConfigureAwait(false);
     }
 
     private static string Key(VelopackAsset asset) =>
-        $"{asset.FileName}\0{asset.SHA256}";
+        $"{(int)asset.Type}\0{asset.FileName}\0{asset.SHA256}";
 
     private sealed record DownloadState(
         string Channel,
         string CurrentVersion,
         TargetingEvaluationContext Context,
         AsterloomUpdateDecision Decision,
+        Guid ArtifactId,
         Guid? StagingId);
 }

@@ -37,7 +37,7 @@ public sealed partial class IdentityProtocolTests
     }
 
     [Fact]
-    public async Task DiscoveryAdvertisesOnlyApprovedInteractiveFlows()
+    public async Task DiscoveryAdvertisesOnlyApprovedFlows()
     {
         using var response = await _client.GetAsync(
             "/.well-known/openid-configuration");
@@ -58,8 +58,8 @@ public sealed partial class IdentityProtocolTests
         Assert.Contains(GrantTypes.AuthorizationCode, grants);
         Assert.Contains(GrantTypes.RefreshToken, grants);
         Assert.Contains(GrantTypes.ClientCredentials, grants);
+        Assert.Contains(GrantTypes.Password, grants);
         Assert.DoesNotContain(GrantTypes.Implicit, grants);
-        Assert.DoesNotContain(GrantTypes.Password, grants);
         Assert.Contains(
             CodeChallengeMethods.Sha256,
             document.GetProperty("code_challenge_methods_supported")

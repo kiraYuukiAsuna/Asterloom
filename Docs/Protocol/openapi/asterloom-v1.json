@@ -4067,6 +4067,168 @@
         }
       }
     },
+    "/api/v1/identity/accounts:register": {
+      "post": {
+        "tags": [
+          "IdentityAccessService"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAccountResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/accounts:confirm-email": {
+      "post": {
+        "tags": [
+          "IdentityAccessService"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityUser"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/accounts/{userId}": {
+      "get": {
+        "tags": [
+          "IdentityAccessService"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAccount"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/accounts/{userId}/membership": {
+      "delete": {
+        "tags": [
+          "IdentityAccessService"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationMembership"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/identity/users": {
       "get": {
         "tags": [
@@ -4110,6 +4272,42 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListUsersResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "IdentityAdminService"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityUser"
                 }
               }
             }
@@ -4363,6 +4561,54 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetUserRolesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityUser"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/users/{userId}:reset-password": {
+      "post": {
+        "tags": [
+          "IdentityAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetUserPasswordRequest"
               }
             }
           }
@@ -4674,6 +4920,189 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RevokeAllUserSessionsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/application-memberships": {
+      "get": {
+        "tags": [
+          "IdentityAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeRemoved",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListApplicationMembershipsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/identity/application-memberships/{applicationId}/{userId}": {
+      "put": {
+        "tags": [
+          "IdentityAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetApplicationMembershipRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationMembership"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "IdentityAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationMembership"
                 }
               }
             }
@@ -10504,6 +10933,54 @@
         },
         "additionalProperties": false
       },
+      "ApplicationAccount": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/IdentityUser"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/ApplicationMembership"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApplicationMembership": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationMembershipStatus"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApplicationMembershipStatus": {
+        "enum": [
+          "APPLICATION_MEMBERSHIP_STATUS_UNSPECIFIED",
+          "APPLICATION_MEMBERSHIP_STATUS_ACTIVE",
+          "APPLICATION_MEMBERSHIP_STATUS_REMOVED"
+        ],
+        "type": "string"
+      },
       "ArtifactUpload": {
         "type": "object",
         "properties": {
@@ -11183,6 +11660,18 @@
         ],
         "type": "string"
       },
+      "ConfirmEmailRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CopyObjectRequest": {
         "type": "object",
         "properties": {
@@ -11371,6 +11860,18 @@
           },
           "applicationType": {
             "$ref": "#/components/schemas/OidcApplicationType"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "allowUserRegistration": {
+            "type": "boolean"
+          },
+          "allowMembershipAutoJoin": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -11745,6 +12246,30 @@
           "customMetadata": {
             "type": "object",
             "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "emailConfirmed": {
+            "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
               "type": "string"
             }
           }
@@ -12621,6 +13146,9 @@
           },
           "archivedAt": {
             "type": "string"
+          },
+          "emailConfirmed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -12710,6 +13238,21 @@
             "items": {
               "$ref": "#/components/schemas/ApiEndpoint"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListApplicationMembershipsResponse": {
+        "type": "object",
+        "properties": {
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationMembership"
+            }
+          },
+          "nextPageToken": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -13290,6 +13833,18 @@
           },
           "applicationType": {
             "$ref": "#/components/schemas/OidcApplicationType"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "allowUserRegistration": {
+            "type": "boolean"
+          },
+          "allowMembershipAutoJoin": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -13319,7 +13874,8 @@
           "OIDC_GRANT_TYPE_UNSPECIFIED",
           "OIDC_GRANT_TYPE_AUTHORIZATION_CODE",
           "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
-          "OIDC_GRANT_TYPE_REFRESH_TOKEN"
+          "OIDC_GRANT_TYPE_REFRESH_TOKEN",
+          "OIDC_GRANT_TYPE_PASSWORD"
         ],
         "type": "string"
       },
@@ -13722,6 +14278,42 @@
         },
         "additionalProperties": false
       },
+      "RegisterAccountRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterAccountResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/IdentityUser"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/ApplicationMembership"
+          },
+          "accountCreated": {
+            "type": "boolean"
+          },
+          "verificationRequired": {
+            "type": "boolean"
+          },
+          "emailVerificationToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ReleaseArtifact": {
         "type": "object",
         "properties": {
@@ -13802,6 +14394,18 @@
           },
           "archivedAt": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReleaseArtifactDownload": {
+        "type": "object",
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/ReleaseArtifact"
+          },
+          "download": {
+            "$ref": "#/components/schemas/StorageTransferTicket"
           }
         },
         "additionalProperties": false
@@ -14075,6 +14679,22 @@
         "type": "object",
         "properties": {
           "userId": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResetUserPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "newPassword": {
             "type": "string"
           },
           "expectedVersion": {
@@ -14612,6 +15232,25 @@
           },
           "archivedAt": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetApplicationMembershipRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "additionalProperties": false
@@ -15563,6 +16202,18 @@
           },
           "expectedVersion": {
             "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "allowUserRegistration": {
+            "type": "boolean"
+          },
+          "allowMembershipAutoJoin": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -15643,6 +16294,12 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "artifactDownloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseArtifactDownload"
             }
           }
         },

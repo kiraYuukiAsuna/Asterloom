@@ -32,7 +32,48 @@ public sealed record AsterloomIdentityUser(
     IReadOnlyList<AsterloomPassportRole> Roles,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? ArchivedAt);
+    DateTimeOffset? ArchivedAt,
+    bool EmailConfirmed);
+
+public sealed record AsterloomIdentityUserRegistration(
+    string Email,
+    string DisplayName,
+    string Password,
+    bool EmailConfirmed,
+    IReadOnlyCollection<AsterloomPassportRole> Roles);
+
+public enum AsterloomApplicationMembershipStatus
+{
+    Active = 0,
+    Removed = 1,
+}
+
+public sealed record AsterloomApplicationMembership(
+    Guid UserId,
+    Guid TenantId,
+    Guid ApplicationId,
+    AsterloomApplicationMembershipStatus Status,
+    long Version,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record AsterloomApplicationAccount(
+    AsterloomIdentityUser User,
+    AsterloomApplicationMembership Membership);
+
+public sealed record AsterloomAccountRegistrationResult(
+    AsterloomIdentityUser User,
+    AsterloomApplicationMembership Membership,
+    bool AccountCreated,
+    bool VerificationRequired,
+    string? EmailVerificationToken)
+{
+    public override string ToString() =>
+        $"{nameof(AsterloomAccountRegistrationResult)} {{ User = {User}, "
+        + $"Membership = {Membership}, AccountCreated = {AccountCreated}, "
+        + $"VerificationRequired = {VerificationRequired}, "
+        + "EmailVerificationToken = [REDACTED] }";
+}
 
 public sealed record AsterloomUserInvitation(
     AsterloomIdentityUser User,
@@ -71,6 +112,7 @@ public enum AsterloomOidcGrantType
     AuthorizationCode = 0,
     ClientCredentials = 1,
     RefreshToken = 2,
+    Password = 3,
 }
 
 public sealed record AsterloomOidcClient(
@@ -83,7 +125,11 @@ public sealed record AsterloomOidcClient(
     IReadOnlyList<Uri> RedirectUris,
     IReadOnlyList<Uri> PostLogoutRedirectUris,
     IReadOnlyList<string> Scopes,
-    string Version);
+    string Version,
+    Guid? TenantId,
+    Guid? ApplicationId,
+    bool AllowUserRegistration,
+    bool AllowMembershipAutoJoin);
 
 public sealed record AsterloomOidcClientCredential(
     AsterloomOidcClient Client,
@@ -101,14 +147,22 @@ public sealed record AsterloomOidcClientRegistration(
     IReadOnlyCollection<AsterloomOidcGrantType> GrantTypes,
     IReadOnlyCollection<Uri> RedirectUris,
     IReadOnlyCollection<Uri> PostLogoutRedirectUris,
-    IReadOnlyCollection<string> Scopes);
+    IReadOnlyCollection<string> Scopes,
+    Guid? TenantId = null,
+    Guid? ApplicationId = null,
+    bool AllowUserRegistration = false,
+    bool AllowMembershipAutoJoin = false);
 
 public sealed record AsterloomOidcClientUpdate(
     string DisplayName,
     IReadOnlyCollection<AsterloomOidcGrantType> GrantTypes,
     IReadOnlyCollection<Uri> RedirectUris,
     IReadOnlyCollection<Uri> PostLogoutRedirectUris,
-    IReadOnlyCollection<string> Scopes);
+    IReadOnlyCollection<string> Scopes,
+    Guid? TenantId = null,
+    Guid? ApplicationId = null,
+    bool AllowUserRegistration = false,
+    bool AllowMembershipAutoJoin = false);
 
 public sealed record AsterloomOidcScope(
     string Id,

@@ -28,15 +28,15 @@
 
 ### 2.1 当前实现快照
 
-截至 2026-08-30，本文档定义的首期纵向切片已经在当前仓库落地：
+截至 2026-08-31，本文档定义的首期纵向切片已经在当前仓库落地：
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 后端与 SDK | .NET 10 模块化单体及 C# SDK 已覆盖 Platform、Identity、Authorization、Targeting、Feature、Config、Release、Analytics、Telemetry、Storage 与 RPC/Operations |
-| 协议 | 170 个自定义 RPC 均具有 `google.api.http` 映射，可通过原生 gRPC 与 HTTP/JSON 使用，并已生成 OpenAPI 与 Kiota TypeScript Client |
-| 管理覆盖 | 163/163 个 Admin RPC 均已绑定 Permission、Web 路由、页面操作标记和 E2E 旅程，覆盖率为 100% |
+| 协议 | 179 个自定义 RPC 均具有 `google.api.http` 映射，可通过原生 gRPC 与 HTTP/JSON 使用，并已生成 OpenAPI 与 Kiota TypeScript Client |
+| 管理覆盖 | 168/168 个 Admin RPC 均已绑定 Permission、Web 路由、页面操作标记和 E2E 旅程，覆盖率为 100% |
 | Web Console | Passport/BFF、全部管理工作区、Operations API 目录与健康页面均已实现 |
-| 自动化验证 | 46 个后端单元测试、9 个集成测试、20 个契约测试、29 个前端测试和 15 条浏览器旅程通过 |
+| 自动化验证 | 49 个后端单元测试、9 个集成测试、21 个契约测试、34 个前端测试和 17 条浏览器旅程通过 |
 | 构建与安全 | 后端 Release 构建 0 警告/0 错误，Next.js 生产构建通过，当前 NuGet 与 npm 依赖审计无已知漏洞 |
 
 该快照表示代码与自动化验收状态，不等同于任意部署环境已经完成容量评估、备份恢复演练或生产变更审批；这些工作仍按第 18、19 节执行。
@@ -49,7 +49,7 @@ Asterloom 为客户端应用和后端服务提供统一的基础平台能力：
 
 | 能力 | 目标 |
 | --- | --- |
-| Identity | 统一账户、登录、会话和 OAuth 2.0 / OpenID Connect |
+| Identity | 全局账户、应用成员关系、登录、会话和 OAuth 2.0 / OpenID Connect |
 | Authorization | 统一角色、权限、策略和访问控制 |
 | Feature Flag | 在不发布客户端新版本的情况下控制功能和变体 |
 | Targeting / Rollout | 按属性、分群和稳定百分比分桶逐步开放能力 |
@@ -376,11 +376,22 @@ Identity 模块允许使用 OpenIddict/ASP.NET Core Identity 官方 EF Core Stor
 - 用户交互登录：Authorization Code Flow + PKCE。
 - 桌面客户端：系统浏览器 + Authorization Code Flow + PKCE；回调使用经过注册的 Loopback URI 或自定义 URI。
 - 服务到服务：Client Credentials Flow。
+- 业务自有登录页：只有绑定 Platform Application 的 Confidential 可信后端可以使用受控 Password Flow；
+  浏览器不得直接调用 Token Endpoint，Client Secret 和用户 Token 不得离开后端。
 - Refresh Token：仅向允许离线访问且满足安全策略的客户端签发，并启用轮换和重用检测。
 
-不得为新客户端启用 Implicit Flow 或 Resource Owner Password Credentials Flow。
+不得启用 Implicit Flow。Password Flow 不是公共客户端能力，仅作为业务后端代用户登录的受控接口，并且必须
+同时满足 Confidential Client、Application Binding、Active User 和 Active Application Membership。
 
 签名密钥、加密密钥和 ASP.NET Core Data Protection Key Ring 必须持久化到容器外，并支持轮换。Issuer 在同一环境中必须稳定，不能随容器主机名变化。
+
+Passport User 是全局账号，同一用户跨业务保持一个稳定 `sub`。每个业务通过 Identity Application Membership
+独立控制用户是否可进入该 Application，再由 Authorization Role Binding/Policy 控制具体动作。管理人员和普通
+业务用户使用同一账号存储；Passport Role 只授予控制面人员，普通业务用户默认不持有管理角色。
+
+业务注册与登录页面属于各业务产品。业务后端以绑定应用的 Client Credentials 调用 Headless Identity API，
+请求体不得自行选择 Tenant/Application。注册已有邮箱时必须验证原密码，只添加当前应用 Membership，不能创建
+重复全局账号。成员关系移除后，当前应用的已有用户 Token 调用受保护 API 和 Refresh 都必须立即失败，其他应用不受影响。
 
 ### 9.2 Web 管理后台会话
 
@@ -628,12 +639,15 @@ bucket = value mod 100000
 主要资源：
 
 - User、Credential、External Login。
+- Application Membership（User 与 Platform Application 的独立关联）。
 - OIDC Client、Scope、Consent。
 - Session、Token、Authorization。
 - Service Account 和凭据。
 - Invitation、Account Status。
 
-用户管理和 OIDC Client 管理是不同概念。Application 也不等于 OIDC Client：一个 Application 可以拥有桌面客户端、Web Console、后台服务等多个 OIDC Client。
+用户管理和 OIDC Client 管理是不同概念。Application 也不等于 OIDC Client：一个 Application 可以拥有桌面
+客户端、Web Console、后台服务等多个 OIDC Client。用于业务注册/登录的 Client 必须绑定一个 Application；
+该绑定决定 Token Claim 和 Headless 账号 API 的作用域，调用方不能在请求中覆盖。
 
 ### 12.3 Authorization
 
@@ -791,7 +805,7 @@ Sonner 用于异步操作反馈；cmdk 用于全局命令面板、资源跳转�
 | 模块 | 建议路由 | 必须具备的管理操作 |
 | --- | --- | --- |
 | Platform | `/tenants`、`/applications`、`/environments` | 增删改查、切换上下文、环境保护、成员关系 |
-| Identity | `/identity/users`、`/identity/clients`、`/identity/sessions` | 用户、邀请、禁用、Client/Scope、凭据轮换、会话撤销 |
+| Identity | `/identity/users` | 全局账号创建/邀请/禁用/密码、应用成员关系、Client 应用绑定与开关、Client/Scope、凭据轮换、会话撤销 |
 | Authorization | `/authorization/roles`、`/authorization/policies`、`/authorization/simulator` | 角色、绑定、策略、版本、授权模拟 |
 | Feature | `/features`、`/features/[key]` | Flag/Variant、规则、草稿、校验、发布、回滚、评估 |
 | Targeting | `/targeting/segments`、`/targeting/simulator` | Segment、规则、属性、分桶预览、匹配模拟 |

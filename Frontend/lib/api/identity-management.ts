@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  ApplicationMembershipStatusObject,
   IdentitySessionStatusObject,
   IdentityUserStatusObject,
   OidcApplicationTypeObject,
@@ -28,7 +29,9 @@ const pageSchema = z.object({
   query: z.string().trim().max(200).default(""),
 });
 const roleSchema = z.enum(passportRoles);
-const rolesSchema = z.array(roleSchema).min(1).max(passportRoles.length);
+const rolesSchema = z.array(roleSchema).max(passportRoles.length);
+const inviteRolesSchema = rolesSchema.min(1);
+const passwordSchema = z.string().min(12).max(2_048);
 const userStatusSchema = z.enum([
   IdentityUserStatusObject.IDENTITY_USER_STATUS_PENDING,
   IdentityUserStatusObject.IDENTITY_USER_STATUS_ACTIVE,
@@ -51,6 +54,11 @@ const grantTypeSchema = z.enum([
   OidcGrantTypeObject.OIDC_GRANT_TYPE_AUTHORIZATION_CODE,
   OidcGrantTypeObject.OIDC_GRANT_TYPE_CLIENT_CREDENTIALS,
   OidcGrantTypeObject.OIDC_GRANT_TYPE_REFRESH_TOKEN,
+  OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD,
+]);
+const membershipStatusSchema = z.enum([
+  ApplicationMembershipStatusObject.APPLICATION_MEMBERSHIP_STATUS_ACTIVE,
+  ApplicationMembershipStatusObject.APPLICATION_MEMBERSHIP_STATUS_REMOVED,
 ]);
 const uriSchema = z.url().refine((value) => {
   const url = new URL(value);
@@ -72,6 +80,7 @@ const userSchema = z.object({
   createdAt: timestampSchema,
   displayName: displayNameSchema,
   email: z.email(),
+  emailConfirmed: z.boolean().default(false),
   id: idSchema,
   roles: z.array(roleSchema),
   status: userStatusSchema,
@@ -93,6 +102,12 @@ const sessionSchema = z.object({
   userId: idSchema,
 });
 const clientSchema = z.object({
+  allowMembershipAutoJoin: z.boolean().default(false),
+  allowUserRegistration: z.boolean().default(false),
+  applicationId: z
+    .union([idSchema, z.literal("")])
+    .nullish()
+    .transform((value) => value ?? ""),
   applicationType: applicationTypeSchema,
   clientId: clientIdSchema,
   clientType: clientTypeSchema,
@@ -102,7 +117,20 @@ const clientSchema = z.object({
   postLogoutRedirectUris: z.array(uriSchema),
   redirectUris: z.array(uriSchema),
   scopes: z.array(scopeNameSchema),
+  tenantId: z
+    .union([idSchema, z.literal("")])
+    .nullish()
+    .transform((value) => value ?? ""),
   version: opaqueVersionSchema,
+});
+const membershipSchema = z.object({
+  applicationId: idSchema,
+  createdAt: timestampSchema,
+  status: membershipStatusSchema,
+  tenantId: idSchema,
+  updatedAt: timestampSchema,
+  userId: idSchema,
+  version: userVersionSchema,
 });
 const credentialSchema = z.object({
   client: clientSchema,
@@ -132,12 +160,20 @@ const scopesPageSchema = z.object({
   nextPageToken: z.string().nullish(),
   scopes: z.array(scopeSchema),
 });
+const membershipsPageSchema = z.object({
+  memberships: z.array(membershipSchema),
+  nextPageToken: z.string().nullish(),
+});
 const clientConfigurationShape = {
+  allowMembershipAutoJoin: z.boolean().default(false),
+  allowUserRegistration: z.boolean().default(false),
+  applicationId: z.union([idSchema, z.literal("")]).default(""),
   displayName: displayNameSchema,
   grantTypes: z.array(grantTypeSchema).min(1),
   postLogoutRedirectUris: z.array(uriSchema).max(20),
   redirectUris: z.array(uriSchema).max(20),
   scopes: z.array(scopeNameSchema).max(100),
+  tenantId: z.union([idSchema, z.literal("")]).default(""),
 };
 const clientConfigurationSchema = z
   .object(clientConfigurationShape)
@@ -152,6 +188,7 @@ const clientConfigurationSchema = z
         path: ["redirectUris"],
       });
     }
+    validateApplicationBinding(client, context);
   });
 const createClientInputSchema = z
   .object({
@@ -171,6 +208,18 @@ const createClientInputSchema = z
         code: "custom",
         message: "Authorization-code clients require a redirect URI.",
         path: ["redirectUris"],
+      });
+    }
+    validateApplicationBinding(client, context);
+    if (
+      client.grantTypes.includes(OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD) &&
+      (client.clientType !== OidcClientTypeObject.OIDC_CLIENT_TYPE_CONFIDENTIAL ||
+        client.applicationType !== OidcApplicationTypeObject.OIDC_APPLICATION_TYPE_WEB)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Password authentication requires a confidential Web client.",
+        path: ["grantTypes"],
       });
     }
     if (
@@ -217,6 +266,7 @@ const scopeInputSchema = z.object({
 
 export type IdentityUserRecord = z.infer<typeof userSchema>;
 export type IdentitySessionRecord = z.infer<typeof sessionSchema>;
+export type ApplicationMembershipRecord = z.infer<typeof membershipSchema>;
 export type OidcClientRecord = z.infer<typeof clientSchema>;
 export type OidcScopeRecord = z.infer<typeof scopeSchema>;
 export type UserInvitationRecord = z.infer<typeof invitationSchema>;
@@ -256,13 +306,38 @@ export async function inviteUser(
     .object({
       displayName: displayNameSchema,
       email: z.email(),
-      roles: rolesSchema,
+      roles: inviteRolesSchema,
     })
     .parse(input);
   const response = await getAsterloomApiClient(csrfToken).api.v1.identity.usersInvite.post(
     body,
   );
   return invitationSchema.parse(requireResponse(response));
+}
+
+export async function createUser(
+  csrfToken: string,
+  input: {
+    displayName: string;
+    email: string;
+    emailConfirmed: boolean;
+    password: string;
+    roles: PassportRole[];
+  },
+) {
+  const body = z
+    .object({
+      displayName: displayNameSchema,
+      email: z.email(),
+      emailConfirmed: z.boolean(),
+      password: passwordSchema,
+      roles: rolesSchema,
+    })
+    .parse(input);
+  const response = await getAsterloomApiClient(csrfToken).api.v1.identity.users.post(
+    body,
+  );
+  return userSchema.parse(requireResponse(response));
 }
 
 export async function resendInvitation(
@@ -299,6 +374,20 @@ export async function setUserRoles(
     .roles.put({
       expectedVersion: userVersionSchema.parse(user.version),
       roles: rolesSchema.parse(roles),
+    });
+  return userSchema.parse(requireResponse(response));
+}
+
+export async function resetUserPassword(
+  csrfToken: string,
+  user: IdentityUserRecord,
+  newPassword: string,
+) {
+  const response = await getAsterloomApiClient(csrfToken).api.v1.identity.users
+    .withUserIdResetPassword(idSchema.parse(user.id))
+    .post({
+      expectedVersion: userVersionSchema.parse(user.version),
+      newPassword: passwordSchema.parse(newPassword),
     });
   return userSchema.parse(requireResponse(response));
 }
@@ -369,6 +458,69 @@ export async function revokeAllUserSessions(csrfToken: string, userId: string) {
     .parse(requireResponse(response));
 }
 
+export async function listApplicationMemberships(options: {
+  applicationId?: string;
+  includeRemoved?: boolean;
+  pageSize?: number;
+  pageToken?: string;
+  tenantId?: string;
+  userId?: string;
+}) {
+  const queryParameters = z
+    .object({
+      applicationId: z.union([idSchema, z.literal("")]).default(""),
+      includeRemoved: z.boolean().default(false),
+      pageSize: z.number().int().min(1).max(100).default(100),
+      pageToken: z.string().default(""),
+      tenantId: z.union([idSchema, z.literal("")]).default(""),
+      userId: z.union([idSchema, z.literal("")]).default(""),
+    })
+    .parse(options);
+  const response = await getAsterloomApiClient().api.v1.identity.applicationMemberships.get(
+    { queryParameters },
+  );
+  return membershipsPageSchema.parse(requireResponse(response));
+}
+
+export async function setApplicationMembership(
+  csrfToken: string,
+  input: {
+    applicationId: string;
+    expectedVersion: number;
+    tenantId: string;
+    userId: string;
+  },
+) {
+  const body = z
+    .object({
+      applicationId: idSchema,
+      expectedVersion: z.number().int().nonnegative(),
+      tenantId: idSchema,
+      userId: idSchema,
+    })
+    .parse(input);
+  const response = await getAsterloomApiClient(csrfToken).api.v1.identity
+    .applicationMemberships.byApplicationId(body.applicationId)
+    .byUserId(body.userId)
+    .put(body);
+  return membershipSchema.parse(requireResponse(response));
+}
+
+export async function removeApplicationMembership(
+  csrfToken: string,
+  membership: ApplicationMembershipRecord,
+) {
+  const response = await getAsterloomApiClient(csrfToken).api.v1.identity
+    .applicationMemberships.byApplicationId(idSchema.parse(membership.applicationId))
+    .byUserId(idSchema.parse(membership.userId))
+    .delete({
+      queryParameters: {
+        expectedVersion: userVersionSchema.parse(membership.version),
+      },
+    });
+  return membershipSchema.parse(requireResponse(response));
+}
+
 export async function listClients(options: {
   pageSize?: number;
   pageToken?: string;
@@ -390,6 +542,9 @@ export async function getClient(clientId: string) {
 export async function createClient(
   csrfToken: string,
   input: {
+    allowMembershipAutoJoin: boolean;
+    allowUserRegistration: boolean;
+    applicationId: string;
     applicationType: OidcApplicationType;
     clientId: string;
     clientType: OidcClientType;
@@ -398,6 +553,7 @@ export async function createClient(
     postLogoutRedirectUris: string[];
     redirectUris: string[];
     scopes: string[];
+    tenantId: string;
   },
 ) {
   const body = createClientInputSchema.parse(input);
@@ -411,11 +567,15 @@ export async function updateClient(
   csrfToken: string,
   client: OidcClientRecord,
   input: {
+    allowMembershipAutoJoin: boolean;
+    allowUserRegistration: boolean;
+    applicationId: string;
     displayName: string;
     grantTypes: OidcGrantType[];
     postLogoutRedirectUris: string[];
     redirectUris: string[];
     scopes: string[];
+    tenantId: string;
   },
 ) {
   const body = clientConfigurationSchema.parse(input);
@@ -512,4 +672,51 @@ function requireResponse<T>(response: T | undefined): T {
     throw new Error("The identity API returned an empty response.");
   }
   return response;
+}
+
+function validateApplicationBinding(
+  client: {
+    allowMembershipAutoJoin: boolean;
+    allowUserRegistration: boolean;
+    applicationId: string;
+    grantTypes: OidcGrantType[];
+    tenantId: string;
+  },
+  context: z.core.$RefinementCtx,
+) {
+  const hasBinding = client.tenantId !== "" || client.applicationId !== "";
+  if ((client.tenantId === "") !== (client.applicationId === "")) {
+    context.addIssue({
+      code: "custom",
+      message: "Tenant and application IDs must be supplied together.",
+      path: ["applicationId"],
+    });
+  }
+  if ((client.allowMembershipAutoJoin || client.allowUserRegistration) && !hasBinding) {
+    context.addIssue({
+      code: "custom",
+      message: "Application capabilities require an application binding.",
+      path: ["applicationId"],
+    });
+  }
+  if (
+    client.grantTypes.includes(OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD) &&
+    !hasBinding
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Password clients require an application binding.",
+      path: ["applicationId"],
+    });
+  }
+  if (
+    client.allowUserRegistration &&
+    !client.grantTypes.includes(OidcGrantTypeObject.OIDC_GRANT_TYPE_CLIENT_CREDENTIALS)
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Account registration requires client credentials.",
+      path: ["grantTypes"],
+    });
+  }
 }

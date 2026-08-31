@@ -2,9 +2,11 @@ using System.Security.Claims;
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Errors;
+using Asterloom.Modules.Identity;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Microsoft.Extensions.DependencyInjection;
 using AuthorizationArchivePolicyRuleRequest = Asterloom.Protocol.Authorization.Admin.V1.ArchivePolicyRuleRequest;
 using AuthorizationRemoveRoleBindingRequest = Asterloom.Protocol.Authorization.Admin.V1.RemoveRoleBindingRequest;
 using AuthorizationRestorePolicyRuleRequest = Asterloom.Protocol.Authorization.Admin.V1.RestorePolicyRuleRequest;
@@ -13,7 +15,8 @@ namespace Asterloom.Modules.Authorization;
 
 internal sealed class AuthorizationInterceptor(
     AuthorizationDecisionService decisionService,
-    IAuthorizationStore store) : Interceptor
+    IAuthorizationStore store,
+    IServiceScopeFactory serviceScopeFactory) : Interceptor
 {
     private const string AuthorizationRuntimeMethod =
         "/asterloom.authorization.v1.AuthorizationService/CheckPermission";
@@ -64,10 +67,12 @@ internal sealed class AuthorizationInterceptor(
             [AuditMethod("ExportAuditEvents")] = "audit.event.export",
             [IdentityMethod("ListUsers")] = "identity.user.read",
             [IdentityMethod("GetUser")] = "identity.user.read",
+            [IdentityMethod("CreateUser")] = "identity.user.create",
             [IdentityMethod("InviteUser")] = "identity.user.invite",
             [IdentityMethod("ResendUserInvitation")] = "identity.user.invite",
             [IdentityMethod("UpdateUser")] = "identity.user.update",
             [IdentityMethod("SetUserRoles")] = "identity.user.roles.set",
+            [IdentityMethod("ResetUserPassword")] = "identity.user.password.reset",
             [IdentityMethod("SuspendUser")] = "identity.user.suspend",
             [IdentityMethod("ReactivateUser")] = "identity.user.reactivate",
             [IdentityMethod("ArchiveUser")] = "identity.user.archive",
@@ -75,6 +80,12 @@ internal sealed class AuthorizationInterceptor(
             [IdentityMethod("ListUserSessions")] = "identity.session.read",
             [IdentityMethod("RevokeUserSession")] = "identity.session.revoke",
             [IdentityMethod("RevokeAllUserSessions")] = "identity.session.revoke",
+            [IdentityMethod("ListApplicationMemberships")] =
+                "identity.application-membership.read",
+            [IdentityMethod("SetApplicationMembership")] =
+                "identity.application-membership.set",
+            [IdentityMethod("RemoveApplicationMembership")] =
+                "identity.application-membership.remove",
             [IdentityMethod("ListClients")] = "identity.client.read",
             [IdentityMethod("GetClient")] = "identity.client.read",
             [IdentityMethod("CreateClient")] = "identity.client.create",
@@ -226,7 +237,18 @@ internal sealed class AuthorizationInterceptor(
             .Select(static claim => claim.Value)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var scope = await ResolveScopeAsync(request, context.CancellationToken);
+        var scope = ApplicationTokenScope.Enforce(
+            principal,
+            await ResolveScopeAsync(request, context.CancellationToken),
+            inferWhenUnspecified: false);
+        await using (var membershipScope = serviceScopeFactory.CreateAsyncScope())
+        {
+            await ApplicationTokenScope.EnforceMembershipAsync(
+                principal,
+                membershipScope.ServiceProvider
+                    .GetRequiredService<IApplicationMembershipValidator>(),
+                context.CancellationToken);
+        }
         var decision = await decisionService.DecideAsync(
             new AuthorizationDecisionRequest(actorId, scope, permission, trustedRoles),
             context.CancellationToken);

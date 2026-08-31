@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package asterloom.identity.access.v1;
+
+import "Asterloom/identity/v1/identity_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Identity.Access.V1";
+
+// Headless account operations for trusted business backends. The caller's
+// confidential OIDC client determines the application scope; callers cannot
+// select another application in the request body.
+service IdentityAccessService {
+  rpc RegisterAccount(RegisterAccountRequest) returns (RegisterAccountResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/accounts:register"
+      body: "*"
+    };
+  }
+  rpc ConfirmEmail(ConfirmEmailRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/accounts:confirm-email"
+      body: "*"
+    };
+  }
+  rpc GetAccount(GetAccountRequest) returns (ApplicationAccount) {
+    option (google.api.http) = {get: "/api/v1/identity/accounts/{user_id}"};
+  }
+  rpc RemoveMembership(RemoveMembershipRequest) returns (asterloom.identity.v1.ApplicationMembership) {
+    option (google.api.http) = {delete: "/api/v1/identity/accounts/{user_id}/membership"};
+  }
+}
+
+message RegisterAccountRequest {
+  string email = 1;
+  string display_name = 2;
+  string password = 3;
+}
+
+message RegisterAccountResponse {
+  asterloom.identity.v1.IdentityUser user = 1;
+  asterloom.identity.v1.ApplicationMembership membership = 2;
+  bool account_created = 3;
+  bool verification_required = 4;
+  // Returned once to the trusted backend so that the business application can
+  // deliver it using its own email template and confirmation page.
+  string email_verification_token = 5;
+}
+
+message ConfirmEmailRequest {
+  string email = 1;
+  string token = 2;
+}
+
+message GetAccountRequest {
+  string user_id = 1;
+}
+
+message ApplicationAccount {
+  asterloom.identity.v1.IdentityUser user = 1;
+  asterloom.identity.v1.ApplicationMembership membership = 2;
+}
+
+message RemoveMembershipRequest {
+  string user_id = 1;
+  int64 expected_version = 2;
+}

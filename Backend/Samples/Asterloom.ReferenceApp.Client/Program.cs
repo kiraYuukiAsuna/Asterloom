@@ -30,6 +30,14 @@ internal static class Program
             return command switch
             {
                 "login" => await RunInteractiveLoginAsync(settings, cancellation.Token),
+                "account-demo" => await RunAccountDemoAsync(
+                    settings,
+                    args,
+                    cancellation.Token),
+                "account-login" => await RunAccountLoginAsync(
+                    settings,
+                    args,
+                    cancellation.Token),
                 "provision" => await RunServiceCommandAsync(
                     settings,
                     provision: true,
@@ -181,6 +189,66 @@ internal static class Program
         }
     }
 
+    private static async Task<int> RunAccountDemoAsync(
+        ReferenceAppSettings settings,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var email = RequireArgument(args, 1, "email");
+        var displayName = RequireArgument(args, 2, "display name");
+        var password = RequireEnvironment("ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD");
+        using var accounts = new ReferenceAccountClient(settings.ReferenceBackendAddress);
+        var registration = await accounts.RegisterAsync(
+            email,
+            displayName,
+            password,
+            cancellationToken);
+        Console.WriteLine("Registration result:");
+        Console.WriteLine(JsonSerializer.Serialize(registration, IndentedJsonOptions));
+        var token = registration.TryGetProperty("emailVerificationToken", out var tokenProperty)
+            ? tokenProperty.GetString()
+            : null;
+        if (registration.GetProperty("verificationRequired").GetBoolean())
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new InvalidOperationException(
+                    "Email confirmation is required. Configure the business backend's email delivery, "
+                    + "or enable ExposeEmailVerificationToken for a local-only demo.");
+            }
+
+            await accounts.ConfirmEmailAsync(email, token, cancellationToken);
+            Console.WriteLine("Email confirmed through the business backend.");
+        }
+
+        var session = await accounts.LoginAndReadSessionAsync(
+            email,
+            password,
+            cancellationToken);
+        Console.WriteLine("Application session (tokens remain in the backend):");
+        Console.WriteLine(JsonSerializer.Serialize(session, IndentedJsonOptions));
+        await accounts.LogoutAsync(cancellationToken);
+        Console.WriteLine("Application session closed.");
+        return 0;
+    }
+
+    private static async Task<int> RunAccountLoginAsync(
+        ReferenceAppSettings settings,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var email = RequireArgument(args, 1, "email");
+        var password = RequireEnvironment("ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD");
+        using var accounts = new ReferenceAccountClient(settings.ReferenceBackendAddress);
+        var session = await accounts.LoginAndReadSessionAsync(
+            email,
+            password,
+            cancellationToken);
+        Console.WriteLine(JsonSerializer.Serialize(session, IndentedJsonOptions));
+        await accounts.LogoutAsync(cancellationToken);
+        return 0;
+    }
+
     private static void PrintResults(IReadOnlyList<DiagnosticResult> results, bool json)
     {
         if (json)
@@ -233,12 +301,26 @@ internal static class Program
         Console.WriteLine("  provision [--json]  Create complete platform test data and save local state.");
         Console.WriteLine("  doctor [--json]     Execute all capability diagnostics independently.");
         Console.WriteLine("  login               Test interactive Passport authorization-code + PKCE login.");
+        Console.WriteLine("  account-demo EMAIL NAME");
+        Console.WriteLine("                      Register, confirm, login, inspect, and logout via the sample BFF.");
+        Console.WriteLine("  account-login EMAIL Login through the sample BFF and inspect its server-side session.");
         Console.WriteLine();
         Console.WriteLine("Required environment variables:");
         Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_ID");
         Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_SECRET");
+        Console.WriteLine("  ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD (account commands only)");
         Console.WriteLine("Optional: ASTERLOOM_BASE_URL, ASTERLOOM_ISSUER,");
         Console.WriteLine("  ASTERLOOM_REFERENCE_BACKEND_URL, ASTERLOOM_REFERENCE_BACKEND_GRPC_URL,");
         Console.WriteLine("  ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID, ASTERLOOM_REFERENCE_STATE_FILE.");
     }
+
+    private static string RequireArgument(string[] args, int index, string name) =>
+        args.ElementAtOrDefault(index)?.Trim() is { Length: > 0 } value
+            ? value
+            : throw new ArgumentException($"The {name} argument is required.");
+
+    private static string RequireEnvironment(string name) =>
+        Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
+            ? value
+            : throw new InvalidOperationException($"Environment variable {name} is required.");
 }

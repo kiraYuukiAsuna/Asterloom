@@ -329,6 +329,14 @@ apis:
     uiAction: get-user
     e2eTest: tests/e2e/identity.spec.ts
   - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: CreateUser
+    category: admin
+    http: POST /api/v1/identity/users
+    permission: identity.user.create
+    uiRoute: /identity/users
+    uiAction: create-user
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
     rpc: InviteUser
     category: admin
     http: POST /api/v1/identity/users:invite
@@ -359,6 +367,14 @@ apis:
     permission: identity.user.roles.set
     uiRoute: /identity/users
     uiAction: set-user-roles
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ResetUserPassword
+    category: admin
+    http: POST /api/v1/identity/users/{user_id}:reset-password
+    permission: identity.user.password.reset
+    uiRoute: /identity/users
+    uiAction: reset-user-password
     e2eTest: tests/e2e/identity.spec.ts
   - service: asterloom.identity.admin.v1.IdentityAdminService
     rpc: SuspendUser
@@ -415,6 +431,54 @@ apis:
     permission: identity.session.revoke
     uiRoute: /identity/users
     uiAction: revoke-all-user-sessions
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.access.v1.IdentityAccessService
+    rpc: RegisterAccount
+    category: runtime
+    http: POST /api/v1/identity/accounts:register
+    sdkTest: Backend/Tests/Asterloom.ContractTests/IdentityAdminContractTests.cs
+    notApplicableReason: Trusted application backends use AsterloomIdentityAccessClient; the Web Console provides administrative account and membership operations without retaining business client secrets.
+  - service: asterloom.identity.access.v1.IdentityAccessService
+    rpc: ConfirmEmail
+    category: runtime
+    http: POST /api/v1/identity/accounts:confirm-email
+    sdkTest: Backend/Tests/Asterloom.ContractTests/IdentityAdminContractTests.cs
+    notApplicableReason: Email confirmation belongs to each business application's user journey; the Web Console manages accounts but does not impersonate a business client.
+  - service: asterloom.identity.access.v1.IdentityAccessService
+    rpc: GetAccount
+    category: runtime
+    http: GET /api/v1/identity/accounts/{user_id}
+    sdkTest: Backend/Tests/Asterloom.ContractTests/IdentityAdminContractTests.cs
+    notApplicableReason: Trusted application backends read only their bound application accounts; the Web Console exposes the complete administrative user and membership views instead.
+  - service: asterloom.identity.access.v1.IdentityAccessService
+    rpc: RemoveMembership
+    category: runtime
+    http: DELETE /api/v1/identity/accounts/{user_id}/membership
+    sdkTest: Backend/Tests/Asterloom.ContractTests/IdentityAdminContractTests.cs
+    notApplicableReason: Trusted application backends may remove only their own membership; the Web Console exposes the equivalent cross-application administrative action.
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: ListApplicationMemberships
+    category: admin
+    http: GET /api/v1/identity/application-memberships
+    permission: identity.application-membership.read
+    uiRoute: /identity/users
+    uiAction: list-application-memberships
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: SetApplicationMembership
+    category: admin
+    http: PUT /api/v1/identity/application-memberships/{application_id}/{user_id}
+    permission: identity.application-membership.set
+    uiRoute: /identity/users
+    uiAction: set-application-membership
+    e2eTest: tests/e2e/identity.spec.ts
+  - service: asterloom.identity.admin.v1.IdentityAdminService
+    rpc: RemoveApplicationMembership
+    category: admin
+    http: DELETE /api/v1/identity/application-memberships/{application_id}/{user_id}
+    permission: identity.application-membership.remove
+    uiRoute: /identity/users
+    uiAction: remove-application-membership
     e2eTest: tests/e2e/identity.spec.ts
   - service: asterloom.identity.admin.v1.IdentityAdminService
     rpc: ListClients

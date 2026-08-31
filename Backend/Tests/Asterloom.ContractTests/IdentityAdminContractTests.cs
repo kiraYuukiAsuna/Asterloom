@@ -4,10 +4,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Asterloom.Modules.Authorization;
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
+using Asterloom.Modules.Platform;
 using Asterloom.Sdk.Identity;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -28,6 +30,21 @@ public sealed partial class IdentityAdminContractTests(
         ["OIDC_GRANT_TYPE_CLIENT_CREDENTIALS"];
     private static readonly string[] ViewerRole = ["Viewer"];
     private static readonly string[] DeveloperViewerRoles = ["Developer", "Viewer"];
+    private static readonly string[] BusinessGrantTypes =
+    [
+        "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
+        "OIDC_GRANT_TYPE_PASSWORD",
+        "OIDC_GRANT_TYPE_REFRESH_TOKEN",
+    ];
+    private static readonly string[] BusinessScopes =
+    [
+        "asterloom.api",
+        "openid",
+        "profile",
+        "email",
+        "roles",
+        "offline_access",
+    ];
     private static readonly JsonSerializerOptions JsonOptions =
         new(JsonSerializerDefaults.Web);
 
@@ -273,6 +290,255 @@ public sealed partial class IdentityAdminContractTests(
     }
 
     [Fact]
+    public async Task BusinessApplicationsShareGlobalAccountsButKeepApplicationAccessIsolated()
+    {
+        using var admin = await CreateAuthorizedClientAsync();
+        var suffix = Guid.NewGuid().ToString("N");
+        PlatformResourceJson tenant;
+        PlatformResourceJson applicationA;
+        PlatformResourceJson applicationB;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider
+                .GetRequiredService<PlatformManagementService>();
+            var createdTenant = await platform.CreateTenantAsync(
+                "identity-" + suffix,
+                "Identity contract tenant",
+                CancellationToken.None);
+            var createdApplicationA = await platform.CreateApplicationAsync(
+                createdTenant.Id.ToString("D"),
+                "business-a",
+                "Business A",
+                CancellationToken.None);
+            var createdApplicationB = await platform.CreateApplicationAsync(
+                createdTenant.Id.ToString("D"),
+                "business-b",
+                "Business B",
+                CancellationToken.None);
+            tenant = new(createdTenant.Id.ToString("D"));
+            applicationA = new(createdApplicationA.Id.ToString("D"));
+            applicationB = new(createdApplicationB.Id.ToString("D"));
+        }
+
+        var clientA = await CreateBusinessClientAsync(
+            admin,
+            "business-a-" + suffix,
+            tenant.Id,
+            applicationA.Id,
+            allowRegistration: true);
+        var clientB = await CreateBusinessClientAsync(
+            admin,
+            "business-b-" + suffix,
+            tenant.Id,
+            applicationB.Id,
+            allowRegistration: false);
+
+        var directUser = await SendAsync<UserJson>(admin.PostAsJsonAsync(
+            "/api/v1/identity/users",
+            new
+            {
+                email = $"direct-{suffix}@asterloom.test",
+                displayName = "Directly managed user",
+                password = "Direct-Managed-Password!2026",
+                emailConfirmed = true,
+                roles = Array.Empty<string>(),
+            }));
+        Assert.True(directUser.EmailConfirmed);
+        Assert.Empty(directUser.Roles);
+        directUser = await SendAsync<UserJson>(admin.PostAsJsonAsync(
+            $"/api/v1/identity/users/{directUser.Id}:reset-password",
+            new
+            {
+                newPassword = "Reset-Managed-Password!2026",
+                expectedVersion = directUser.Version,
+            }));
+        var directMembership = await SendAsync<MembershipJson>(admin.PutAsJsonAsync(
+            $"/api/v1/identity/application-memberships/{applicationA.Id}/{directUser.Id}",
+            new
+            {
+                userId = directUser.Id,
+                tenantId = tenant.Id,
+                applicationId = applicationA.Id,
+                expectedVersion = 0,
+            }));
+        Assert.Equal("APPLICATION_MEMBERSHIP_STATUS_ACTIVE", directMembership.Status);
+        directMembership = await SendAsync<MembershipJson>(admin.DeleteAsync(
+            $"/api/v1/identity/application-memberships/{applicationA.Id}/{directUser.Id}" +
+            $"?expectedVersion={directMembership.Version}"));
+        Assert.Equal("APPLICATION_MEMBERSHIP_STATUS_REMOVED", directMembership.Status);
+
+        using var backendA = await CreateBearerClientAsync(
+            clientA.Client.ClientId,
+            clientA.ClientSecret);
+        var email = $"shared-{suffix}@asterloom.test";
+        const string password = "Shared-Account-Password!2026";
+        var registration = await SendAsync<AccountRegistrationJson>(
+            backendA.PostAsJsonAsync(
+                "/api/v1/identity/accounts:register",
+                new
+                {
+                    email,
+                    displayName = "Shared business user",
+                    password,
+                }));
+        Assert.True(registration.AccountCreated);
+        Assert.True(registration.VerificationRequired);
+        Assert.False(registration.User.EmailConfirmed);
+        Assert.Equal(applicationA.Id, registration.Membership.ApplicationId);
+
+        var confirmed = await SendAsync<UserJson>(backendA.PostAsJsonAsync(
+            "/api/v1/identity/accounts:confirm-email",
+            new { email, token = registration.EmailVerificationToken }));
+        Assert.True(confirmed.EmailConfirmed);
+        Assert.Equal("IDENTITY_USER_STATUS_ACTIVE", confirmed.Status);
+
+        var tokenA = await RequestPasswordTokenAsync(
+            clientA.Client.ClientId,
+            clientA.ClientSecret,
+            email,
+            password);
+        var tokenB = await RequestPasswordTokenAsync(
+            clientB.Client.ClientId,
+            clientB.ClientSecret,
+            email,
+            password);
+        using var userA = CreateBearerClient(tokenA.AccessToken);
+        using var userB = CreateBearerClient(tokenB.AccessToken);
+        var userInfoA = await userA.GetFromJsonAsync<UserInfoJson>("/connect/userinfo");
+        var userInfoB = await userB.GetFromJsonAsync<UserInfoJson>("/connect/userinfo");
+        Assert.Equal(registration.User.Id, userInfoA!.Sub);
+        Assert.Equal(userInfoA.Sub, userInfoB!.Sub);
+        Assert.Equal(applicationA.Id, userInfoA.ApplicationId);
+        Assert.Equal(applicationB.Id, userInfoB.ApplicationId);
+        Assert.Equal(tenant.Id, userInfoA.TenantId);
+        Assert.Equal(tenant.Id, userInfoB.TenantId);
+
+        using (var userCannotImpersonateBackend = await userA.GetAsync(
+            $"/api/v1/identity/accounts/{registration.User.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, userCannotImpersonateBackend.StatusCode);
+        }
+
+        var memberships = await admin.GetFromJsonAsync<MembershipListJson>(
+            $"/api/v1/identity/application-memberships?userId={registration.User.Id}");
+        Assert.Equal(2, memberships!.Memberships.Count);
+        Assert.Contains(
+            memberships.Memberships,
+            membership => membership.ApplicationId == applicationA.Id);
+        Assert.Contains(
+            memberships.Memberships,
+            membership => membership.ApplicationId == applicationB.Id);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var authorization = scope.ServiceProvider
+                .GetRequiredService<AuthorizationManagementService>();
+            var viewer = AuthorizationCatalog.FindSystemRole("viewer")!;
+            await authorization.SetRoleBindingAsync(
+                Guid.CreateVersion7().ToString("D"),
+                registration.User.Id,
+                viewer.Id.ToString("D"),
+                new AuthorizationScope(
+                    Guid.Parse(tenant.Id),
+                    Guid.Parse(applicationA.Id),
+                    null),
+                expectedVersion: 0,
+                CancellationToken.None);
+            await authorization.SetRoleBindingAsync(
+                Guid.CreateVersion7().ToString("D"),
+                registration.User.Id,
+                viewer.Id.ToString("D"),
+                new AuthorizationScope(
+                    Guid.Parse(tenant.Id),
+                    Guid.Parse(applicationB.Id),
+                    null),
+                expectedVersion: 0,
+                CancellationToken.None);
+        }
+
+        var appADecision = await SendAsync<DecisionJson>(userA.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationA.Id },
+                permission = "feature.flag.read",
+            }));
+        Assert.True(appADecision.Allowed);
+
+        var appDecision = await SendAsync<DecisionJson>(userB.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationB.Id },
+                permission = "feature.flag.read",
+            }));
+        Assert.True(appDecision.Allowed);
+        using (var crossApplication = await userB.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationA.Id },
+                permission = "feature.flag.read",
+            }))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, crossApplication.StatusCode);
+        }
+
+        using (var removed = await backendA.DeleteAsync(
+            $"/api/v1/identity/accounts/{registration.User.Id}/membership" +
+            $"?expectedVersion={registration.Membership.Version}"))
+        {
+            removed.EnsureSuccessStatusCode();
+        }
+
+        using (var removedApplicationAccess = await userA.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationA.Id },
+                permission = "feature.flag.read",
+            }))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, removedApplicationAccess.StatusCode);
+        }
+
+        using (var refreshA = await RequestRefreshTokenAsync(
+            clientA.Client.ClientId,
+            clientA.ClientSecret,
+            tokenA.RefreshToken))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, refreshA.StatusCode);
+        }
+
+        var stillValidB = await RequestPasswordTokenAsync(
+            clientB.Client.ClientId,
+            clientB.ClientSecret,
+            email,
+            password);
+        Assert.False(string.IsNullOrWhiteSpace(stillValidB.AccessToken));
+
+        var currentUser = await admin.GetFromJsonAsync<UserJson>(
+            $"/api/v1/identity/users/{registration.User.Id}");
+        using (var suspended = await admin.PostAsJsonAsync(
+            $"/api/v1/identity/users/{registration.User.Id}:suspend",
+            new { expectedVersion = currentUser!.Version }))
+        {
+            suspended.EnsureSuccessStatusCode();
+        }
+
+        using var suspendedLogin = await RequestPasswordTokenResponseAsync(
+            clientB.Client.ClientId,
+            clientB.ClientSecret,
+            email,
+            password);
+        Assert.Equal(HttpStatusCode.BadRequest, suspendedLogin.StatusCode);
+    }
+
+    [Fact]
     public async Task ReadingLoginPageDoesNotConsumePasswordAttemptQuota()
     {
         using var browser = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -419,6 +685,106 @@ public sealed partial class IdentityAdminContractTests(
             }));
     }
 
+    private static async Task<ClientCredentialJson> CreateBusinessClientAsync(
+        HttpClient admin,
+        string clientId,
+        string tenantId,
+        string applicationId,
+        bool allowRegistration) =>
+        await SendAsync<ClientCredentialJson>(admin.PostAsJsonAsync(
+            "/api/v1/identity/clients",
+            new
+            {
+                clientId,
+                displayName = clientId,
+                applicationType = "OIDC_APPLICATION_TYPE_WEB",
+                clientType = "OIDC_CLIENT_TYPE_CONFIDENTIAL",
+                grantTypes = BusinessGrantTypes,
+                scopes = BusinessScopes,
+                tenantId,
+                applicationId,
+                allowUserRegistration = allowRegistration,
+                allowMembershipAutoJoin = true,
+            }));
+
+    private async Task<HttpClient> CreateBearerClientAsync(
+        string clientId,
+        string clientSecret)
+    {
+        using var response = await RequestClientTokenAsync(clientId, clientSecret);
+        var token = await ReadTokenAsync(response);
+        return CreateBearerClient(token.AccessToken);
+    }
+
+    private HttpClient CreateBearerClient(string accessToken)
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    private async Task<TokenJson> RequestPasswordTokenAsync(
+        string clientId,
+        string clientSecret,
+        string email,
+        string password)
+    {
+        using var response = await RequestPasswordTokenResponseAsync(
+            clientId,
+            clientSecret,
+            email,
+            password);
+        return await ReadTokenAsync(response);
+    }
+
+    private async Task<HttpResponseMessage> RequestPasswordTokenResponseAsync(
+        string clientId,
+        string clientSecret,
+        string email,
+        string password)
+    {
+        using var client = _factory.CreateClient();
+        return await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                [Parameters.GrantType] = GrantTypes.Password,
+                [Parameters.ClientId] = clientId,
+                [Parameters.ClientSecret] = clientSecret,
+                [Parameters.Username] = email,
+                [Parameters.Password] = password,
+                [Parameters.Scope] =
+                    "asterloom.api openid profile email roles offline_access",
+            }));
+    }
+
+    private async Task<HttpResponseMessage> RequestRefreshTokenAsync(
+        string clientId,
+        string clientSecret,
+        string refreshToken)
+    {
+        using var client = _factory.CreateClient();
+        return await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                [Parameters.GrantType] = GrantTypes.RefreshToken,
+                [Parameters.ClientId] = clientId,
+                [Parameters.ClientSecret] = clientSecret,
+                [Parameters.RefreshToken] = refreshToken,
+            }));
+    }
+
+    private static async Task<TokenJson> ReadTokenAsync(HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.IsSuccessStatusCode,
+            $"Expected a token response, received {response.StatusCode}: {content}");
+        return JsonSerializer.Deserialize<TokenJson>(content, JsonOptions)!;
+    }
+
     private static async Task<T> SendAsync<T>(Task<HttpResponseMessage> responseTask)
     {
         using var response = await responseTask;
@@ -442,7 +808,8 @@ public sealed partial class IdentityAdminContractTests(
         string DisplayName,
         string Status,
         long Version,
-        IReadOnlyList<string> Roles);
+        IReadOnlyList<string> Roles,
+        bool EmailConfirmed = false);
 
     private sealed record UserListJson(IReadOnlyList<UserJson> Users);
 
@@ -480,4 +847,33 @@ public sealed partial class IdentityAdminContractTests(
         string Version);
 
     private sealed record ScopeListJson(IReadOnlyList<ScopeJson> Scopes);
+
+    private sealed record PlatformResourceJson(string Id);
+
+    private sealed record MembershipJson(
+        string UserId,
+        string TenantId,
+        string ApplicationId,
+        string Status,
+        long Version);
+
+    private sealed record MembershipListJson(IReadOnlyList<MembershipJson> Memberships);
+
+    private sealed record AccountRegistrationJson(
+        UserJson User,
+        MembershipJson Membership,
+        bool AccountCreated,
+        bool VerificationRequired,
+        string EmailVerificationToken);
+
+    private sealed record UserInfoJson(
+        string Sub,
+        [property: JsonPropertyName("tenant_id")] string TenantId,
+        [property: JsonPropertyName("application_id")] string ApplicationId);
+
+    private sealed record TokenJson(
+        [property: JsonPropertyName("access_token")] string AccessToken,
+        [property: JsonPropertyName("refresh_token")] string RefreshToken);
+
+    private sealed record DecisionJson(bool Allowed);
 }

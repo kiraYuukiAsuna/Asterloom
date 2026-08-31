@@ -101,19 +101,21 @@ parent can prevent writes to its descendants.
 
 Route: `/identity/users`
 
-- **Users:** invite, resend an invitation, edit profile fields, assign Passport
-  roles, suspend/reactivate, archive/restore.
+- **Users:** create or invite a global account, resend an invitation, edit profile fields,
+  assign Passport roles, reset passwords, suspend/reactivate, and archive/restore.
 - **Sessions:** inspect a user's sessions, revoke one session, or revoke all
   sessions.
+- **Application memberships:** attach, restore, filter, or remove a global account independently per application.
 - **OIDC clients:** create public native clients or confidential service/Web
-  clients, configure redirect URIs/grants/scopes, rotate a secret, and delete a
-  client.
+  clients, bind one to a Platform Application, configure registration/auto-join,
+  redirects/grants/scopes, rotate a secret, and delete a client.
 - **OIDC scopes:** create, update, and delete scopes exposed by Passport.
 
-Use Authorization Code + S256 PKCE for interactive desktop/Web clients and
-Client Credentials for backend services. Do not use Implicit or Password
-flows. Copy a newly issued client secret immediately and store it in a secret
-manager; it is not ordinary application configuration.
+Use Authorization Code + S256 PKCE for interactive desktop/management Web clients and Client Credentials for
+backend services. A controlled Password Flow is permitted only for a confidential, application-bound business
+backend implementing its own end-user login page; browser JavaScript must never call it. Do not use Implicit Flow.
+See [business application identity integration](Module/Identity-Business-Integration.md). Copy a newly issued client
+secret immediately and store it in a secret manager.
 
 ### 4.3 Authorization
 
@@ -588,6 +590,8 @@ The reference application is the executable example for the snippets above:
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+$env:ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD = "Use-A-Strong-Test-Password!2026"
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
 ```
 
 - `provision` creates an isolated, complete capability set.
@@ -595,6 +599,7 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
   and Rollout, Config, Release, Analytics, Telemetry, native gRPC, JSON
   Transcoding, Storage, PostgreSQL persistence, and Operations/OpenAPI.
 - `login` verifies interactive Passport Authorization Code + PKCE.
+- `account-demo` verifies global account registration, confirmation, application membership, business BFF sign-in, and sign-out.
 
 See [Reference-Application.md](Reference-Application.md) for environment
 variables, production Compose commands, and the diagnostic contract.

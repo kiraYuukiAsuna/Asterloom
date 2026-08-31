@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Asterloom.Modules.Identity.Model;
+using Asterloom.Modules.Identity.Management;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ public sealed class ConnectController(
     IOpenIddictApplicationManager applicationManager,
     IOpenIddictAuthorizationManager authorizationManager,
     IOpenIddictScopeManager scopeManager,
+    IdentityMembershipService memberships,
     SignInManager<AsterloomUser> signInManager,
     UserManager<AsterloomUser> userManager) : Controller
 {
@@ -66,6 +68,20 @@ public sealed class ConnectController(
         var application = await applicationManager.FindByClientIdAsync(request.ClientId!)
             ?? throw new InvalidOperationException(
                 "The OpenID Connect client cannot be found.");
+        var binding = await IdentityClientApplicationMetadata.ReadAsync(
+            applicationManager,
+            application,
+            HttpContext.RequestAborted);
+        if (!await EnsureApplicationAccessAsync(
+            user!,
+            binding,
+            allowAutoJoin: binding?.AllowMembershipAutoJoin is true,
+            HttpContext.RequestAborted))
+        {
+            return OpenIddictForbid(
+                OidcErrors.AccessDenied,
+                "The account is not a member of this application.");
+        }
         var subject = await userManager.GetUserIdAsync(user!);
         var applicationId = await applicationManager.GetIdAsync(application)
             ?? throw new InvalidOperationException(
@@ -94,7 +110,7 @@ public sealed class ConnectController(
                 "Interactive consent is required for this client application.");
         }
 
-        var identity = await CreateUserIdentityAsync(user!, request.GetScopes());
+        var identity = await CreateUserIdentityAsync(user!, request.GetScopes(), binding);
         var authorization = authorizations.LastOrDefault();
         if (authorization is null && consentType == ConsentTypes.Implicit)
         {
@@ -143,11 +159,99 @@ public sealed class ConnectController(
                     "The authorization grant is no longer valid.");
             }
 
+            var application = await applicationManager.FindByClientIdAsync(request.ClientId!)
+                ?? throw new InvalidOperationException(
+                    "The OAuth 2.0 client cannot be found.");
+            var binding = await IdentityClientApplicationMetadata.ReadAsync(
+                applicationManager,
+                application,
+                HttpContext.RequestAborted);
+            if (!await EnsureApplicationAccessAsync(
+                user!,
+                binding,
+                allowAutoJoin: false,
+                HttpContext.RequestAborted))
+            {
+                return OpenIddictForbid(
+                    OidcErrors.InvalidGrant,
+                    "The account is no longer a member of this application.");
+            }
+
             var identity = await CreateUserIdentityAsync(
                 user!,
-                authentication.Principal!.GetScopes());
+                authentication.Principal!.GetScopes(),
+                binding);
             var principal = authentication.Principal!;
             identity.SetAuthorizationId(principal.GetAuthorizationId());
+            return SignIn(
+                new ClaimsPrincipal(identity),
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        if (request.IsPasswordGrantType())
+        {
+            var application = await applicationManager.FindByClientIdAsync(request.ClientId!)
+                ?? throw new InvalidOperationException(
+                    "The OAuth 2.0 client cannot be found.");
+            var binding = await IdentityClientApplicationMetadata.ReadAsync(
+                applicationManager,
+                application,
+                HttpContext.RequestAborted);
+            if (binding is null)
+            {
+                return OpenIddictForbid(
+                    OidcErrors.UnauthorizedClient,
+                    "Password authentication requires an application-bound client.");
+            }
+
+            var user = string.IsNullOrWhiteSpace(request.Username)
+                ? null
+                : await userManager.FindByEmailAsync(request.Username.Trim());
+            if (!IsActive(user) || !await signInManager.CanSignInAsync(user!))
+            {
+                return OpenIddictForbid(
+                    OidcErrors.InvalidGrant,
+                    "The email or password is invalid.");
+            }
+
+            var password = await signInManager.CheckPasswordSignInAsync(
+                user!,
+                request.Password ?? string.Empty,
+                lockoutOnFailure: true);
+            if (!password.Succeeded)
+            {
+                return OpenIddictForbid(
+                    OidcErrors.InvalidGrant,
+                    "The email or password is invalid.");
+            }
+
+            if (!await EnsureApplicationAccessAsync(
+                user!,
+                binding,
+                allowAutoJoin: binding.AllowMembershipAutoJoin,
+                HttpContext.RequestAborted))
+            {
+                return OpenIddictForbid(
+                    OidcErrors.InvalidGrant,
+                    "The account is not a member of this application.");
+            }
+
+            var identity = await CreateUserIdentityAsync(
+                user!,
+                request.GetScopes(),
+                binding);
+            var subject = await userManager.GetUserIdAsync(user!);
+            var applicationId = await applicationManager.GetIdAsync(application)
+                ?? throw new InvalidOperationException(
+                    "The OAuth 2.0 client has no stable identifier.");
+            var authorization = await authorizationManager.CreateAsync(
+                identity,
+                subject,
+                applicationId,
+                AuthorizationTypes.Permanent,
+                identity.GetScopes());
+            identity.SetAuthorizationId(
+                await authorizationManager.GetIdAsync(authorization));
             return SignIn(
                 new ClaimsPrincipal(identity),
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -160,6 +264,10 @@ public sealed class ConnectController(
                     "The OAuth 2.0 client cannot be found.");
             var displayName = await applicationManager.GetDisplayNameAsync(application)
                 ?? request.ClientId!;
+            var binding = await IdentityClientApplicationMetadata.ReadAsync(
+                applicationManager,
+                application,
+                HttpContext.RequestAborted);
             var identity = new ClaimsIdentity(
                 TokenValidationParameters.DefaultAuthenticationType,
                 Claims.Name,
@@ -167,8 +275,10 @@ public sealed class ConnectController(
             identity.SetClaim(Claims.Subject, request.ClientId)
                 .SetClaim(Claims.Name, displayName)
                 .SetClaim(Claims.ClientId, request.ClientId)
-                .SetScopes(request.GetScopes())
-                .SetDestinations(GetDestinations);
+                .SetClaim(IdentityClaimTypes.ActorType, IdentityClaimTypes.ClientActor)
+                .SetScopes(request.GetScopes());
+            SetApplicationClaims(identity, binding);
+            identity.SetDestinations(GetDestinations);
             await SetResourcesAsync(identity);
             return SignIn(
                 new ClaimsPrincipal(identity),
@@ -196,6 +306,8 @@ public sealed class ConnectController(
         AddClaimIfPresent(response, Claims.Name);
         AddClaimIfPresent(response, Claims.PreferredUsername);
         AddClaimIfPresent(response, Claims.Email);
+        AddClaimIfPresent(response, IdentityClaimTypes.TenantId);
+        AddClaimIfPresent(response, IdentityClaimTypes.ApplicationId);
         var roles = User.GetClaims(Claims.Role).ToArray();
         if (roles.Length > 0)
         {
@@ -222,7 +334,8 @@ public sealed class ConnectController(
 
     private async Task<ClaimsIdentity> CreateUserIdentityAsync(
         AsterloomUser user,
-        IEnumerable<string> scopes)
+        IEnumerable<string> scopes,
+        IdentityClientApplicationBinding? binding)
     {
         var identity = new ClaimsIdentity(
             TokenValidationParameters.DefaultAuthenticationType,
@@ -232,11 +345,65 @@ public sealed class ConnectController(
             .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
             .SetClaim(Claims.Name, user.DisplayName)
             .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+            .SetClaim(IdentityClaimTypes.ActorType, IdentityClaimTypes.UserActor)
             .SetClaims(Claims.Role, [.. await userManager.GetRolesAsync(user)])
-            .SetScopes(scopes)
-            .SetDestinations(GetDestinations);
+            .SetScopes(scopes);
+        SetApplicationClaims(identity, binding);
+        identity.SetDestinations(GetDestinations);
         await SetResourcesAsync(identity);
         return identity;
+    }
+
+    private async Task<bool> EnsureApplicationAccessAsync(
+        AsterloomUser user,
+        IdentityClientApplicationBinding? binding,
+        bool allowAutoJoin,
+        CancellationToken cancellationToken)
+    {
+        if (binding is null)
+        {
+            return true;
+        }
+
+        var membership = await memberships.FindAsync(
+            user.Id,
+            binding.ApplicationId,
+            cancellationToken);
+        if (membership is
+            {
+                Status: AsterloomApplicationMembershipStatus.Active,
+            })
+        {
+            return true;
+        }
+
+        if (!allowAutoJoin)
+        {
+            return false;
+        }
+
+        await memberships.SetAsync(
+            user.Id,
+            binding.TenantId,
+            binding.ApplicationId,
+            membership?.Version ?? 0,
+            cancellationToken);
+        return true;
+    }
+
+    private static void SetApplicationClaims(
+        ClaimsIdentity identity,
+        IdentityClientApplicationBinding? binding)
+    {
+        if (binding is null)
+        {
+            return;
+        }
+
+        identity.SetClaim(IdentityClaimTypes.TenantId, binding.TenantId.ToString("D"));
+        identity.SetClaim(
+            IdentityClaimTypes.ApplicationId,
+            binding.ApplicationId.ToString("D"));
     }
 
     private async Task SetResourcesAsync(ClaimsIdentity identity)

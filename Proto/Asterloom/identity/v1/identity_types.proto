@@ -16,6 +16,17 @@ message IdentityUser {
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
   google.protobuf.Timestamp archived_at = 9;
+  bool email_confirmed = 10;
+}
+
+message ApplicationMembership {
+  string user_id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  ApplicationMembershipStatus status = 4;
+  int64 version = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
 }
 
 message UserInvitation {
@@ -35,6 +46,10 @@ message OidcClient {
   repeated string scopes = 8;
   string version = 9;
   OidcApplicationType application_type = 10;
+  string tenant_id = 11;
+  string application_id = 12;
+  bool allow_user_registration = 13;
+  bool allow_membership_auto_join = 14;
 }
 
 message OidcClientCredential {
@@ -86,6 +101,13 @@ enum OidcGrantType {
   OIDC_GRANT_TYPE_AUTHORIZATION_CODE = 1;
   OIDC_GRANT_TYPE_CLIENT_CREDENTIALS = 2;
   OIDC_GRANT_TYPE_REFRESH_TOKEN = 3;
+  OIDC_GRANT_TYPE_PASSWORD = 4;
+}
+
+enum ApplicationMembershipStatus {
+  APPLICATION_MEMBERSHIP_STATUS_UNSPECIFIED = 0;
+  APPLICATION_MEMBERSHIP_STATUS_ACTIVE = 1;
+  APPLICATION_MEMBERSHIP_STATUS_REMOVED = 2;
 }
 
 enum IdentitySessionStatus {

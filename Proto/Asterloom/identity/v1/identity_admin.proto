@@ -14,6 +14,12 @@ service IdentityAdminService {
   rpc GetUser(GetUserRequest) returns (asterloom.identity.v1.IdentityUser) {
     option (google.api.http) = {get: "/api/v1/identity/users/{user_id}"};
   }
+  rpc CreateUser(CreateUserRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users"
+      body: "*"
+    };
+  }
   rpc InviteUser(InviteUserRequest) returns (asterloom.identity.v1.UserInvitation) {
     option (google.api.http) = {
       post: "/api/v1/identity/users:invite"
@@ -35,6 +41,12 @@ service IdentityAdminService {
   rpc SetUserRoles(SetUserRolesRequest) returns (asterloom.identity.v1.IdentityUser) {
     option (google.api.http) = {
       put: "/api/v1/identity/users/{user_id}/roles"
+      body: "*"
+    };
+  }
+  rpc ResetUserPassword(ResetUserPasswordRequest) returns (asterloom.identity.v1.IdentityUser) {
+    option (google.api.http) = {
+      post: "/api/v1/identity/users/{user_id}:reset-password"
       body: "*"
     };
   }
@@ -70,6 +82,21 @@ service IdentityAdminService {
     option (google.api.http) = {
       post: "/api/v1/identity/users/{user_id}/sessions:revoke-all"
       body: "*"
+    };
+  }
+
+  rpc ListApplicationMemberships(ListApplicationMembershipsRequest) returns (ListApplicationMembershipsResponse) {
+    option (google.api.http) = {get: "/api/v1/identity/application-memberships"};
+  }
+  rpc SetApplicationMembership(SetApplicationMembershipRequest) returns (asterloom.identity.v1.ApplicationMembership) {
+    option (google.api.http) = {
+      put: "/api/v1/identity/application-memberships/{application_id}/{user_id}"
+      body: "*"
+    };
+  }
+  rpc RemoveApplicationMembership(RemoveApplicationMembershipRequest) returns (asterloom.identity.v1.ApplicationMembership) {
+    option (google.api.http) = {
+      delete: "/api/v1/identity/application-memberships/{application_id}/{user_id}"
     };
   }
 
@@ -140,6 +167,14 @@ message GetUserRequest {
   string user_id = 1;
 }
 
+message CreateUserRequest {
+  string email = 1;
+  string display_name = 2;
+  string password = 3;
+  bool email_confirmed = 4;
+  repeated string roles = 5;
+}
+
 message InviteUserRequest {
   string email = 1;
   string display_name = 2;
@@ -160,6 +195,12 @@ message UpdateUserRequest {
 message SetUserRolesRequest {
   string user_id = 1;
   repeated string roles = 2;
+  int64 expected_version = 3;
+}
+
+message ResetUserPasswordRequest {
+  string user_id = 1;
+  string new_password = 2;
   int64 expected_version = 3;
 }
 
@@ -193,6 +234,33 @@ message RevokeAllUserSessionsResponse {
   int64 revoked_sessions = 1;
 }
 
+message ListApplicationMembershipsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string user_id = 3;
+  string tenant_id = 4;
+  string application_id = 5;
+  bool include_removed = 6;
+}
+
+message ListApplicationMembershipsResponse {
+  repeated asterloom.identity.v1.ApplicationMembership memberships = 1;
+  string next_page_token = 2;
+}
+
+message SetApplicationMembershipRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+  string application_id = 3;
+  int64 expected_version = 4;
+}
+
+message RemoveApplicationMembershipRequest {
+  string user_id = 1;
+  string application_id = 2;
+  int64 expected_version = 3;
+}
+
 message ListClientsRequest {
   int32 page_size = 1;
   string page_token = 2;
@@ -217,6 +285,10 @@ message CreateClientRequest {
   repeated string post_logout_redirect_uris = 6;
   repeated string scopes = 7;
   asterloom.identity.v1.OidcApplicationType application_type = 8;
+  string tenant_id = 9;
+  string application_id = 10;
+  bool allow_user_registration = 11;
+  bool allow_membership_auto_join = 12;
 }
 
 message UpdateClientRequest {
@@ -227,6 +299,10 @@ message UpdateClientRequest {
   repeated string post_logout_redirect_uris = 5;
   repeated string scopes = 6;
   string expected_version = 7;
+  string tenant_id = 8;
+  string application_id = 9;
+  bool allow_user_registration = 10;
+  bool allow_membership_auto_join = 11;
 }
 
 message RotateClientSecretRequest {

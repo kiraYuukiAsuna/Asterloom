@@ -21,6 +21,13 @@ internal interface IAsterloomIdentityProtocolClient
         IReadOnlyCollection<string> scopes,
         CancellationToken cancellationToken);
 
+    Task<AsterloomProtocolTokenResult> AuthenticateWithPasswordAsync(
+        string registrationId,
+        string username,
+        string password,
+        IReadOnlyCollection<string> scopes,
+        CancellationToken cancellationToken);
+
     Task SignOutInteractivelyAsync(
         string registrationId,
         string? identityTokenHint,
@@ -109,6 +116,32 @@ internal sealed class OpenIddictIdentityProtocolClient(OpenIddictClientService c
             result.IdentityToken,
             result.RefreshToken,
             result.Principal);
+    }
+
+    public async Task<AsterloomProtocolTokenResult> AuthenticateWithPasswordAsync(
+        string registrationId,
+        string username,
+        string password,
+        IReadOnlyCollection<string> scopes,
+        CancellationToken cancellationToken)
+    {
+        var result = await _client.AuthenticateWithPasswordAsync(
+            new PasswordAuthenticationRequest
+            {
+                RegistrationId = registrationId,
+                Username = username,
+                Password = password,
+                Scopes = [.. scopes],
+                CancellationToken = cancellationToken,
+            }).ConfigureAwait(false);
+        return new(
+            result.AccessToken,
+            result.AccessTokenExpirationDate,
+            result.IdentityToken,
+            result.RefreshToken,
+            result.Principal
+                ?? result.IdentityTokenPrincipal
+                ?? result.UserInfoTokenPrincipal);
     }
 
     public async Task SignOutInteractivelyAsync(

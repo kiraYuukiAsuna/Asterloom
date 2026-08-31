@@ -27,6 +27,7 @@ public sealed partial class IdentityManagementService(
     IdentitySecurityOptions securityOptions,
     IdentityBootstrapOptions bootstrapOptions,
     IdentityPersistenceOptions persistenceOptions,
+    IdentityMembershipService memberships,
     TimeProvider timeProvider)
 {
     public static readonly TimeSpan InvitationLifetime = TimeSpan.FromHours(24);
@@ -89,6 +90,59 @@ public sealed partial class IdentityManagementService(
         string userId,
         CancellationToken cancellationToken) =>
         await ToManagedUserAsync(await RequireUserAsync(userId, cancellationToken));
+
+    public async Task<ManagedIdentityUser> CreateUserAsync(
+        string email,
+        string displayName,
+        string password,
+        bool emailConfirmed,
+        IEnumerable<string> roles,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedEmail = NormalizeEmail(email);
+        var normalizedRoles = NormalizeRoles(roles, requireAny: false);
+        if (await userManager.FindByEmailAsync(normalizedEmail) is not null)
+        {
+            throw AlreadyExists("identity_user_exists", "A user with this email already exists.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var user = new AsterloomUser
+        {
+            Id = Guid.CreateVersion7(),
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
+            EmailConfirmed = emailConfirmed,
+            DisplayName = NormalizeDisplayName(displayName),
+            Status = emailConfirmed
+                ? AsterloomUserStatus.Active
+                : AsterloomUserStatus.Pending,
+            Version = 1,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        EnsureSucceeded(
+            await userManager.CreateAsync(user, RequireSecret(password, "password", 2_048)),
+            "identity_user_create_failed",
+            "Unable to create the user.");
+        try
+        {
+            if (normalizedRoles.Length > 0)
+            {
+                EnsureSucceeded(
+                    await userManager.AddToRolesAsync(user, normalizedRoles),
+                    "identity_user_roles_failed",
+                    "Unable to assign the user's roles.");
+            }
+        }
+        catch
+        {
+            await userManager.DeleteAsync(user);
+            throw;
+        }
+        return await ToManagedUserAsync(user);
+    }
 
     public async Task<ManagedUserInvitation> InviteUserAsync(
         string email,
@@ -180,6 +234,29 @@ public sealed partial class IdentityManagementService(
         return await ToManagedUserAsync(user);
     }
 
+    public async Task<ManagedIdentityUser> ResetUserPasswordAsync(
+        string userId,
+        string newPassword,
+        long expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        var user = await RequireUserAsync(userId, cancellationToken);
+        RequireVersion(user.Version, expectedVersion);
+        RequireNotArchived(user);
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        EnsureSucceeded(
+            await userManager.ResetPasswordAsync(
+                user,
+                token,
+                RequireSecret(newPassword, "newPassword", 2_048)),
+            "identity_password_reset_failed",
+            "Unable to reset the user's password.");
+        Touch(user);
+        await UpdateUserRecordAsync(user, rotateSecurityStamp: true);
+        await RevokeUserSessionsCoreAsync(user.Id, cancellationToken);
+        return await ToManagedUserAsync(user);
+    }
+
     public async Task<ManagedIdentityUser> SetUserRolesAsync(
         string userId,
         IEnumerable<string> roles,
@@ -189,7 +266,7 @@ public sealed partial class IdentityManagementService(
         var user = await RequireUserAsync(userId, cancellationToken);
         RequireVersion(user.Version, expectedVersion);
         RequireNotArchived(user);
-        var normalizedRoles = NormalizeRoles(roles);
+        var normalizedRoles = NormalizeRoles(roles, requireAny: false);
         var currentRoles = await userManager.GetRolesAsync(user);
         if (user.Status == AsterloomUserStatus.Active
             && currentRoles.Contains(IdentityRoleCatalog.SuperAdministrator, StringComparer.Ordinal)
@@ -409,6 +486,47 @@ public sealed partial class IdentityManagementService(
         return await RevokeUserSessionsCoreAsync(user.Id, cancellationToken);
     }
 
+    public Task<IdentityPage<ManagedApplicationMembership>> ListApplicationMembershipsAsync(
+        int pageSize,
+        string? pageToken,
+        string? userId,
+        string? tenantId,
+        string? applicationId,
+        bool includeRemoved,
+        CancellationToken cancellationToken) =>
+        memberships.ListAsync(
+            pageSize,
+            pageToken,
+            ParseOptionalId(userId, "userId"),
+            ParseOptionalId(tenantId, "tenantId"),
+            ParseOptionalId(applicationId, "applicationId"),
+            includeRemoved,
+            cancellationToken);
+
+    public Task<ManagedApplicationMembership> SetApplicationMembershipAsync(
+        string userId,
+        string tenantId,
+        string applicationId,
+        long expectedVersion,
+        CancellationToken cancellationToken) =>
+        memberships.SetAsync(
+            ParseRequiredId(userId, "userId"),
+            ParseRequiredId(tenantId, "tenantId"),
+            ParseRequiredId(applicationId, "applicationId"),
+            expectedVersion,
+            cancellationToken);
+
+    public Task<ManagedApplicationMembership> RemoveApplicationMembershipAsync(
+        string userId,
+        string applicationId,
+        long expectedVersion,
+        CancellationToken cancellationToken) =>
+        memberships.RemoveAsync(
+            ParseRequiredId(userId, "userId"),
+            ParseRequiredId(applicationId, "applicationId"),
+            expectedVersion,
+            cancellationToken);
+
     public async Task<IdentityPage<ManagedOidcClient>> ListClientsAsync(
         int pageSize,
         string? pageToken,
@@ -463,6 +581,10 @@ public sealed partial class IdentityManagementService(
         IEnumerable<string> redirectUris,
         IEnumerable<string> postLogoutRedirectUris,
         IEnumerable<string> scopes,
+        string tenantId,
+        string applicationId,
+        bool allowUserRegistration,
+        bool allowMembershipAutoJoin,
         CancellationToken cancellationToken)
     {
         var normalizedClientId = NormalizeClientId(clientId);
@@ -481,7 +603,24 @@ public sealed partial class IdentityManagementService(
             "postLogoutRedirectUris",
             applicationType);
         var normalizedScopes = await NormalizeScopesAsync(scopes, cancellationToken);
-        ValidateClient(clientType, applicationType, normalizedGrants, normalizedRedirects);
+        var binding = NormalizeClientBinding(
+            tenantId,
+            applicationId,
+            allowUserRegistration,
+            allowMembershipAutoJoin);
+        if (binding is not null)
+        {
+            await memberships.ValidateApplicationAsync(
+                binding.TenantId,
+                binding.ApplicationId,
+                cancellationToken);
+        }
+        ValidateClient(
+            clientType,
+            applicationType,
+            normalizedGrants,
+            normalizedRedirects,
+            binding);
         var secret = clientType == ManagedOidcClientType.Confidential
             ? GenerateSecret()
             : string.Empty;
@@ -494,6 +633,7 @@ public sealed partial class IdentityManagementService(
             normalizedRedirects,
             normalizedPostLogoutRedirects,
             normalizedScopes,
+            binding,
             secret);
         var application = await applicationManager.CreateAsync(descriptor, cancellationToken);
         return new ManagedOidcClientCredential(
@@ -508,6 +648,10 @@ public sealed partial class IdentityManagementService(
         IEnumerable<string> redirectUris,
         IEnumerable<string> postLogoutRedirectUris,
         IEnumerable<string> scopes,
+        string tenantId,
+        string applicationId,
+        bool allowUserRegistration,
+        bool allowMembershipAutoJoin,
         string expectedVersion,
         CancellationToken cancellationToken)
     {
@@ -525,11 +669,24 @@ public sealed partial class IdentityManagementService(
             "postLogoutRedirectUris",
             current.ApplicationType);
         var normalizedScopes = await NormalizeScopesAsync(scopes, cancellationToken);
+        var binding = NormalizeClientBinding(
+            tenantId,
+            applicationId,
+            allowUserRegistration,
+            allowMembershipAutoJoin);
+        if (binding is not null)
+        {
+            await memberships.ValidateApplicationAsync(
+                binding.TenantId,
+                binding.ApplicationId,
+                cancellationToken);
+        }
         ValidateClient(
             current.ClientType,
             current.ApplicationType,
             normalizedGrants,
-            normalizedRedirects);
+            normalizedRedirects,
+            binding);
 
         var descriptor = new OpenIddictApplicationDescriptor();
         await applicationManager.PopulateAsync(descriptor, application, cancellationToken);
@@ -537,6 +694,7 @@ public sealed partial class IdentityManagementService(
             ? ApplicationTypes.Native
             : ApplicationTypes.Web;
         descriptor.DisplayName = NormalizeDisplayName(displayName);
+        IdentityClientApplicationMetadata.Apply(descriptor, binding);
         ApplyClientConfiguration(
             descriptor,
             normalizedGrants,
@@ -784,7 +942,8 @@ public sealed partial class IdentityManagementService(
             [.. (await userManager.GetRolesAsync(user)).Order(StringComparer.Ordinal)],
             user.CreatedAt,
             user.UpdatedAt,
-            user.ArchivedAt);
+            user.ArchivedAt,
+            user.EmailConfirmed);
 
     private async Task<ManagedIdentitySession> ToManagedSessionAsync(
         object authorization,
@@ -842,11 +1001,17 @@ public sealed partial class IdentityManagementService(
             grants.Add(ManagedOidcGrantType.RefreshToken);
         }
 
+        if (permissions.Contains(Permissions.GrantTypes.Password, StringComparer.Ordinal))
+        {
+            grants.Add(ManagedOidcGrantType.Password);
+        }
+
         var scopes = permissions
             .Where(static permission => permission.StartsWith(Permissions.Prefixes.Scope, StringComparison.Ordinal))
             .Select(static permission => permission[Permissions.Prefixes.Scope.Length..])
             .ToHashSet(StringComparer.Ordinal);
-        if (grants.Contains(ManagedOidcGrantType.AuthorizationCode))
+        if (grants.Contains(ManagedOidcGrantType.AuthorizationCode)
+            || grants.Contains(ManagedOidcGrantType.Password))
         {
             scopes.Add(Scopes.OpenId);
         }
@@ -856,6 +1021,10 @@ public sealed partial class IdentityManagementService(
             scopes.Add(Scopes.OfflineAccess);
         }
 
+        var binding = await IdentityClientApplicationMetadata.ReadAsync(
+            applicationManager,
+            application,
+            cancellationToken);
         return new ManagedOidcClient(
             await applicationManager.GetIdAsync(application, cancellationToken)
                 ?? throw new InvalidOperationException("An OpenIddict application has no identifier."),
@@ -879,7 +1048,11 @@ public sealed partial class IdentityManagementService(
             await applicationManager.GetRedirectUrisAsync(application, cancellationToken),
             await applicationManager.GetPostLogoutRedirectUrisAsync(application, cancellationToken),
             [.. scopes.Order(StringComparer.Ordinal)],
-            GetApplicationVersion(application));
+            GetApplicationVersion(application),
+            binding?.TenantId,
+            binding?.ApplicationId,
+            binding?.AllowUserRegistration ?? false,
+            binding?.AllowMembershipAutoJoin ?? false);
     }
 
     private async Task<ManagedOidcScope> ToManagedScopeAsync(
@@ -1024,6 +1197,7 @@ public sealed partial class IdentityManagementService(
         IReadOnlyList<Uri> redirectUris,
         IReadOnlyList<Uri> postLogoutRedirectUris,
         IReadOnlyList<string> scopes,
+        IdentityClientApplicationBinding? binding,
         string secret)
     {
         var descriptor = new OpenIddictApplicationDescriptor
@@ -1039,6 +1213,7 @@ public sealed partial class IdentityManagementService(
             ConsentType = ConsentTypes.Implicit,
             DisplayName = displayName,
         };
+        IdentityClientApplicationMetadata.Apply(descriptor, binding);
         ApplyClientConfiguration(
             descriptor,
             grantTypes,
@@ -1084,6 +1259,12 @@ public sealed partial class IdentityManagementService(
             descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken);
         }
 
+        if (grantTypes.Contains(ManagedOidcGrantType.Password))
+        {
+            descriptor.Permissions.Add(Permissions.Endpoints.Token);
+            descriptor.Permissions.Add(Permissions.GrantTypes.Password);
+        }
+
         foreach (var scope in scopes.Where(scope =>
             !string.Equals(scope, Scopes.OpenId, StringComparison.Ordinal)
             && !string.Equals(scope, Scopes.OfflineAccess, StringComparison.Ordinal)))
@@ -1124,7 +1305,8 @@ public sealed partial class IdentityManagementService(
         ManagedOidcClientType clientType,
         ManagedOidcApplicationType applicationType,
         ManagedOidcGrantType[] grants,
-        Uri[] redirectUris)
+        Uri[] redirectUris,
+        IdentityClientApplicationBinding? binding)
     {
         if (grants.Length == 0)
         {
@@ -1141,6 +1323,22 @@ public sealed partial class IdentityManagementService(
             && clientType != ManagedOidcClientType.Confidential)
         {
             throw Invalid("clientType", "Client credentials require a confidential client.");
+        }
+
+        if (grants.Contains(ManagedOidcGrantType.Password)
+            && (clientType != ManagedOidcClientType.Confidential
+                || applicationType != ManagedOidcApplicationType.Web))
+        {
+            throw Invalid(
+                "grantTypes",
+                "Headless password authentication requires a confidential Web client.");
+        }
+
+        if (grants.Contains(ManagedOidcGrantType.Password) && binding is null)
+        {
+            throw Invalid(
+                "applicationId",
+                "Password clients must be bound to a platform application.");
         }
 
         if (applicationType == ManagedOidcApplicationType.Native
@@ -1160,10 +1358,55 @@ public sealed partial class IdentityManagementService(
         }
 
         if (grants.Contains(ManagedOidcGrantType.RefreshToken)
-            && !grants.Contains(ManagedOidcGrantType.AuthorizationCode))
+            && !grants.Contains(ManagedOidcGrantType.AuthorizationCode)
+            && !grants.Contains(ManagedOidcGrantType.Password))
         {
-            throw Invalid("grantTypes", "Refresh tokens require the authorization-code grant.");
+            throw Invalid(
+                "grantTypes",
+                "Refresh tokens require authorization-code or password authentication.");
         }
+
+        if (binding?.AllowUserRegistration is true
+            && !grants.Contains(ManagedOidcGrantType.ClientCredentials))
+        {
+            throw Invalid(
+                "allowUserRegistration",
+                "Account registration requires the client-credentials grant.");
+        }
+    }
+
+    private static IdentityClientApplicationBinding? NormalizeClientBinding(
+        string? tenantId,
+        string? applicationId,
+        bool allowUserRegistration,
+        bool allowMembershipAutoJoin)
+    {
+        var tenant = ParseOptionalId(tenantId, "tenantId");
+        var application = ParseOptionalId(applicationId, "applicationId");
+        if (tenant is null && application is null)
+        {
+            if (allowUserRegistration || allowMembershipAutoJoin)
+            {
+                throw Invalid(
+                    "applicationId",
+                    "Application capabilities require a platform application binding.");
+            }
+
+            return null;
+        }
+
+        if (tenant is null || application is null)
+        {
+            throw Invalid(
+                "applicationId",
+                "Tenant and application identifiers must be supplied together.");
+        }
+
+        return new IdentityClientApplicationBinding(
+            tenant.Value,
+            application.Value,
+            allowUserRegistration,
+            allowMembershipAutoJoin);
     }
 
     private static ManagedOidcGrantType[] NormalizeGrantTypes(
@@ -1235,14 +1478,16 @@ public sealed partial class IdentityManagementService(
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-    private static string[] NormalizeRoles(IEnumerable<string> roles)
+    private static string[] NormalizeRoles(
+        IEnumerable<string> roles,
+        bool requireAny = true)
     {
         var normalized = roles
             .Select(role => RequireText(role, "roles", 100))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
-        if (normalized.Length == 0)
+        if (requireAny && normalized.Length == 0)
         {
             throw Invalid("roles", "At least one role is required.");
         }
@@ -1317,6 +1562,32 @@ public sealed partial class IdentityManagementService(
         }
 
         return normalized;
+    }
+
+    private static string RequireSecret(string? value, string field, int maximumLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > maximumLength)
+        {
+            throw Invalid(field, $"A non-empty value up to {maximumLength} characters is required.");
+        }
+
+        return value;
+    }
+
+    private static Guid ParseRequiredId(string? value, string field) =>
+        ParseOptionalId(value, field)
+        ?? throw Invalid(field, "A valid identifier is required.");
+
+    private static Guid? ParseOptionalId(string? value, string field)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return Guid.TryParse(value, out var parsed) && parsed != Guid.Empty
+            ? parsed
+            : throw Invalid(field, "A valid identifier is required.");
     }
 
     private static string? NormalizeOptional(string? value) =>

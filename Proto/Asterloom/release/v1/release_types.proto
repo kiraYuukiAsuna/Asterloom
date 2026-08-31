@@ -199,6 +199,14 @@ message ReleaseValidationResult {
   ReleaseManifest candidate_manifest = 3;
 }
 
+// A release artifact paired with the short-lived download ticket that grants
+// access to it. Update decisions can expose more than one asset so clients can
+// attempt a delta package while retaining the target full package as fallback.
+message ReleaseArtifactDownload {
+  ReleaseArtifact artifact = 1;
+  asterloom.storage.v1.StorageTransferTicket download = 2;
+}
+
 message UpdateDecision {
   bool update_available = 1;
   UpdateDecisionReason reason = 2;
@@ -212,4 +220,5 @@ message UpdateDecision {
   uint32 bucket = 10;
   uint32 rollout_basis_points = 11;
   repeated string trace = 12;
+  repeated ReleaseArtifactDownload artifact_downloads = 13;
 }

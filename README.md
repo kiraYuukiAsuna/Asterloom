@@ -2,7 +2,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Asterloom is a unified foundation platform for identity, authorization, feature
+Asterloom is a unified foundation platform for global Passport accounts, application membership,
+identity, authorization, feature
 flags, targeting, dynamic configuration, desktop releases, analytics,
 telemetry, RPC/HTTP, object storage, and persistence.
 
@@ -11,6 +12,8 @@ telemetry, RPC/HTTP, object storage, and persistence.
 - [Architecture and implementation baseline](Docs/Architecture.md)
 - [Module-by-module guides](Docs/Module/README.md)
 - [模块使用文档（中文）](Docs/Module/README.zh-CN.md)
+- [Business application Passport integration](Docs/Module/Identity-Business-Integration.md)
+- [业务应用统一账号接入（中文）](Docs/Module/Identity-Business-Integration.zh-CN.md)
 - [Feature usage guide](Docs/Feature-Guide.md)
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)
 - [Desktop update packaging and release guide](Docs/Module/Desktop-Updates.md)

@@ -74,6 +74,10 @@ public sealed record AsterloomReleaseTransferTicket(
     IReadOnlyDictionary<string, string> RequiredHeaders,
     DateTimeOffset ExpiresAt);
 
+public sealed record AsterloomReleaseArtifactDownload(
+    AsterloomReleaseArtifact Artifact,
+    AsterloomReleaseTransferTicket Download);
+
 public sealed record AsterloomUpdateDecision(
     bool UpdateAvailable,
     AsterloomUpdateDecisionReason Reason,
@@ -84,7 +88,12 @@ public sealed record AsterloomUpdateDecision(
     bool BucketEvaluated,
     uint Bucket,
     uint RolloutBasisPoints,
-    IReadOnlyList<string> Trace);
+    IReadOnlyList<string> Trace)
+{
+    // Added as a non-positional property so applications compiled against the
+    // original decision constructor remain source-compatible.
+    public IReadOnlyList<AsterloomReleaseArtifactDownload> ArtifactDownloads { get; init; } = [];
+}
 
 public sealed class AsterloomReleaseClientOptions
 {

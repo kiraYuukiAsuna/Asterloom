@@ -11,7 +11,8 @@ implementation scope.
 For a new application integration:
 
 1. Read [Platform](Platform.md) and create the Tenant, Application, and Environment scope.
-2. Read [Identity](Identity.md), register a Passport client, and choose user or service authentication.
+2. Read [Identity](Identity.md), register a Passport client, and choose user or service authentication. Products
+   with their own registration/sign-in UI should also follow [Business application identity integration](Identity-Business-Integration.md).
 3. Read [Authorization](Authorization.md) and grant roles, bindings, and least privilege.
 4. Add Feature, Config, Release, Analytics, Telemetry, or Storage capabilities as required.
 5. Read [RPC/HTTP](Rpc-Http.md) and [Web Console/BFF](Web-Console-Bff.md) for transport and browser boundaries.
@@ -24,6 +25,7 @@ For a new application integration:
 | --- | --- | --- | --- |
 | Platform | [Resource scopes](Platform.md) | `/tenants` | gRPC/JSON Admin API |
 | Identity | [Passport and accounts](Identity.md) | `/identity/users` | `Asterloom.Sdk.Identity` |
+| Business account integration | [Registration, sign-in, and application membership](Identity-Business-Integration.md) | Identity + Authorization workspaces | `AsterloomIdentityAccessClient` |
 | Authorization | [Access control](Authorization.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
 | Targeting / Rollout | [Segments and deterministic rollout](Targeting-Rollout.md) | `/targeting/segments` | `Asterloom.Sdk.Targeting` |
 | Feature Flag | [Feature flags](Feature-Flags.md) | `/features` | `Asterloom.Sdk.Feature` + OpenFeature |

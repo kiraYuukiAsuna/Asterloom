@@ -6,6 +6,8 @@
     <PackageReference Include="Npgsql" />
     <ProjectReference Include="..\Asterloom.ReferenceApp.Contracts\Asterloom.ReferenceApp.Contracts.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Telemetry\Asterloom.Sdk.Telemetry.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Rpc\Asterloom.Sdk.Rpc.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

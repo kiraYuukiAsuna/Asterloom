@@ -13,7 +13,28 @@ public sealed record ManagedIdentityUser(
     IReadOnlyList<string> Roles,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? ArchivedAt);
+    DateTimeOffset? ArchivedAt,
+    bool EmailConfirmed);
+
+public sealed record ManagedApplicationMembership(
+    Guid UserId,
+    Guid TenantId,
+    Guid ApplicationId,
+    Model.AsterloomApplicationMembershipStatus Status,
+    long Version,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record ManagedApplicationAccount(
+    ManagedIdentityUser User,
+    ManagedApplicationMembership Membership);
+
+public sealed record ManagedAccountRegistration(
+    ManagedIdentityUser User,
+    ManagedApplicationMembership Membership,
+    bool AccountCreated,
+    bool VerificationRequired,
+    string EmailVerificationToken);
 
 public sealed record ManagedUserInvitation(
     ManagedIdentityUser User,
@@ -37,6 +58,7 @@ public enum ManagedOidcGrantType
     AuthorizationCode = 0,
     ClientCredentials = 1,
     RefreshToken = 2,
+    Password = 3,
 }
 
 public sealed record ManagedOidcClient(
@@ -49,7 +71,11 @@ public sealed record ManagedOidcClient(
     IReadOnlyList<string> RedirectUris,
     IReadOnlyList<string> PostLogoutRedirectUris,
     IReadOnlyList<string> Scopes,
-    string Version);
+    string Version,
+    Guid? TenantId,
+    Guid? ApplicationId,
+    bool AllowUserRegistration,
+    bool AllowMembershipAutoJoin);
 
 public sealed record ManagedOidcClientCredential(
     ManagedOidcClient Client,

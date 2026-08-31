@@ -24,3 +24,29 @@ public sealed class AsterloomUser : IdentityUser<Guid>
 
     public DateTimeOffset? ArchivedAt { get; set; }
 }
+
+public enum AsterloomApplicationMembershipStatus : short
+{
+    Active = 1,
+    Removed = 2,
+}
+
+public sealed class AsterloomApplicationMembership
+{
+    public Guid UserId { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    public Guid ApplicationId { get; set; }
+
+    public AsterloomApplicationMembershipStatus Status { get; set; } =
+        AsterloomApplicationMembershipStatus.Active;
+
+    public long Version { get; set; } = 1;
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
+
+    public AsterloomUser User { get; set; } = null!;
+}

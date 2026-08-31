@@ -13,6 +13,7 @@ reference_state_directory="$reference_directory/state"
 reference_app_uid="${ASTERLOOM_REFERENCE_APP_UID:-1654}"
 service_client_id="${ASTERLOOM_REFERENCE_CLIENT_ID:-asterloom-reference-service}"
 native_client_id="${ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID:-asterloom-reference-native}"
+business_client_id="${ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID:-asterloom-reference-business}"
 binding_id="7fc2e239-3fa1-7ef1-8c20-5c7d54b7bd77"
 
 if [[ ! -f "$environment_file" ]]; then
@@ -27,6 +28,11 @@ set +a
 
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL:?ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL is required}"
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD:?ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD is required}"
+expose_confirmation_token="${ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN:-false}"
+if [[ "$expose_confirmation_token" != "true" && "$expose_confirmation_token" != "false" ]]; then
+  echo "ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN must be true or false." >&2
+  exit 1
+fi
 
 temporary_directory="$(mktemp -d)"
 trap 'rm -rf -- "$temporary_directory"' EXIT
@@ -145,6 +151,35 @@ api_mutate() {
   fi
 }
 
+tenants_file="$temporary_directory/tenants.json"
+api_get "/api/v1/tenants?pageSize=100&query=asterloom-reference-identity" "$tenants_file"
+identity_tenant_id="$(jq --raw-output \
+  '.tenants[]? | select(.slug == "asterloom-reference-identity") | .id' \
+  "$tenants_file" | head -n 1)"
+if [[ -z "$identity_tenant_id" ]]; then
+  identity_tenant_file="$temporary_directory/identity-tenant.json"
+  api_mutate POST "/api/v1/tenants" \
+    '{"slug":"asterloom-reference-identity","displayName":"Asterloom Reference Identity"}' \
+    "$identity_tenant_file"
+  identity_tenant_id="$(jq --raw-output '.id' "$identity_tenant_file")"
+fi
+require_value "reference Identity tenant" "$identity_tenant_id"
+
+applications_file="$temporary_directory/applications.json"
+api_get "/api/v1/tenants/$identity_tenant_id/applications?pageSize=100&query=passport-demo" \
+  "$applications_file"
+identity_application_id="$(jq --raw-output \
+  '.applications[]? | select(.slug == "passport-demo") | .id' \
+  "$applications_file" | head -n 1)"
+if [[ -z "$identity_application_id" ]]; then
+  identity_application_file="$temporary_directory/identity-application.json"
+  api_mutate POST "/api/v1/tenants/$identity_tenant_id/applications" \
+    '{"slug":"passport-demo","displayName":"Passport Business Integration Demo"}' \
+    "$identity_application_file"
+  identity_application_id="$(jq --raw-output '.id' "$identity_application_file")"
+fi
+require_value "reference Identity application" "$identity_application_id"
+
 clients_file="$temporary_directory/clients.json"
 api_get "/api/v1/identity/clients?pageSize=100&query=$service_client_id" "$clients_file"
 service_version="$(jq --raw-output --arg id "$service_client_id" \
@@ -190,6 +225,51 @@ if [[ "$native_exists" == "0" ]]; then
     "$native_file"
 fi
 
+api_get "/api/v1/identity/clients?pageSize=100&query=$business_client_id" "$clients_file"
+business_version="$(jq --raw-output --arg id "$business_client_id" \
+  '.clients[]? | select(.clientId == $id) | .version' "$clients_file" | head -n 1)"
+business_secret=""
+business_payload="$(jq -cn \
+  --arg tenant "$identity_tenant_id" \
+  --arg application "$identity_application_id" \
+  '{
+    displayName:"Asterloom reference business backend",
+    grantTypes:[
+      "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
+      "OIDC_GRANT_TYPE_PASSWORD",
+      "OIDC_GRANT_TYPE_REFRESH_TOKEN"
+    ],
+    redirectUris:[],
+    postLogoutRedirectUris:[],
+    scopes:["asterloom.api","openid","profile","email","roles","offline_access"],
+    tenantId:$tenant,
+    applicationId:$application,
+    allowUserRegistration:true,
+    allowMembershipAutoJoin:true
+  }')"
+if [[ -n "$business_version" ]]; then
+  business_update_file="$temporary_directory/business-update.json"
+  api_mutate PATCH "/api/v1/identity/clients/$business_client_id" \
+    "$(jq --arg version "$business_version" '. + {expectedVersion:$version}' \
+      <<<"$business_payload")" \
+    "$business_update_file"
+  business_version="$(jq --raw-output '.version' "$business_update_file")"
+  business_rotate_file="$temporary_directory/business-rotate.json"
+  api_mutate POST "/api/v1/identity/clients/$business_client_id:rotate-secret" \
+    "$(jq -cn --arg version "$business_version" '{expectedVersion:$version}')" \
+    "$business_rotate_file"
+  business_secret="$(jq --raw-output '.clientSecret' "$business_rotate_file")"
+else
+  business_create_file="$temporary_directory/business-create.json"
+  api_mutate POST "/api/v1/identity/clients" \
+    "$(jq --arg id "$business_client_id" \
+      '. + {clientId:$id,applicationType:"OIDC_APPLICATION_TYPE_WEB",clientType:"OIDC_CLIENT_TYPE_CONFIDENTIAL"}' \
+      <<<"$business_payload")" \
+    "$business_create_file"
+  business_secret="$(jq --raw-output '.clientSecret' "$business_create_file")"
+fi
+require_value "reference business client secret" "$business_secret"
+
 roles_file="$temporary_directory/roles.json"
 api_get "/api/v1/authorization/roles?pageSize=100&query=super-administrator" "$roles_file"
 super_role_id="$(jq --raw-output '.roles[]? | select(.key == "super-administrator") | .id' \
@@ -226,8 +306,19 @@ umask 077
   printf 'ASTERLOOM_REFERENCE_CLIENT_ID=%s\n' "$service_client_id"
   printf 'ASTERLOOM_REFERENCE_CLIENT_SECRET=%s\n' "$service_secret"
   printf 'ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID=%s\n' "$native_client_id"
+  printf 'ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID=%s\n' "$business_client_id"
+  printf 'ASTERLOOM_REFERENCE_IDENTITY_CLIENT_SECRET=%s\n' "$business_secret"
+  printf 'Asterloom__Identity__Enabled=true\n'
+  printf 'Asterloom__Identity__BaseAddress=%s\n' "$base_url/"
+  printf 'Asterloom__Identity__Issuer=%s\n' "$base_url/"
+  printf 'Asterloom__Identity__ClientId=%s\n' "$business_client_id"
+  printf 'Asterloom__Identity__ClientSecret=%s\n' "$business_secret"
+  printf 'Asterloom__Identity__AllowInsecureHttpForDevelopment=false\n'
+  printf 'Asterloom__Identity__ExposeEmailVerificationToken=%s\n' \
+    "$expose_confirmation_token"
 } > "$reference_environment"
 chmod 600 "$reference_environment"
 
-echo "Reference OIDC clients and global authorization binding are ready."
+echo "Reference OIDC clients, business application binding, and global authorization binding are ready."
 echo "Credentials were written to $reference_environment with mode 0600."
+echo "Recreate reference-backend after provisioning so it reloads the rotated business client secret."

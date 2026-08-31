@@ -41,7 +41,12 @@ public sealed class IdentityModule(IHostEnvironment environment) : IAsterloomMod
         services.AddSingleton(security);
         services.AddAsterloomIdentityCore(configuration);
         services.AddScoped<IdentityManagementService>();
+        services.AddScoped<IdentityMembershipService>();
+        services.AddScoped<IApplicationMembershipValidator>(provider =>
+            provider.GetRequiredService<IdentityMembershipService>());
+        services.AddScoped<IdentityAccountService>();
         services.AddScoped<IdentityAdminGrpcService>();
+        services.AddScoped<IdentityAccessGrpcService>();
         services.Configure<DataProtectionTokenProviderOptions>(options =>
             options.TokenLifespan = IdentityManagementService.InvitationLifetime);
         var persistence = IdentityPersistenceOptions.FromConfiguration(configuration);
@@ -84,6 +89,7 @@ public sealed class IdentityModule(IHostEnvironment environment) : IAsterloomMod
                     .SetUserInfoEndpointUris("/connect/userinfo");
                 options.AllowAuthorizationCodeFlow()
                     .AllowClientCredentialsFlow()
+                    .AllowPasswordFlow()
                     .AllowRefreshTokenFlow()
                     .RequireProofKeyForCodeExchange();
                 options.RegisterScopes(
@@ -205,6 +211,9 @@ public sealed class IdentityModule(IHostEnvironment environment) : IAsterloomMod
         endpoints.MapControllers();
         endpoints
             .MapGrpcService<IdentityAdminGrpcService>()
+            .RequireAuthorization(AsterloomApiAuthorization.ManagementPolicy);
+        endpoints
+            .MapGrpcService<IdentityAccessGrpcService>()
             .RequireAuthorization(AsterloomApiAuthorization.ManagementPolicy);
     }
 }

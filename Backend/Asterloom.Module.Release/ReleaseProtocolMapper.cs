@@ -3,6 +3,7 @@ using Asterloom.Modules.Release.Model;
 using Asterloom.Modules.Storage;
 using Google.Protobuf.WellKnownTypes;
 using ProtocolArtifact = Asterloom.Protocol.Release.V1.ReleaseArtifact;
+using ProtocolArtifactDownload = Asterloom.Protocol.Release.V1.ReleaseArtifactDownload;
 using ProtocolArtifactKind = Asterloom.Protocol.Release.V1.ReleaseArtifactKind;
 using ProtocolArtifactStatus = Asterloom.Protocol.Release.V1.ReleaseArtifactStatus;
 using ProtocolArtifactUpload = Asterloom.Protocol.Release.V1.ArtifactUpload;
@@ -249,6 +250,12 @@ public static class ReleaseProtocolMapper
         {
             result.Download = decision.Download.ToProtocol();
         }
+        result.ArtifactDownloads.AddRange(decision.ArtifactDownloads.Select(static item =>
+            new ProtocolArtifactDownload
+            {
+                Artifact = item.Artifact.ToProtocol(),
+                Download = item.Download.ToProtocol(),
+            }));
         result.Trace.AddRange(decision.Trace);
         return result;
     }

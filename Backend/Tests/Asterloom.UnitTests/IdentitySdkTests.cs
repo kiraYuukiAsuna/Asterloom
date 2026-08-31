@@ -112,6 +112,117 @@ public sealed class IdentitySdkTests
     }
 
     [Fact]
+    public async Task PasswordAuthenticationNormalizesEmailAndDoesNotUseSharedTokenStore()
+    {
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var store = new AsterloomInMemoryTokenStore();
+        var protocol = new FakeIdentityProtocolClient
+        {
+            PasswordResult = new(
+                "user-access",
+                clock.GetUtcNow().AddMinutes(10),
+                "user-identity",
+                "user-refresh",
+                new ClaimsPrincipal(new ClaimsIdentity())),
+        };
+        var options = CreateOptions();
+        options.ClientSecret = "unit-test-secret";
+        options.EnablePasswordAuthentication = true;
+        using var client = new AsterloomIdentityClient(protocol, options, store, clock);
+
+        var tokens = await client.AuthenticateWithPasswordAsync(
+            "  person@asterloom.test  ",
+            "correct horse battery staple");
+
+        Assert.Equal("user-access", tokens.AccessToken);
+        Assert.Equal("person@asterloom.test", protocol.LastPasswordUsername);
+        Assert.Equal("correct horse battery staple", protocol.LastPassword);
+        Assert.Equal(
+            ["asterloom.api", "openid", "profile", "email", "roles", "offline_access"],
+            protocol.LastPasswordScopes);
+        Assert.Null(await store.ReadAsync());
+    }
+
+    [Fact]
+    public async Task PasswordAuthenticationDoesNotSerializeIndependentUserSessions()
+    {
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var active = 0;
+        var protocol = new FakeIdentityProtocolClient
+        {
+            PasswordHandler = async cancellationToken =>
+            {
+                if (Interlocked.Increment(ref active) == 2)
+                {
+                    entered.TrySetResult();
+                }
+
+                await release.Task.WaitAsync(cancellationToken);
+                Interlocked.Decrement(ref active);
+                return new(
+                    "user-access",
+                    clock.GetUtcNow().AddMinutes(10),
+                    "user-identity",
+                    "user-refresh",
+                    new ClaimsPrincipal(new ClaimsIdentity()));
+            },
+        };
+        var options = CreateOptions();
+        options.ClientSecret = "unit-test-secret";
+        options.EnablePasswordAuthentication = true;
+        using var client = new AsterloomIdentityClient(
+            protocol,
+            options,
+            new AsterloomInMemoryTokenStore(),
+            clock);
+
+        var first = client.AuthenticateWithPasswordAsync("first@asterloom.test", "password");
+        var second = client.AuthenticateWithPasswordAsync("second@asterloom.test", "password");
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        release.TrySetResult();
+        await Task.WhenAll(first, second);
+
+        Assert.Equal(2, protocol.PasswordCalls);
+    }
+
+    [Fact]
+    public async Task UserTokenRefreshPreservesRotatedValuesWithoutUsingSharedStore()
+    {
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var store = new AsterloomInMemoryTokenStore();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+        var protocol = new FakeIdentityProtocolClient
+        {
+            RefreshResult = new(
+                "refreshed-user-access",
+                clock.GetUtcNow().AddMinutes(10),
+                IdentityToken: null,
+                RefreshToken: null,
+                Principal: null),
+        };
+        var options = CreateOptions();
+        options.ClientSecret = "unit-test-secret";
+        options.EnablePasswordAuthentication = true;
+        using var client = new AsterloomIdentityClient(protocol, options, store, clock);
+        var current = new AsterloomTokenSet(
+            "old-user-access",
+            clock.GetUtcNow().AddSeconds(-1),
+            "user-identity",
+            "user-refresh",
+            principal);
+
+        var refreshed = await client.RefreshUserTokensAsync(current);
+
+        Assert.Equal("refreshed-user-access", refreshed.AccessToken);
+        Assert.Equal("user-identity", refreshed.IdentityToken);
+        Assert.Equal("user-refresh", refreshed.RefreshToken);
+        Assert.Same(principal, refreshed.Principal);
+        Assert.Null(await store.ReadAsync());
+    }
+
+    [Fact]
     public async Task ConcurrentExpiredUserTokenRequestsUseOneRefresh()
     {
         var clock = new MutableTimeProvider(
@@ -233,7 +344,11 @@ public sealed class IdentitySdkTests
             [],
             [],
             ["asterloom.api"],
-            "version");
+            "version",
+            TenantId: null,
+            ApplicationId: null,
+            AllowUserRegistration: false,
+            AllowMembershipAutoJoin: false);
         var credential = new AsterloomOidcClientCredential(client, "top-secret");
         var tokens = new AsterloomTokenSet(
             "access-secret",
@@ -282,6 +397,11 @@ public sealed class IdentitySdkTests
 
         public AsterloomProtocolTokenResult? RefreshResult { get; init; }
 
+        public AsterloomProtocolTokenResult? PasswordResult { get; init; }
+
+        public Func<CancellationToken, Task<AsterloomProtocolTokenResult>>?
+            PasswordHandler { get; init; }
+
         public Func<CancellationToken, Task<AsterloomProtocolTokenResult>>?
             RefreshHandler { get; init; }
 
@@ -294,7 +414,15 @@ public sealed class IdentitySdkTests
 
         public int ServiceCalls => Volatile.Read(ref _serviceCalls);
 
+        public int PasswordCalls => Volatile.Read(ref _passwordCalls);
+
         public IReadOnlyList<string> LastServiceScopes { get; private set; } = [];
+
+        public IReadOnlyList<string> LastPasswordScopes { get; private set; } = [];
+
+        public string? LastPasswordUsername { get; private set; }
+
+        public string? LastPassword { get; private set; }
 
         public string? LastIdentityTokenHint { get; private set; }
 
@@ -338,6 +466,27 @@ public sealed class IdentitySdkTests
                 ?? throw new InvalidOperationException("No service handler configured.");
         }
 
+        public Task<AsterloomProtocolTokenResult> AuthenticateWithPasswordAsync(
+            string registrationId,
+            string username,
+            string password,
+            IReadOnlyCollection<string> scopes,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _passwordCalls);
+            LastPasswordUsername = username;
+            LastPassword = password;
+            LastPasswordScopes = scopes.ToArray();
+            if (PasswordHandler is not null)
+            {
+                return PasswordHandler(cancellationToken);
+            }
+
+            return Task.FromResult(
+                PasswordResult
+                ?? throw new InvalidOperationException("No password result configured."));
+        }
+
         public Task SignOutInteractivelyAsync(
             string registrationId,
             string? identityTokenHint,
@@ -350,6 +499,7 @@ public sealed class IdentitySdkTests
         }
 
         private int _refreshCalls;
+        private int _passwordCalls;
         private int _serviceCalls;
     }
 }

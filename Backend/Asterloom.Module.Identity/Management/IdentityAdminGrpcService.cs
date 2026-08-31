@@ -6,6 +6,7 @@ using ProtocolScope = Asterloom.Protocol.Identity.V1.OidcScope;
 using ProtocolSession = Asterloom.Protocol.Identity.V1.IdentitySession;
 using ProtocolUser = Asterloom.Protocol.Identity.V1.IdentityUser;
 using ProtocolUserInvitation = Asterloom.Protocol.Identity.V1.UserInvitation;
+using ProtocolMembership = Asterloom.Protocol.Identity.V1.ApplicationMembership;
 
 namespace Asterloom.Modules.Identity.Management;
 
@@ -33,6 +34,17 @@ internal sealed class IdentityAdminGrpcService(
         ServerCallContext context) =>
         (await managementService.GetUserAsync(
             request.UserId,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolUser> CreateUser(
+        CreateUserRequest request,
+        ServerCallContext context) =>
+        (await managementService.CreateUserAsync(
+            request.Email,
+            request.DisplayName,
+            request.Password,
+            request.EmailConfirmed,
+            request.Roles,
             context.CancellationToken)).ToProtocol();
 
     public override async Task<ProtocolUserInvitation> InviteUser(
@@ -67,6 +79,15 @@ internal sealed class IdentityAdminGrpcService(
         (await managementService.SetUserRolesAsync(
             request.UserId,
             request.Roles,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolUser> ResetUserPassword(
+        ResetUserPasswordRequest request,
+        ServerCallContext context) =>
+        (await managementService.ResetUserPasswordAsync(
+            request.UserId,
+            request.NewPassword,
             request.ExpectedVersion,
             context.CancellationToken)).ToProtocol();
 
@@ -135,6 +156,45 @@ internal sealed class IdentityAdminGrpcService(
                 context.CancellationToken),
         };
 
+    public override async Task<ListApplicationMembershipsResponse> ListApplicationMemberships(
+        ListApplicationMembershipsRequest request,
+        ServerCallContext context)
+    {
+        var page = await managementService.ListApplicationMembershipsAsync(
+            request.PageSize,
+            request.PageToken,
+            request.UserId,
+            request.TenantId,
+            request.ApplicationId,
+            request.IncludeRemoved,
+            context.CancellationToken);
+        var response = new ListApplicationMembershipsResponse
+        {
+            NextPageToken = page.NextPageToken,
+        };
+        response.Memberships.AddRange(page.Items.Select(IdentityProtocolMapper.ToProtocol));
+        return response;
+    }
+
+    public override async Task<ProtocolMembership> SetApplicationMembership(
+        SetApplicationMembershipRequest request,
+        ServerCallContext context) =>
+        (await managementService.SetApplicationMembershipAsync(
+            request.UserId,
+            request.TenantId,
+            request.ApplicationId,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolMembership> RemoveApplicationMembership(
+        RemoveApplicationMembershipRequest request,
+        ServerCallContext context) =>
+        (await managementService.RemoveApplicationMembershipAsync(
+            request.UserId,
+            request.ApplicationId,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
+
     public override async Task<ListClientsResponse> ListClients(
         ListClientsRequest request,
         ServerCallContext context)
@@ -168,6 +228,10 @@ internal sealed class IdentityAdminGrpcService(
             request.RedirectUris,
             request.PostLogoutRedirectUris,
             request.Scopes,
+            request.TenantId,
+            request.ApplicationId,
+            request.AllowUserRegistration,
+            request.AllowMembershipAutoJoin,
             context.CancellationToken)).ToProtocol();
 
     public override async Task<ProtocolClient> UpdateClient(
@@ -180,6 +244,10 @@ internal sealed class IdentityAdminGrpcService(
             request.RedirectUris,
             request.PostLogoutRedirectUris,
             request.Scopes,
+            request.TenantId,
+            request.ApplicationId,
+            request.AllowUserRegistration,
+            request.AllowMembershipAutoJoin,
             request.ExpectedVersion,
             context.CancellationToken)).ToProtocol();
 

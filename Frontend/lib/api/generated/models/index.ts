@@ -286,6 +286,47 @@ export interface Application extends Parsable {
      */
     version?: number | null;
 }
+export interface ApplicationAccount extends Parsable {
+    /**
+     * The membership property
+     */
+    membership?: ApplicationMembership | null;
+    /**
+     * The user property
+     */
+    user?: IdentityUser | null;
+}
+export interface ApplicationMembership extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The createdAt property
+     */
+    createdAt?: string | null;
+    /**
+     * The status property
+     */
+    status?: ApplicationMembershipStatus | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+    /**
+     * The updatedAt property
+     */
+    updatedAt?: string | null;
+    /**
+     * The userId property
+     */
+    userId?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
+}
+export type ApplicationMembershipStatus = (typeof ApplicationMembershipStatusObject)[keyof typeof ApplicationMembershipStatusObject];
 export interface ArtifactUpload extends Parsable {
     /**
      * The artifact property
@@ -889,6 +930,16 @@ export interface ConfigValue extends Parsable {
 }
 export type ConfigValueKind = (typeof ConfigValueKindObject)[keyof typeof ConfigValueKindObject];
 export type ConfigVisibility = (typeof ConfigVisibilityObject)[keyof typeof ConfigVisibilityObject];
+export interface ConfirmEmailRequest extends Parsable {
+    /**
+     * The email property
+     */
+    email?: string | null;
+    /**
+     * The token property
+     */
+    token?: string | null;
+}
 export interface CopyObjectRequest extends Parsable {
     /**
      * The bucketId property
@@ -1005,11 +1056,29 @@ export function createApiEndpointFromDiscriminatorValue(parseNode: ParseNode | u
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ApplicationAccount}
+ */
+// @ts-ignore
+export function createApplicationAccountFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoApplicationAccount;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {Application}
  */
 // @ts-ignore
 export function createApplicationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoApplication;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ApplicationMembership}
+ */
+// @ts-ignore
+export function createApplicationMembershipFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoApplicationMembership;
 }
 export interface CreateApplicationRequest extends Parsable {
     /**
@@ -1213,6 +1282,18 @@ export function createCheckForUpdateRequestFromDiscriminatorValue(parseNode: Par
 }
 export interface CreateClientRequest extends Parsable {
     /**
+     * The allowMembershipAutoJoin property
+     */
+    allowMembershipAutoJoin?: boolean | null;
+    /**
+     * The allowUserRegistration property
+     */
+    allowUserRegistration?: boolean | null;
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
      * The applicationType property
      */
     applicationType?: OidcApplicationType | null;
@@ -1244,6 +1325,10 @@ export interface CreateClientRequest extends Parsable {
      * The scopes property
      */
     scopes?: string[] | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1435,6 +1520,15 @@ export function createConfigValidationResultFromDiscriminatorValue(parseNode: Pa
 // @ts-ignore
 export function createConfigValueFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoConfigValue;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ConfirmEmailRequest}
+ */
+// @ts-ignore
+export function createConfirmEmailRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoConfirmEmailRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1633,6 +1727,15 @@ export function createCreateUploadSessionRequest_customMetadataFromDiscriminator
 // @ts-ignore
 export function createCreateUploadSessionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoCreateUploadSessionRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateUserRequest}
+ */
+// @ts-ignore
+export function createCreateUserRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateUserRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2024,6 +2127,15 @@ export function createInviteUserRequestFromDiscriminatorValue(parseNode: ParseNo
 // @ts-ignore
 export function createListApisResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoListApisResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ListApplicationMembershipsResponse}
+ */
+// @ts-ignore
+export function createListApplicationMembershipsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoListApplicationMembershipsResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2495,6 +2607,33 @@ export function createQueryAnalyticsResponseFromDiscriminatorValue(parseNode: Pa
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RegisterAccountRequest}
+ */
+// @ts-ignore
+export function createRegisterAccountRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRegisterAccountRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RegisterAccountResponse}
+ */
+// @ts-ignore
+export function createRegisterAccountResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRegisterAccountResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ReleaseArtifactDownload}
+ */
+// @ts-ignore
+export function createReleaseArtifactDownloadFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoReleaseArtifactDownload;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ReleaseArtifact}
  */
 // @ts-ignore
@@ -2613,6 +2752,15 @@ export function createReleaseValidationResultFromDiscriminatorValue(parseNode: P
 // @ts-ignore
 export function createResendUserInvitationRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoResendUserInvitationRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ResetUserPasswordRequest}
+ */
+// @ts-ignore
+export function createResetUserPasswordRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoResetUserPasswordRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2895,6 +3043,15 @@ export interface CreateSegmentRequest extends Parsable {
      * The tenantId property
      */
     tenantId?: string | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SetApplicationMembershipRequest}
+ */
+// @ts-ignore
+export function createSetApplicationMembershipRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoSetApplicationMembershipRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3452,6 +3609,28 @@ export interface CreateUploadSessionRequest_customMetadata extends AdditionalDat
 export function createUserInvitationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUserInvitation;
 }
+export interface CreateUserRequest extends Parsable {
+    /**
+     * The displayName property
+     */
+    displayName?: string | null;
+    /**
+     * The email property
+     */
+    email?: string | null;
+    /**
+     * The emailConfirmed property
+     */
+    emailConfirmed?: boolean | null;
+    /**
+     * The password property
+     */
+    password?: string | null;
+    /**
+     * The roles property
+     */
+    roles?: string[] | null;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -3692,6 +3871,35 @@ export function deserializeIntoApplication(application: Partial<Application> | u
         "tenantId": n => { application.tenantId = n.getStringValue(); },
         "updatedAt": n => { application.updatedAt = n.getStringValue(); },
         "version": n => { application.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ApplicationAccount The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoApplicationAccount(applicationAccount: Partial<ApplicationAccount> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "membership": n => { applicationAccount.membership = n.getObjectValue<ApplicationMembership>(createApplicationMembershipFromDiscriminatorValue); },
+        "user": n => { applicationAccount.user = n.getObjectValue<IdentityUser>(createIdentityUserFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ApplicationMembership The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoApplicationMembership(applicationMembership: Partial<ApplicationMembership> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { applicationMembership.applicationId = n.getStringValue(); },
+        "createdAt": n => { applicationMembership.createdAt = n.getStringValue(); },
+        "status": n => { applicationMembership.status = n.getEnumValue<ApplicationMembershipStatus>(ApplicationMembershipStatusObject); },
+        "tenantId": n => { applicationMembership.tenantId = n.getStringValue(); },
+        "updatedAt": n => { applicationMembership.updatedAt = n.getStringValue(); },
+        "userId": n => { applicationMembership.userId = n.getStringValue(); },
+        "version": n => { applicationMembership.version = n.getNumberValue(); },
     }
 }
 /**
@@ -4082,6 +4290,18 @@ export function deserializeIntoConfigValue(configValue: Partial<ConfigValue> | u
 }
 /**
  * The deserialization information for the current model
+ * @param ConfirmEmailRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoConfirmEmailRequest(confirmEmailRequest: Partial<ConfirmEmailRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "email": n => { confirmEmailRequest.email = n.getStringValue(); },
+        "token": n => { confirmEmailRequest.token = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CopyObjectRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4185,6 +4405,9 @@ export function deserializeIntoCreateChannelRequest(createChannelRequest: Partia
 // @ts-ignore
 export function deserializeIntoCreateClientRequest(createClientRequest: Partial<CreateClientRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "allowMembershipAutoJoin": n => { createClientRequest.allowMembershipAutoJoin = n.getBooleanValue(); },
+        "allowUserRegistration": n => { createClientRequest.allowUserRegistration = n.getBooleanValue(); },
+        "applicationId": n => { createClientRequest.applicationId = n.getStringValue(); },
         "applicationType": n => { createClientRequest.applicationType = n.getEnumValue<OidcApplicationType>(OidcApplicationTypeObject); },
         "clientId": n => { createClientRequest.clientId = n.getStringValue(); },
         "clientType": n => { createClientRequest.clientType = n.getEnumValue<OidcClientType>(OidcClientTypeObject); },
@@ -4193,6 +4416,7 @@ export function deserializeIntoCreateClientRequest(createClientRequest: Partial<
         "postLogoutRedirectUris": n => { createClientRequest.postLogoutRedirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "redirectUris": n => { createClientRequest.redirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "scopes": n => { createClientRequest.scopes = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "tenantId": n => { createClientRequest.tenantId = n.getStringValue(); },
     }
 }
 /**
@@ -4435,6 +4659,21 @@ export function deserializeIntoCreateUploadSessionRequest(createUploadSessionReq
 // @ts-ignore
 export function deserializeIntoCreateUploadSessionRequest_customMetadata(createUploadSessionRequest_customMetadata: Partial<CreateUploadSessionRequest_customMetadata> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CreateUserRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateUserRequest(createUserRequest: Partial<CreateUserRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "displayName": n => { createUserRequest.displayName = n.getStringValue(); },
+        "email": n => { createUserRequest.email = n.getStringValue(); },
+        "emailConfirmed": n => { createUserRequest.emailConfirmed = n.getBooleanValue(); },
+        "password": n => { createUserRequest.password = n.getStringValue(); },
+        "roles": n => { createUserRequest.roles = n.getCollectionOfPrimitiveValues<string>("string"); },
     }
 }
 /**
@@ -4893,6 +5132,7 @@ export function deserializeIntoIdentityUser(identityUser: Partial<IdentityUser> 
         "createdAt": n => { identityUser.createdAt = n.getStringValue(); },
         "displayName": n => { identityUser.displayName = n.getStringValue(); },
         "email": n => { identityUser.email = n.getStringValue(); },
+        "emailConfirmed": n => { identityUser.emailConfirmed = n.getBooleanValue(); },
         "id": n => { identityUser.id = n.getStringValue(); },
         "roles": n => { identityUser.roles = n.getCollectionOfPrimitiveValues<string>("string"); },
         "status": n => { identityUser.status = n.getEnumValue<IdentityUserStatus>(IdentityUserStatusObject); },
@@ -4947,6 +5187,18 @@ export function deserializeIntoInviteUserRequest(inviteUserRequest: Partial<Invi
 export function deserializeIntoListApisResponse(listApisResponse: Partial<ListApisResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "apis": n => { listApisResponse.apis = n.getCollectionOfObjectValues<ApiEndpoint>(createApiEndpointFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ListApplicationMembershipsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoListApplicationMembershipsResponse(listApplicationMembershipsResponse: Partial<ListApplicationMembershipsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "memberships": n => { listApplicationMembershipsResponse.memberships = n.getCollectionOfObjectValues<ApplicationMembership>(createApplicationMembershipFromDiscriminatorValue); },
+        "nextPageToken": n => { listApplicationMembershipsResponse.nextPageToken = n.getStringValue(); },
     }
 }
 /**
@@ -5344,6 +5596,9 @@ export function deserializeIntoListWriteKeysResponse(listWriteKeysResponse: Part
 // @ts-ignore
 export function deserializeIntoOidcClient(oidcClient: Partial<OidcClient> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "allowMembershipAutoJoin": n => { oidcClient.allowMembershipAutoJoin = n.getBooleanValue(); },
+        "allowUserRegistration": n => { oidcClient.allowUserRegistration = n.getBooleanValue(); },
+        "applicationId": n => { oidcClient.applicationId = n.getStringValue(); },
         "applicationType": n => { oidcClient.applicationType = n.getEnumValue<OidcApplicationType>(OidcApplicationTypeObject); },
         "clientId": n => { oidcClient.clientId = n.getStringValue(); },
         "clientType": n => { oidcClient.clientType = n.getEnumValue<OidcClientType>(OidcClientTypeObject); },
@@ -5353,6 +5608,7 @@ export function deserializeIntoOidcClient(oidcClient: Partial<OidcClient> | unde
         "postLogoutRedirectUris": n => { oidcClient.postLogoutRedirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "redirectUris": n => { oidcClient.redirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "scopes": n => { oidcClient.scopes = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "tenantId": n => { oidcClient.tenantId = n.getStringValue(); },
         "version": n => { oidcClient.version = n.getStringValue(); },
     }
 }
@@ -5605,6 +5861,34 @@ export function deserializeIntoQueryAnalyticsResponse(queryAnalyticsResponse: Pa
 }
 /**
  * The deserialization information for the current model
+ * @param RegisterAccountRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRegisterAccountRequest(registerAccountRequest: Partial<RegisterAccountRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "displayName": n => { registerAccountRequest.displayName = n.getStringValue(); },
+        "email": n => { registerAccountRequest.email = n.getStringValue(); },
+        "password": n => { registerAccountRequest.password = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param RegisterAccountResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRegisterAccountResponse(registerAccountResponse: Partial<RegisterAccountResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "accountCreated": n => { registerAccountResponse.accountCreated = n.getBooleanValue(); },
+        "emailVerificationToken": n => { registerAccountResponse.emailVerificationToken = n.getStringValue(); },
+        "membership": n => { registerAccountResponse.membership = n.getObjectValue<ApplicationMembership>(createApplicationMembershipFromDiscriminatorValue); },
+        "user": n => { registerAccountResponse.user = n.getObjectValue<IdentityUser>(createIdentityUserFromDiscriminatorValue); },
+        "verificationRequired": n => { registerAccountResponse.verificationRequired = n.getBooleanValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ReleaseArtifact The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5636,6 +5920,18 @@ export function deserializeIntoReleaseArtifact(releaseArtifact: Partial<ReleaseA
         "uploadSessionId": n => { releaseArtifact.uploadSessionId = n.getStringValue(); },
         "verifiedAt": n => { releaseArtifact.verifiedAt = n.getStringValue(); },
         "version": n => { releaseArtifact.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ReleaseArtifactDownload The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoReleaseArtifactDownload(releaseArtifactDownload: Partial<ReleaseArtifactDownload> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "artifact": n => { releaseArtifactDownload.artifact = n.getObjectValue<ReleaseArtifact>(createReleaseArtifactFromDiscriminatorValue); },
+        "download": n => { releaseArtifactDownload.download = n.getObjectValue<StorageTransferTicket>(createStorageTransferTicketFromDiscriminatorValue); },
     }
 }
 /**
@@ -5767,6 +6063,19 @@ export function deserializeIntoResendUserInvitationRequest(resendUserInvitationR
     return {
         "expectedVersion": n => { resendUserInvitationRequest.expectedVersion = n.getNumberValue(); },
         "userId": n => { resendUserInvitationRequest.userId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ResetUserPasswordRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoResetUserPasswordRequest(resetUserPasswordRequest: Partial<ResetUserPasswordRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { resetUserPasswordRequest.expectedVersion = n.getNumberValue(); },
+        "newPassword": n => { resetUserPasswordRequest.newPassword = n.getStringValue(); },
+        "userId": n => { resetUserPasswordRequest.userId = n.getStringValue(); },
     }
 }
 /**
@@ -6124,6 +6433,20 @@ export function deserializeIntoSegment(segment: Partial<Segment> | undefined = {
         "tenantId": n => { segment.tenantId = n.getStringValue(); },
         "updatedAt": n => { segment.updatedAt = n.getStringValue(); },
         "version": n => { segment.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param SetApplicationMembershipRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSetApplicationMembershipRequest(setApplicationMembershipRequest: Partial<SetApplicationMembershipRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { setApplicationMembershipRequest.applicationId = n.getStringValue(); },
+        "expectedVersion": n => { setApplicationMembershipRequest.expectedVersion = n.getNumberValue(); },
+        "tenantId": n => { setApplicationMembershipRequest.tenantId = n.getStringValue(); },
+        "userId": n => { setApplicationMembershipRequest.userId = n.getStringValue(); },
     }
 }
 /**
@@ -6632,6 +6955,9 @@ export function deserializeIntoUpdateChannelRequest(updateChannelRequest: Partia
 // @ts-ignore
 export function deserializeIntoUpdateClientRequest(updateClientRequest: Partial<UpdateClientRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "allowMembershipAutoJoin": n => { updateClientRequest.allowMembershipAutoJoin = n.getBooleanValue(); },
+        "allowUserRegistration": n => { updateClientRequest.allowUserRegistration = n.getBooleanValue(); },
+        "applicationId": n => { updateClientRequest.applicationId = n.getStringValue(); },
         "clientId": n => { updateClientRequest.clientId = n.getStringValue(); },
         "displayName": n => { updateClientRequest.displayName = n.getStringValue(); },
         "expectedVersion": n => { updateClientRequest.expectedVersion = n.getStringValue(); },
@@ -6639,6 +6965,7 @@ export function deserializeIntoUpdateClientRequest(updateClientRequest: Partial<
         "postLogoutRedirectUris": n => { updateClientRequest.postLogoutRedirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "redirectUris": n => { updateClientRequest.redirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "scopes": n => { updateClientRequest.scopes = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "tenantId": n => { updateClientRequest.tenantId = n.getStringValue(); },
     }
 }
 /**
@@ -6668,6 +6995,7 @@ export function deserializeIntoUpdateConfigDraftRequest(updateConfigDraftRequest
 // @ts-ignore
 export function deserializeIntoUpdateDecision(updateDecision: Partial<UpdateDecision> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "artifactDownloads": n => { updateDecision.artifactDownloads = n.getCollectionOfObjectValues<ReleaseArtifactDownload>(createReleaseArtifactDownloadFromDiscriminatorValue); },
         "bucket": n => { updateDecision.bucket = n.getNumberValue(); },
         "bucketEvaluated": n => { updateDecision.bucketEvaluated = n.getBooleanValue(); },
         "channel": n => { updateDecision.channel = n.getObjectValue<ReleaseChannel>(createReleaseChannelFromDiscriminatorValue); },
@@ -7771,6 +8099,10 @@ export interface IdentityUser extends Parsable {
      */
     email?: string | null;
     /**
+     * The emailConfirmed property
+     */
+    emailConfirmed?: boolean | null;
+    /**
      * The id property
      */
     id?: string | null;
@@ -7835,6 +8167,16 @@ export interface ListApisResponse extends Parsable {
      * The apis property
      */
     apis?: ApiEndpoint[] | null;
+}
+export interface ListApplicationMembershipsResponse extends Parsable {
+    /**
+     * The memberships property
+     */
+    memberships?: ApplicationMembership[] | null;
+    /**
+     * The nextPageToken property
+     */
+    nextPageToken?: string | null;
 }
 export interface ListApplicationsResponse extends Parsable {
     /**
@@ -8172,6 +8514,18 @@ export type MembershipStatus = (typeof MembershipStatusObject)[keyof typeof Memb
 export type OidcApplicationType = (typeof OidcApplicationTypeObject)[keyof typeof OidcApplicationTypeObject];
 export interface OidcClient extends Parsable {
     /**
+     * The allowMembershipAutoJoin property
+     */
+    allowMembershipAutoJoin?: boolean | null;
+    /**
+     * The allowUserRegistration property
+     */
+    allowUserRegistration?: boolean | null;
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
      * The applicationType property
      */
     applicationType?: OidcApplicationType | null;
@@ -8207,6 +8561,10 @@ export interface OidcClient extends Parsable {
      * The scopes property
      */
     scopes?: string[] | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
     /**
      * The version property
      */
@@ -8598,6 +8956,42 @@ export interface QueryAnalyticsResponse extends Parsable {
      */
     buckets?: AnalyticsAggregationBucket[] | null;
 }
+export interface RegisterAccountRequest extends Parsable {
+    /**
+     * The displayName property
+     */
+    displayName?: string | null;
+    /**
+     * The email property
+     */
+    email?: string | null;
+    /**
+     * The password property
+     */
+    password?: string | null;
+}
+export interface RegisterAccountResponse extends Parsable {
+    /**
+     * The accountCreated property
+     */
+    accountCreated?: boolean | null;
+    /**
+     * The emailVerificationToken property
+     */
+    emailVerificationToken?: string | null;
+    /**
+     * The membership property
+     */
+    membership?: ApplicationMembership | null;
+    /**
+     * The user property
+     */
+    user?: IdentityUser | null;
+    /**
+     * The verificationRequired property
+     */
+    verificationRequired?: boolean | null;
+}
 export interface ReleaseArtifact extends Parsable {
     /**
      * The applicationId property
@@ -8699,6 +9093,16 @@ export interface ReleaseArtifact extends Parsable {
      * The version property
      */
     version?: number | null;
+}
+export interface ReleaseArtifactDownload extends Parsable {
+    /**
+     * The artifact property
+     */
+    artifact?: ReleaseArtifact | null;
+    /**
+     * The download property
+     */
+    download?: StorageTransferTicket | null;
 }
 export type ReleaseArtifactKind = (typeof ReleaseArtifactKindObject)[keyof typeof ReleaseArtifactKindObject];
 export type ReleaseArtifactStatus = (typeof ReleaseArtifactStatusObject)[keyof typeof ReleaseArtifactStatusObject];
@@ -8958,6 +9362,20 @@ export interface ResendUserInvitationRequest extends Parsable {
      * The expectedVersion property
      */
     expectedVersion?: number | null;
+    /**
+     * The userId property
+     */
+    userId?: string | null;
+}
+export interface ResetUserPasswordRequest extends Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The newPassword property
+     */
+    newPassword?: string | null;
     /**
      * The userId property
      */
@@ -9648,6 +10066,35 @@ export function serializeApplication(writer: SerializationWriter, application: P
 }
 /**
  * Serializes information the current object
+ * @param ApplicationAccount The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeApplicationAccount(writer: SerializationWriter, applicationAccount: Partial<ApplicationAccount> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!applicationAccount || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<ApplicationMembership>("membership", applicationAccount.membership, serializeApplicationMembership);
+    writer.writeObjectValue<IdentityUser>("user", applicationAccount.user, serializeIdentityUser);
+}
+/**
+ * Serializes information the current object
+ * @param ApplicationMembership The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeApplicationMembership(writer: SerializationWriter, applicationMembership: Partial<ApplicationMembership> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!applicationMembership || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", applicationMembership.applicationId);
+    writer.writeStringValue("createdAt", applicationMembership.createdAt);
+    writer.writeEnumValue<ApplicationMembershipStatus>("status", applicationMembership.status);
+    writer.writeStringValue("tenantId", applicationMembership.tenantId);
+    writer.writeStringValue("updatedAt", applicationMembership.updatedAt);
+    writer.writeStringValue("userId", applicationMembership.userId);
+    writer.writeNumberValue("version", applicationMembership.version);
+}
+/**
+ * Serializes information the current object
  * @param ArtifactUpload The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10034,6 +10481,18 @@ export function serializeConfigValue(writer: SerializationWriter, configValue: P
 }
 /**
  * Serializes information the current object
+ * @param ConfirmEmailRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeConfirmEmailRequest(writer: SerializationWriter, confirmEmailRequest: Partial<ConfirmEmailRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!confirmEmailRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("email", confirmEmailRequest.email);
+    writer.writeStringValue("token", confirmEmailRequest.token);
+}
+/**
+ * Serializes information the current object
  * @param CopyObjectRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10139,6 +10598,9 @@ export function serializeCreateChannelRequest(writer: SerializationWriter, creat
 // @ts-ignore
 export function serializeCreateClientRequest(writer: SerializationWriter, createClientRequest: Partial<CreateClientRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createClientRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("allowMembershipAutoJoin", createClientRequest.allowMembershipAutoJoin);
+    writer.writeBooleanValue("allowUserRegistration", createClientRequest.allowUserRegistration);
+    writer.writeStringValue("applicationId", createClientRequest.applicationId);
     writer.writeEnumValue<OidcApplicationType>("applicationType", createClientRequest.applicationType);
     writer.writeStringValue("clientId", createClientRequest.clientId);
     writer.writeEnumValue<OidcClientType>("clientType", createClientRequest.clientType);
@@ -10148,6 +10610,7 @@ export function serializeCreateClientRequest(writer: SerializationWriter, create
     writer.writeCollectionOfPrimitiveValues<string>("postLogoutRedirectUris", createClientRequest.postLogoutRedirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("redirectUris", createClientRequest.redirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("scopes", createClientRequest.scopes);
+    writer.writeStringValue("tenantId", createClientRequest.tenantId);
 }
 /**
  * Serializes information the current object
@@ -10391,6 +10854,21 @@ export function serializeCreateUploadSessionRequest(writer: SerializationWriter,
 export function serializeCreateUploadSessionRequest_customMetadata(writer: SerializationWriter, createUploadSessionRequest_customMetadata: Partial<CreateUploadSessionRequest_customMetadata> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createUploadSessionRequest_customMetadata || isSerializingDerivedType) { return; }
     writer.writeAdditionalData(createUploadSessionRequest_customMetadata.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CreateUserRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateUserRequest(writer: SerializationWriter, createUserRequest: Partial<CreateUserRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createUserRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("displayName", createUserRequest.displayName);
+    writer.writeStringValue("email", createUserRequest.email);
+    writer.writeBooleanValue("emailConfirmed", createUserRequest.emailConfirmed);
+    writer.writeStringValue("password", createUserRequest.password);
+    writer.writeCollectionOfPrimitiveValues<string>("roles", createUserRequest.roles);
 }
 /**
  * Serializes information the current object
@@ -10849,6 +11327,7 @@ export function serializeIdentityUser(writer: SerializationWriter, identityUser:
     writer.writeStringValue("createdAt", identityUser.createdAt);
     writer.writeStringValue("displayName", identityUser.displayName);
     writer.writeStringValue("email", identityUser.email);
+    writer.writeBooleanValue("emailConfirmed", identityUser.emailConfirmed);
     writer.writeStringValue("id", identityUser.id);
     writer.writeCollectionOfPrimitiveValues<string>("roles", identityUser.roles);
     writer.writeEnumValue<IdentityUserStatus>("status", identityUser.status);
@@ -10903,6 +11382,18 @@ export function serializeInviteUserRequest(writer: SerializationWriter, inviteUs
 export function serializeListApisResponse(writer: SerializationWriter, listApisResponse: Partial<ListApisResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!listApisResponse || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<ApiEndpoint>("apis", listApisResponse.apis, serializeApiEndpoint);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ListApplicationMembershipsResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeListApplicationMembershipsResponse(writer: SerializationWriter, listApplicationMembershipsResponse: Partial<ListApplicationMembershipsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!listApplicationMembershipsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<ApplicationMembership>("memberships", listApplicationMembershipsResponse.memberships, serializeApplicationMembership);
+    writer.writeStringValue("nextPageToken", listApplicationMembershipsResponse.nextPageToken);
 }
 /**
  * Serializes information the current object
@@ -11300,6 +11791,9 @@ export function serializeListWriteKeysResponse(writer: SerializationWriter, list
 // @ts-ignore
 export function serializeOidcClient(writer: SerializationWriter, oidcClient: Partial<OidcClient> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!oidcClient || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("allowMembershipAutoJoin", oidcClient.allowMembershipAutoJoin);
+    writer.writeBooleanValue("allowUserRegistration", oidcClient.allowUserRegistration);
+    writer.writeStringValue("applicationId", oidcClient.applicationId);
     writer.writeEnumValue<OidcApplicationType>("applicationType", oidcClient.applicationType);
     writer.writeStringValue("clientId", oidcClient.clientId);
     writer.writeEnumValue<OidcClientType>("clientType", oidcClient.clientType);
@@ -11310,6 +11804,7 @@ export function serializeOidcClient(writer: SerializationWriter, oidcClient: Par
     writer.writeCollectionOfPrimitiveValues<string>("postLogoutRedirectUris", oidcClient.postLogoutRedirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("redirectUris", oidcClient.redirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("scopes", oidcClient.scopes);
+    writer.writeStringValue("tenantId", oidcClient.tenantId);
     writer.writeStringValue("version", oidcClient.version);
 }
 /**
@@ -11562,6 +12057,34 @@ export function serializeQueryAnalyticsResponse(writer: SerializationWriter, que
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RegisterAccountRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRegisterAccountRequest(writer: SerializationWriter, registerAccountRequest: Partial<RegisterAccountRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!registerAccountRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("displayName", registerAccountRequest.displayName);
+    writer.writeStringValue("email", registerAccountRequest.email);
+    writer.writeStringValue("password", registerAccountRequest.password);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RegisterAccountResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRegisterAccountResponse(writer: SerializationWriter, registerAccountResponse: Partial<RegisterAccountResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!registerAccountResponse || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("accountCreated", registerAccountResponse.accountCreated);
+    writer.writeStringValue("emailVerificationToken", registerAccountResponse.emailVerificationToken);
+    writer.writeObjectValue<ApplicationMembership>("membership", registerAccountResponse.membership, serializeApplicationMembership);
+    writer.writeObjectValue<IdentityUser>("user", registerAccountResponse.user, serializeIdentityUser);
+    writer.writeBooleanValue("verificationRequired", registerAccountResponse.verificationRequired);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ReleaseArtifact The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11593,6 +12116,18 @@ export function serializeReleaseArtifact(writer: SerializationWriter, releaseArt
     writer.writeStringValue("uploadSessionId", releaseArtifact.uploadSessionId);
     writer.writeStringValue("verifiedAt", releaseArtifact.verifiedAt);
     writer.writeNumberValue("version", releaseArtifact.version);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ReleaseArtifactDownload The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeReleaseArtifactDownload(writer: SerializationWriter, releaseArtifactDownload: Partial<ReleaseArtifactDownload> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!releaseArtifactDownload || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<ReleaseArtifact>("artifact", releaseArtifactDownload.artifact, serializeReleaseArtifact);
+    writer.writeObjectValue<StorageTransferTicket>("download", releaseArtifactDownload.download, serializeStorageTransferTicket);
 }
 /**
  * Serializes information the current object
@@ -11724,6 +12259,19 @@ export function serializeResendUserInvitationRequest(writer: SerializationWriter
     if (!resendUserInvitationRequest || isSerializingDerivedType) { return; }
     writer.writeNumberValue("expectedVersion", resendUserInvitationRequest.expectedVersion);
     writer.writeStringValue("userId", resendUserInvitationRequest.userId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ResetUserPasswordRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeResetUserPasswordRequest(writer: SerializationWriter, resetUserPasswordRequest: Partial<ResetUserPasswordRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!resetUserPasswordRequest || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", resetUserPasswordRequest.expectedVersion);
+    writer.writeStringValue("newPassword", resetUserPasswordRequest.newPassword);
+    writer.writeStringValue("userId", resetUserPasswordRequest.userId);
 }
 /**
  * Serializes information the current object
@@ -12081,6 +12629,20 @@ export function serializeSegment(writer: SerializationWriter, segment: Partial<S
     writer.writeStringValue("tenantId", segment.tenantId);
     writer.writeStringValue("updatedAt", segment.updatedAt);
     writer.writeNumberValue("version", segment.version);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SetApplicationMembershipRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSetApplicationMembershipRequest(writer: SerializationWriter, setApplicationMembershipRequest: Partial<SetApplicationMembershipRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!setApplicationMembershipRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", setApplicationMembershipRequest.applicationId);
+    writer.writeNumberValue("expectedVersion", setApplicationMembershipRequest.expectedVersion);
+    writer.writeStringValue("tenantId", setApplicationMembershipRequest.tenantId);
+    writer.writeStringValue("userId", setApplicationMembershipRequest.userId);
 }
 /**
  * Serializes information the current object
@@ -12592,6 +13154,9 @@ export function serializeUpdateChannelRequest(writer: SerializationWriter, updat
 // @ts-ignore
 export function serializeUpdateClientRequest(writer: SerializationWriter, updateClientRequest: Partial<UpdateClientRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateClientRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("allowMembershipAutoJoin", updateClientRequest.allowMembershipAutoJoin);
+    writer.writeBooleanValue("allowUserRegistration", updateClientRequest.allowUserRegistration);
+    writer.writeStringValue("applicationId", updateClientRequest.applicationId);
     writer.writeStringValue("clientId", updateClientRequest.clientId);
     writer.writeStringValue("displayName", updateClientRequest.displayName);
     writer.writeStringValue("expectedVersion", updateClientRequest.expectedVersion);
@@ -12600,6 +13165,7 @@ export function serializeUpdateClientRequest(writer: SerializationWriter, update
     writer.writeCollectionOfPrimitiveValues<string>("postLogoutRedirectUris", updateClientRequest.postLogoutRedirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("redirectUris", updateClientRequest.redirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("scopes", updateClientRequest.scopes);
+    writer.writeStringValue("tenantId", updateClientRequest.tenantId);
 }
 /**
  * Serializes information the current object
@@ -12629,6 +13195,7 @@ export function serializeUpdateConfigDraftRequest(writer: SerializationWriter, u
 // @ts-ignore
 export function serializeUpdateDecision(writer: SerializationWriter, updateDecision: Partial<UpdateDecision> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateDecision || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<ReleaseArtifactDownload>("artifactDownloads", updateDecision.artifactDownloads, serializeReleaseArtifactDownload);
     writer.writeNumberValue("bucket", updateDecision.bucket);
     writer.writeBooleanValue("bucketEvaluated", updateDecision.bucketEvaluated);
     writer.writeObjectValue<ReleaseChannel>("channel", updateDecision.channel, serializeReleaseChannel);
@@ -12958,6 +13525,24 @@ export function serializeValidateReleaseRequest(writer: SerializationWriter, val
     writer.writeStringValue("environmentId", validateReleaseRequest.environmentId);
     writer.writeStringValue("releaseId", validateReleaseRequest.releaseId);
     writer.writeStringValue("tenantId", validateReleaseRequest.tenantId);
+}
+export interface SetApplicationMembershipRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+    /**
+     * The userId property
+     */
+    userId?: string | null;
 }
 export interface SetRoleBindingRequest extends Parsable {
     /**
@@ -13785,6 +14370,18 @@ export interface UpdateChannelRequest extends Parsable {
 }
 export interface UpdateClientRequest extends Parsable {
     /**
+     * The allowMembershipAutoJoin property
+     */
+    allowMembershipAutoJoin?: boolean | null;
+    /**
+     * The allowUserRegistration property
+     */
+    allowUserRegistration?: boolean | null;
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
      * The clientId property
      */
     clientId?: string | null;
@@ -13812,6 +14409,10 @@ export interface UpdateClientRequest extends Parsable {
      * The scopes property
      */
     scopes?: string[] | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
 }
 export interface UpdateConfigDraftRequest extends Parsable {
     /**
@@ -13852,6 +14453,10 @@ export interface UpdateConfigDraftRequest extends Parsable {
     visibility?: ConfigVisibility | null;
 }
 export interface UpdateDecision extends Parsable {
+    /**
+     * The artifactDownloads property
+     */
+    artifactDownloads?: ReleaseArtifactDownload[] | null;
     /**
      * The bucket property
      */
@@ -14416,6 +15021,11 @@ export const AnalyticsWriteKeyStatusObject = {
     ANALYTICS_WRITE_KEY_STATUS_ACTIVE: "ANALYTICS_WRITE_KEY_STATUS_ACTIVE",
     ANALYTICS_WRITE_KEY_STATUS_REVOKED: "ANALYTICS_WRITE_KEY_STATUS_REVOKED",
 } as const;
+export const ApplicationMembershipStatusObject = {
+    APPLICATION_MEMBERSHIP_STATUS_UNSPECIFIED: "APPLICATION_MEMBERSHIP_STATUS_UNSPECIFIED",
+    APPLICATION_MEMBERSHIP_STATUS_ACTIVE: "APPLICATION_MEMBERSHIP_STATUS_ACTIVE",
+    APPLICATION_MEMBERSHIP_STATUS_REMOVED: "APPLICATION_MEMBERSHIP_STATUS_REMOVED",
+} as const;
 export const AuditOutcomeObject = {
     AUDIT_OUTCOME_UNSPECIFIED: "AUDIT_OUTCOME_UNSPECIFIED",
     AUDIT_OUTCOME_SUCCEEDED: "AUDIT_OUTCOME_SUCCEEDED",
@@ -14543,6 +15153,7 @@ export const OidcGrantTypeObject = {
     OIDC_GRANT_TYPE_AUTHORIZATION_CODE: "OIDC_GRANT_TYPE_AUTHORIZATION_CODE",
     OIDC_GRANT_TYPE_CLIENT_CREDENTIALS: "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
     OIDC_GRANT_TYPE_REFRESH_TOKEN: "OIDC_GRANT_TYPE_REFRESH_TOKEN",
+    OIDC_GRANT_TYPE_PASSWORD: "OIDC_GRANT_TYPE_PASSWORD",
 } as const;
 export const OtlpProtocolObject = {
     OTLP_PROTOCOL_UNSPECIFIED: "OTLP_PROTOCOL_UNSPECIFIED",

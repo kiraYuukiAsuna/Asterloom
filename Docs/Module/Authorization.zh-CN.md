@@ -37,7 +37,9 @@ Global
 上层 Binding/Policy 可覆盖下层请求；Environment Scope 只匹配该 Environment。填写 Environment 时必须
 同时填写 Application 和 Tenant，填写 Application 时必须填写 Tenant。
 
-Tenant Membership 控制 Actor 是否可见该租户，Role/Policy 决定其动作权限。通常两者都要配置。
+Identity Application Membership 控制用户能否进入某个应用，Role/Policy 控制进入后的动作权限；大多数业务
+用户需要同时具备两者。应用绑定的用户 Token 被限制在自身 `tenant_id`/`application_id`，不能请求其他应用的
+权限决策；成员关系移除后立即拒绝。Client Credentials Token 代表绑定的服务 Client，不要求用户成员关系。
 
 ## 3. Web 使用
 
@@ -73,6 +75,8 @@ if (!decision.Allowed)
 ```
 
 该检查用于用户体验，不替代服务端强制授权。不要仅隐藏按钮后就认为资源安全。
+
+`actorId` 必须与已认证 Token 的 Subject 相同。业务 A 即使在请求体中填写业务 B 的标识，也不能检查 B 的作用域。
 
 ## 5. System Role 与自定义 Role
 

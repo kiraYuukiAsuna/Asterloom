@@ -208,6 +208,35 @@ vpk pack `
 
 Velopack 官方打包说明：<https://docs.velopack.io/getting-started/csharp>
 
+### 4.1 生成并发布 Delta 包
+
+Asterloom 负责保存和分发 Delta，但不会根据两个 Full 包自动生成 Delta。只有当 `vpk pack` 的输出目录中
+已经存在同一 Package ID、Channel、RID 的上一版本 Release 时，Velopack 才会生成 Delta。因此 CI 必须把
+完整 Velopack Release 输出作为流水线制品保存，并在打包新版本前恢复；只保留新的 `dotnet publish` 目录不够。
+
+例如，在输出目录已有 `1.3.0` 的情况下打包 `1.4.0`，通常会得到：
+
+```text
+Kirayuuki.MyDesktopApp-1.4.0-full.nupkg
+Kirayuuki.MyDesktopApp-1.4.0-delta.nupkg  # 用 1.3.0 合成 1.4.0
+```
+
+把两个文件都上传并加入同一个 Asterloom Desktop Release：
+
+| 文件 | Artifact Kind | Release Version | Delta From | Runtime |
+| --- | --- | --- | --- | --- |
+| `*-1.4.0-full.nupkg` | Full | `1.4.0` | 留空 | `win-x64` |
+| `*-1.4.0-delta.nupkg` | Delta | `1.4.0` | `1.3.0` | `win-x64` |
+
+每个 Runtime 在已发布 Release 中都必须保留一个 Verified Full Artifact。Delta 只是流量和速度优化，不能
+成为唯一恢复包。每个 RID 都需要独立完成构建和上传。
+
+当前 Asterloom 使用**直接、精确来源 Delta**。`1.3.0` 客户端可获得 `1.3.0 → 1.4.0` Delta；`1.2.0`
+客户端默认获得 Full，除非 `1.4.0` Release 中还上传了一个 `Delta From Version = 1.2.0` 的独立 Delta。
+当前不会跨多个历史 Release 拼接 `1.2.0 → 1.3.0 → 1.4.0` Delta 链。
+
+Velopack 打包细节：<https://docs.velopack.io/packaging/overview>
+
 ## 5. Web 发布流程
 
 ### 5.1 上传 Artifact
@@ -379,6 +408,25 @@ await SaveApplicationStateAsync(cancellationToken);
 updateManager.ApplyUpdatesAndRestart(update);
 ```
 
+### 6.4 Delta 选择与 Full 自动回退
+
+当客户端存在精确匹配的 Delta 时，更新响应会保留 `selectedArtifact`/`download` 兼容字段，同时在
+`artifactDownloads` 中返回且只返回：
+
+1. 目标版本 Full 包及其短时下载票据；
+2. `DeltaFromVersion` 与客户端当前版本完全一致的 Delta 及其下载票据。
+
+`AsterloomVelopackUpdateSource` 会把两个 Asset 一起交给 `UpdateManager`。Velopack 先尝试 Delta；下载、合成
+或合成后校验失败时，会自动下载 Full。没有精确 Delta，或者当前版本低于 Minimum Version 时，Asterloom
+只返回 Full。Adapter 会分别记录并按需刷新两个 Asset 的下载票据。
+
+使用 Velopack 的应用继续调用 `DownloadUpdatesAsync` 即可，不需要自己编写 Full 回退循环。非 Velopack
+客户端可以读取 `decision.ArtifactDownloads`，并通过
+`DownloadArtifactToAsync(decision, artifactId, destination)` 下载指定的已签名 Asset；原有
+`DownloadToAsync` 仍只下载 `SelectedArtifact`。
+
+Velopack 下载与回退说明：<https://docs.velopack.io/integrating/overview>
+
 `AsterloomReleaseClient` 在返回或写入文件前会验证：
 
 1. Manifest Signing Key Fingerprint 在本地信任列表中；
@@ -443,15 +491,18 @@ Channel Rollback 当作客户端降级。
 
 - [ ] `dotnet publish` 使用正确 RID 与 Release 配置。
 - [ ] `vpk` 与应用 Velopack Package 使用同一版本。
+- [ ] 构建 Delta 前已恢复/保留上一版本 Velopack Release 输出。
 - [ ] Package ID、Channel、Semantic Version 与 Asterloom 字段完全一致。
 - [ ] 执行操作系统代码签名。
 - [ ] 私钥只存在于受控签名环境。
 - [ ] Artifact SHA-256 与 RSA-PSS Signature 已生成。
 - [ ] Artifact 在 Asterloom 中状态为 Verified。
+- [ ] 每个 RID 都包含一个 Full，每个 Delta 都填写精确来源版本。
 - [ ] Release Validate 无 Error。
 - [ ] Candidate Manifest SHA-256 已由外部私钥签名。
 - [ ] 使用固定测试 Installation ID 完成更新模拟。
 - [ ] Canary 安装包完成真实下载、替换和重启测试。
+- [ ] 已分别测试 Delta 成功合成与强制 Full 回退。
 - [ ] Telemetry/Analytics 监控已准备。
 - [ ] Promote 前已确认暂停和回滚目标。
 

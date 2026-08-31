@@ -203,6 +203,37 @@ Rules:
 
 Velopack packaging reference: <https://docs.velopack.io/getting-started/csharp>
 
+### 4.1 Producing and publishing a Delta package
+
+Asterloom stores and delivers Delta packages but does not generate them. `vpk pack` creates a Delta only when its
+output directory contains a previous release for the same Package ID, Channel, and RID. Preserve the complete
+Velopack release output as a CI artifact, or restore it before packaging the next version; keeping only the new
+publish directory is not sufficient.
+
+For example, packaging `1.4.0` while the `1.3.0` release is available normally produces:
+
+```text
+Kirayuuki.MyDesktopApp-1.4.0-full.nupkg
+Kirayuuki.MyDesktopApp-1.4.0-delta.nupkg  # reconstructs 1.4.0 from 1.3.0
+```
+
+Upload and attach both files to the same Asterloom Desktop Release:
+
+| File | Artifact kind | Release version | Delta from | Runtime |
+| --- | --- | --- | --- | --- |
+| `*-1.4.0-full.nupkg` | Full | `1.4.0` | empty | `win-x64` |
+| `*-1.4.0-delta.nupkg` | Delta | `1.4.0` | `1.3.0` | `win-x64` |
+
+Every published release must retain one verified Full artifact for each runtime. A Delta is an optimization, never
+the only recovery package. Repeat the build and upload pair independently for every RID.
+
+The current Asterloom contract uses **direct, exact-source deltas**. A client on `1.3.0` may receive a
+`1.3.0 → 1.4.0` Delta. A client on `1.2.0` receives the Full package unless the `1.4.0` release also contains a
+separately built Delta whose `Delta From Version` is exactly `1.2.0`. Asterloom does not currently assemble a
+multi-release `1.2.0 → 1.3.0 → 1.4.0` Delta chain.
+
+Velopack packaging details: <https://docs.velopack.io/packaging/overview>
+
 ## 5. Web release workflow
 
 ### 5.1 Upload an artifact
@@ -324,6 +355,26 @@ if (manager.IsInstalled)
 }
 ```
 
+### 6.1 Delta selection and Full fallback
+
+For an eligible client with an exact Delta, the update response keeps `selectedArtifact`/`download` for backward
+compatibility and also returns `artifactDownloads` containing exactly:
+
+1. the target-version Full package and its short-lived ticket;
+2. the one Delta whose `DeltaFromVersion` equals the client's current version and its ticket.
+
+`AsterloomVelopackUpdateSource` exposes both assets to `UpdateManager`. Velopack first attempts the Delta,
+validates the reconstructed target package, and automatically downloads the Full package if download,
+reconstruction, or validation fails. If no exact Delta exists, or the client is below Minimum Version, Asterloom
+returns only Full. Download tickets are tracked and refreshed independently for each asset.
+
+Applications using Velopack should keep calling `DownloadUpdatesAsync`; no custom fallback loop is required. A
+non-Velopack client can inspect `decision.ArtifactDownloads` and call
+`DownloadArtifactToAsync(decision, artifactId, destination)` for a specific signed asset. The original
+`DownloadToAsync` method continues to download `SelectedArtifact` only.
+
+Velopack download/fallback behavior: <https://docs.velopack.io/integrating/overview>
+
 Generate `installationId` once and persist it. Recreating it on every launch changes deterministic rollout
 membership. A stable User ID can be used for user-based rollout, but switching accounts then changes the result.
 
@@ -376,14 +427,17 @@ Immediately switching to a new key strands old clients that cannot authenticate 
 
 - [ ] Publish with the correct RID and Release configuration.
 - [ ] Pin `vpk` to the application Velopack version.
+- [ ] Restore/preserve the previous Velopack release output before building a Delta.
 - [ ] Match Package ID, Channel, SemVer, Asterloom version, and runtime exactly.
 - [ ] Apply OS code signing where required.
 - [ ] Keep the private RSA key in a controlled signer.
 - [ ] Generate the artifact digest signature.
 - [ ] Confirm the artifact is Verified.
+- [ ] Attach one Full per RID and label each Delta with its exact source version.
 - [ ] Validate and externally sign the candidate manifest.
 - [ ] Run simulation with fixed test installation IDs.
 - [ ] Perform a real installed canary download, replace, and restart test.
+- [ ] Test both successful Delta reconstruction and forced Full fallback.
 - [ ] Prepare Telemetry/Analytics monitoring and a signed rollback target.
 
 ## 10. Related implementation

@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  AppWindow,
   Ban,
   Check,
   CircleAlert,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/card";
 import {
   archiveUser,
+  createUser,
   createClient,
   createScope,
   deleteClient,
@@ -43,22 +45,27 @@ import {
   getUser,
   identityErrorMessage,
   inviteUser,
+  listApplicationMemberships,
   listClients,
   listScopes,
   listUsers,
   listUserSessions,
   passportRoles,
   reactivateUser,
+  removeApplicationMembership,
+  resetUserPassword,
   resendInvitation,
   restoreUser,
   revokeAllUserSessions,
   revokeUserSession,
   rotateClientSecret,
   setUserRoles,
+  setApplicationMembership,
   suspendUser,
   updateClient,
   updateScope,
   updateUser,
+  type ApplicationMembershipRecord,
   type IdentitySessionRecord,
   type IdentityUserRecord,
   type OidcApplicationType,
@@ -90,8 +97,10 @@ const nativeApplication = "OIDC_APPLICATION_TYPE_NATIVE";
 const authorizationCode = "OIDC_GRANT_TYPE_AUTHORIZATION_CODE";
 const clientCredentials = "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS";
 const refreshToken = "OIDC_GRANT_TYPE_REFRESH_TOKEN";
+const passwordGrant = "OIDC_GRANT_TYPE_PASSWORD";
+const removedMembership = "APPLICATION_MEMBERSHIP_STATUS_REMOVED";
 
-type WorkspaceTab = "users" | "clients" | "scopes";
+type WorkspaceTab = "users" | "memberships" | "clients" | "scopes";
 type Reveal = {
   expiresAt?: string;
   label: string;
@@ -112,6 +121,10 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
   const [userQuery, setUserQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [membershipUserId, setMembershipUserId] = useState("");
+  const [membershipTenantId, setMembershipTenantId] = useState("");
+  const [membershipApplicationId, setMembershipApplicationId] = useState("");
+  const [includeRemovedMemberships, setIncludeRemovedMemberships] = useState(false);
   const [clientQuery, setClientQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [scopeQuery, setScopeQuery] = useState("");
@@ -129,6 +142,31 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
   const sessions = useSWR(
     selectedUserId ? ["identity-user-sessions", selectedUserId] : null,
     () => listUserSessions(selectedUserId, { includeRevoked: true, pageSize: 100 }),
+  );
+  const membershipFiltersValid = [
+    membershipUserId,
+    membershipTenantId,
+    membershipApplicationId,
+  ].every((value) => value === "" || isUuid(value));
+  const memberships = useSWR(
+    membershipFiltersValid
+      ? [
+          "identity-application-memberships",
+          membershipUserId,
+          membershipTenantId,
+          membershipApplicationId,
+          includeRemovedMemberships,
+        ]
+      : null,
+    () =>
+      listApplicationMemberships({
+        applicationId: membershipApplicationId,
+        includeRemoved: includeRemovedMemberships,
+        pageSize: 100,
+        tenantId: membershipTenantId,
+        userId: membershipUserId,
+      }),
+    { keepPreviousData: true },
   );
   const clients = useSWR(
     ["identity-clients", clientQuery],
@@ -172,6 +210,7 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
 
   const tabs: Array<{ id: WorkspaceTab; label: string; icon: typeof Users }> = [
     { id: "users", label: "Users & sessions", icon: Users },
+    { id: "memberships", label: "Application memberships", icon: AppWindow },
     { id: "clients", label: "OIDC clients", icon: KeyRound },
     { id: "scopes", label: "API scopes", icon: ShieldCheck },
   ];
@@ -199,7 +238,7 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
 
       <nav
         aria-label={translate("Identity workspace")}
-        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-3"
+        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2 xl:grid-cols-4"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -259,6 +298,25 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
           selectedClient={client.data}
         />
       )}
+      {activeTab === "memberships" && (
+        <MembershipsPanel
+          applicationId={membershipApplicationId}
+          csrfToken={csrfToken}
+          error={memberships.error}
+          filtersValid={membershipFiltersValid}
+          includeRemoved={includeRemovedMemberships}
+          memberships={memberships.data?.memberships ?? []}
+          onApplicationIdChange={setMembershipApplicationId}
+          onIncludeRemovedChange={setIncludeRemovedMemberships}
+          onTenantIdChange={setMembershipTenantId}
+          onUserIdChange={setMembershipUserId}
+          pending={pending}
+          reloadMemberships={memberships.mutate}
+          runMutation={runMutation}
+          tenantId={membershipTenantId}
+          userId={membershipUserId}
+        />
+      )}
       {activeTab === "scopes" && (
         <ScopesPanel
           csrfToken={csrfToken}
@@ -316,6 +374,12 @@ function UsersPanel({
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[0.85fr_1.15fr]">
       <div className="space-y-5">
+        <CreateAccountCard
+          csrfToken={csrfToken}
+          pending={pending}
+          reloadUsers={reloadUsers}
+          runMutation={runMutation}
+        />
         <InviteUserCard
           csrfToken={csrfToken}
           onReveal={onReveal}
@@ -383,6 +447,117 @@ function UsersPanel({
         <SelectionPlaceholder text={translate("Select a user to load its authoritative detail and sessions.")} />
       )}
     </div>
+  );
+}
+
+function CreateAccountCard({
+  csrfToken,
+  pending,
+  reloadUsers,
+  runMutation,
+}: {
+  csrfToken: string;
+  pending: string;
+  reloadUsers: () => Promise<unknown>;
+  runMutation: MutationRunner;
+}) {
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailConfirmed, setEmailConfirmed] = useState(true);
+  const [roles, setRoles] = useState<PassportRole[]>([]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const created = await runMutation(
+      "create-user",
+      () =>
+        createUser(csrfToken, {
+          displayName,
+          email,
+          emailConfirmed,
+          password,
+          roles,
+        }),
+      [reloadUsers],
+      "Passport account created.",
+    );
+    if (!created) return;
+    setEmail("");
+    setDisplayName("");
+    setPassword("");
+    setRoles([]);
+  }
+
+  return (
+    <Card data-ui-action="create-user">
+      <CardHeader>
+        <CardTitle>{translate("Create Passport account")}</CardTitle>
+        <CardDescription>
+          {translate("Create a global account directly. Business users normally register through their trusted application backend.")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-3" onSubmit={submit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={translate("Email")}>
+              <input
+                className={inputClassName}
+                name="createUserEmail"
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                type="email"
+                value={email}
+              />
+            </Field>
+            <Field label={translate("Display name")}>
+              <input
+                className={inputClassName}
+                name="createUserDisplayName"
+                onChange={(event) => setDisplayName(event.target.value)}
+                required
+                value={displayName}
+              />
+            </Field>
+          </div>
+          <Field label={translate("Initial password")}>
+            <input
+              autoComplete="new-password"
+              className={inputClassName}
+              minLength={12}
+              name="createUserPassword"
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          </Field>
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            <input
+              checked={emailConfirmed}
+              className="accent-cyan-400"
+              onChange={(event) => setEmailConfirmed(event.target.checked)}
+              type="checkbox"
+            />
+            {translate("Mark email as confirmed")}
+          </label>
+          <RoleChecks onChange={setRoles} roles={roles} />
+          <p className="text-xs leading-5 text-slate-600">
+            {translate("Leave Passport roles empty for normal business users. These roles are reserved for control-plane operators.")}
+          </p>
+          <div className="flex justify-end">
+            <Button disabled={pending !== ""} type="submit">
+              {pending === "create-user" ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <UserPlus className="size-4" />
+              )}
+              {translate("Create account")}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -488,6 +663,7 @@ function UserInspector({
 }) {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [roles, setRoles] = useState<PassportRole[]>(user.roles);
+  const [newPassword, setNewPassword] = useState("");
   const refresh = [reloadUsers, reloadUser];
 
   async function lifecycle(
@@ -506,7 +682,12 @@ function UserInspector({
             <CardTitle>{user.displayName}</CardTitle>
             <CardDescription>{user.email}</CardDescription>
           </div>
-          <UserStatusBadge status={user.status} />
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant={user.emailConfirmed ? "success" : "planned"}>
+              {translate(user.emailConfirmed ? "Email confirmed" : "Email unconfirmed")}
+            </Badge>
+            <UserStatusBadge status={user.status} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -553,6 +734,38 @@ function UserInspector({
               variant="outline"
             >
               <ShieldCheck className="size-3.5" /> {translate("Save roles")}</Button>
+          </div>
+
+          <div className="grid gap-3 border-t border-white/8 pt-4 sm:grid-cols-[1fr_auto]" data-ui-action="reset-user-password">
+            <Field label={translate("New password")}>
+              <input
+                autoComplete="new-password"
+                className={inputClassName}
+                minLength={12}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder={translate("At least 12 characters")}
+                type="password"
+                value={newPassword}
+              />
+            </Field>
+            <div className="flex items-end">
+              <Button
+                disabled={pending !== "" || newPassword.length < 12 || user.status === archivedStatus}
+                onClick={async () => {
+                  const updated = await runMutation(
+                    `reset-password-${user.id}`,
+                    () => resetUserPassword(csrfToken, user, newPassword),
+                    [...refresh, reloadSessions],
+                    "Password reset and sessions revoked.",
+                  );
+                  if (updated) setNewPassword("");
+                }}
+                type="button"
+                variant="outline"
+              >
+                <KeyRound className="size-4" /> {translate("Reset password")}
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
@@ -724,6 +937,210 @@ function UserInspector({
   );
 }
 
+function MembershipsPanel({
+  applicationId,
+  csrfToken,
+  error,
+  filtersValid,
+  includeRemoved,
+  memberships,
+  onApplicationIdChange,
+  onIncludeRemovedChange,
+  onTenantIdChange,
+  onUserIdChange,
+  pending,
+  reloadMemberships,
+  runMutation,
+  tenantId,
+  userId,
+}: {
+  applicationId: string;
+  csrfToken: string;
+  error: unknown;
+  filtersValid: boolean;
+  includeRemoved: boolean;
+  memberships: ApplicationMembershipRecord[];
+  onApplicationIdChange: (value: string) => void;
+  onIncludeRemovedChange: (value: boolean) => void;
+  onTenantIdChange: (value: string) => void;
+  onUserIdChange: (value: string) => void;
+  pending: string;
+  reloadMemberships: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  tenantId: string;
+  userId: string;
+}) {
+  const [setUserId, setSetUserId] = useState("");
+  const [setTenantId, setSetTenantId] = useState("");
+  const [setApplicationId, setSetApplicationId] = useState("");
+  const [expectedVersion, setExpectedVersion] = useState(0);
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+      <Card data-ui-action="set-application-membership">
+        <CardHeader>
+          <CardTitle>{translate("Add application membership")}</CardTitle>
+          <CardDescription>
+            {translate("Attach an existing global account to one Platform application. Use version 0 for a new membership.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void runMutation(
+                "set-application-membership",
+                () =>
+                  setApplicationMembership(csrfToken, {
+                    applicationId: setApplicationId,
+                    expectedVersion,
+                    tenantId: setTenantId,
+                    userId: setUserId,
+                  }),
+                [reloadMemberships],
+                "Application membership saved.",
+              );
+            }}
+          >
+            <Field label={translate("User UUID")}>
+              <input className={inputClassName} onChange={(event) => setSetUserId(event.target.value)} required value={setUserId} />
+            </Field>
+            <Field label={translate("Tenant UUID")}>
+              <input className={inputClassName} onChange={(event) => setSetTenantId(event.target.value)} required value={setTenantId} />
+            </Field>
+            <Field label={translate("Application UUID")}>
+              <input className={inputClassName} onChange={(event) => setSetApplicationId(event.target.value)} required value={setApplicationId} />
+            </Field>
+            <Field label={translate("Expected version") }>
+              <input
+                className={inputClassName}
+                min={0}
+                onChange={(event) => setExpectedVersion(Number(event.target.value))}
+                type="number"
+                value={expectedVersion}
+              />
+            </Field>
+            <div className="flex justify-end">
+              <Button disabled={pending !== ""} type="submit">
+                <Plus className="size-4" /> {translate("Save membership")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-application-memberships">
+        <CardHeader>
+          <CardTitle>{translate("Application memberships")}</CardTitle>
+          <CardDescription>
+            {translate("Filter global users by tenant or application and remove or restore access independently.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field label={translate("User UUID filter")}>
+              <input className={inputClassName} onChange={(event) => onUserIdChange(event.target.value.trim())} value={userId} />
+            </Field>
+            <Field label={translate("Tenant UUID filter")}>
+              <input className={inputClassName} onChange={(event) => onTenantIdChange(event.target.value.trim())} value={tenantId} />
+            </Field>
+            <Field label={translate("Application UUID filter")}>
+              <input className={inputClassName} onChange={(event) => onApplicationIdChange(event.target.value.trim())} value={applicationId} />
+            </Field>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+            <input
+              checked={includeRemoved}
+              className="accent-cyan-400"
+              onChange={(event) => onIncludeRemovedChange(event.target.checked)}
+              type="checkbox"
+            />
+            {translate("Include removed memberships")}
+          </label>
+          {!filtersValid && (
+            <div className="mt-4 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] p-3 text-xs text-amber-300">
+              {translate("Membership filters must be complete UUIDs.")}
+            </div>
+          )}
+          <ResourceError error={error} />
+          <div className="mt-4 space-y-2">
+            {memberships.map((membership) => (
+              <div
+                className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
+                data-testid={`application-membership-${membership.applicationId}-${membership.userId}`}
+                key={`${membership.applicationId}-${membership.userId}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1 font-mono text-[10px] text-slate-500">
+                    <p><span className="text-slate-700">user</span> {membership.userId}</p>
+                    <p><span className="text-slate-700">tenant</span> {membership.tenantId}</p>
+                    <p><span className="text-slate-700">application</span> {membership.applicationId}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={membership.status === removedMembership ? "planned" : "success"}>
+                      {translate(membership.status === removedMembership ? "Removed" : "Active")}
+                    </Badge>
+                    {membership.status === removedMembership ? (
+                      <Button
+                        disabled={pending !== ""}
+                        onClick={() =>
+                          void runMutation(
+                            `restore-membership-${membership.applicationId}-${membership.userId}`,
+                            () =>
+                              setApplicationMembership(csrfToken, {
+                                applicationId: membership.applicationId,
+                                expectedVersion: membership.version,
+                                tenantId: membership.tenantId,
+                                userId: membership.userId,
+                              }),
+                            [reloadMemberships],
+                            "Application membership restored.",
+                          )
+                        }
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <RotateCcw className="size-3.5" /> {translate("Restore")}
+                      </Button>
+                    ) : (
+                      <Button
+                        data-ui-action="remove-application-membership"
+                        disabled={pending !== ""}
+                        onClick={() => {
+                          if (!window.confirm(translate(`Remove membership ${membership.userId}?`))) return;
+                          void runMutation(
+                            `remove-membership-${membership.applicationId}-${membership.userId}`,
+                            () => removeApplicationMembership(csrfToken, membership),
+                            [reloadMemberships],
+                            "Application membership removed.",
+                          );
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 className="size-3.5" /> {translate("Remove")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-700">
+                  {translate("Version")} {membership.version} · {formatTime(membership.updatedAt)}
+                </p>
+              </div>
+            ))}
+            {filtersValid && memberships.length === 0 && (
+              <EmptyState text={translate("No application memberships match this view.")} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function ClientsPanel({
   clients,
   csrfToken,
@@ -844,6 +1261,10 @@ function CreateClientCard({
   const [redirects, setRedirects] = useState("http://localhost/callback");
   const [postLogoutRedirects, setPostLogoutRedirects] = useState("");
   const [scopes, setScopes] = useState("openid, profile, email, roles, asterloom.api");
+  const [tenantId, setTenantId] = useState("");
+  const [applicationId, setApplicationId] = useState("");
+  const [allowUserRegistration, setAllowUserRegistration] = useState(false);
+  const [allowMembershipAutoJoin, setAllowMembershipAutoJoin] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -851,6 +1272,9 @@ function CreateClientCard({
       "create-client",
       () =>
         createClient(csrfToken, {
+          allowMembershipAutoJoin,
+          allowUserRegistration,
+          applicationId,
           applicationType,
           clientId,
           clientType,
@@ -859,6 +1283,7 @@ function CreateClientCard({
           postLogoutRedirectUris: parseLines(postLogoutRedirects),
           redirectUris: parseLines(redirects),
           scopes: parseCsv(scopes),
+          tenantId,
         }),
       [reloadClients],
       "OIDC client created.",
@@ -895,6 +1320,7 @@ function CreateClientCard({
                     setClientType(publicClient);
                     setGrants([authorizationCode, refreshToken]);
                     setRedirects("http://localhost/");
+                    setAllowUserRegistration(false);
                   }
                 }}
                 value={applicationType}
@@ -907,7 +1333,18 @@ function CreateClientCard({
               <select
                 className={inputClassName}
                 disabled={applicationType === nativeApplication}
-                onChange={(event) => setClientType(event.target.value as OidcClientType)}
+                onChange={(event) => {
+                  const next = event.target.value as OidcClientType;
+                  setClientType(next);
+                  if (next === publicClient) {
+                    setGrants((current) =>
+                      current.filter(
+                        (grant) => grant !== clientCredentials && grant !== passwordGrant,
+                      ),
+                    );
+                    setAllowUserRegistration(false);
+                  }
+                }}
                 value={clientType}
               >
                 <option value={publicClient}>{translate("Public (PKCE)")}</option>
@@ -915,7 +1352,31 @@ function CreateClientCard({
               </select>
             </Field>
           </div>
-          <GrantChecks grants={grants} onChange={setGrants} />
+          <GrantChecks
+            grants={grants}
+            onChange={(next) => {
+              setGrants(next);
+              if (next.includes(passwordGrant)) {
+                setApplicationType(webApplication);
+                setClientType(confidentialClient);
+              }
+              if (next.includes(clientCredentials)) setClientType(confidentialClient);
+              if (!next.includes(clientCredentials)) setAllowUserRegistration(false);
+            }}
+          />
+          <ClientBindingFields
+            allowMembershipAutoJoin={allowMembershipAutoJoin}
+            allowUserRegistration={allowUserRegistration}
+            applicationId={applicationId}
+            onAllowMembershipAutoJoinChange={setAllowMembershipAutoJoin}
+            onAllowUserRegistrationChange={setAllowUserRegistration}
+            onApplicationIdChange={setApplicationId}
+            onTenantIdChange={setTenantId}
+            registrationAvailable={
+              clientType === confidentialClient && grants.includes(clientCredentials)
+            }
+            tenantId={tenantId}
+          />
           <ClientTextFields
             onPostLogoutRedirectsChange={setPostLogoutRedirects}
             onRedirectsChange={setRedirects}
@@ -961,6 +1422,14 @@ function ClientInspector({
     client.postLogoutRedirectUris.join("\n"),
   );
   const [scopes, setScopes] = useState(client.scopes.join(", "));
+  const [tenantId, setTenantId] = useState(client.tenantId);
+  const [applicationId, setApplicationId] = useState(client.applicationId);
+  const [allowUserRegistration, setAllowUserRegistration] = useState(
+    client.allowUserRegistration,
+  );
+  const [allowMembershipAutoJoin, setAllowMembershipAutoJoin] = useState(
+    client.allowMembershipAutoJoin,
+  );
   const refresh = [reloadClients, reloadClient];
 
   return (
@@ -983,7 +1452,32 @@ function ClientInspector({
         <Field label={translate("Display name")}>
           <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
         </Field>
-        <GrantChecks grants={grants} onChange={setGrants} />
+        <GrantChecks
+          grants={grants}
+          onChange={(next) => {
+            const allowed =
+              client.clientType === publicClient
+                ? next.filter(
+                    (grant) => grant !== clientCredentials && grant !== passwordGrant,
+                  )
+                : next;
+            setGrants(allowed);
+            if (!allowed.includes(clientCredentials)) setAllowUserRegistration(false);
+          }}
+        />
+        <ClientBindingFields
+          allowMembershipAutoJoin={allowMembershipAutoJoin}
+          allowUserRegistration={allowUserRegistration}
+          applicationId={applicationId}
+          onAllowMembershipAutoJoinChange={setAllowMembershipAutoJoin}
+          onAllowUserRegistrationChange={setAllowUserRegistration}
+          onApplicationIdChange={setApplicationId}
+          onTenantIdChange={setTenantId}
+          registrationAvailable={
+            client.clientType === confidentialClient && grants.includes(clientCredentials)
+          }
+          tenantId={tenantId}
+        />
         <ClientTextFields
           onPostLogoutRedirectsChange={setPostLogoutRedirects}
           onRedirectsChange={setRedirects}
@@ -1022,11 +1516,15 @@ function ClientInspector({
                 `update-client-${client.id}`,
                 () =>
                   updateClient(csrfToken, client, {
+                    allowMembershipAutoJoin,
+                    allowUserRegistration,
+                    applicationId,
                     displayName,
                     grantTypes: grants,
                     postLogoutRedirectUris: parseLines(postLogoutRedirects),
                     redirectUris: parseLines(redirects),
                     scopes: parseCsv(scopes),
+                    tenantId,
                   }),
                 refresh,
                 "OIDC client updated.",
@@ -1308,6 +1806,7 @@ function GrantChecks({
     [authorizationCode, "Authorization code + PKCE"],
     [clientCredentials, "Client credentials"],
     [refreshToken, "Refresh token"],
+    [passwordGrant, "Trusted backend password"],
   ];
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
@@ -1323,9 +1822,81 @@ function GrantChecks({
               }
               type="checkbox"
             />
-            {label}
+            {translate(label)}
           </label>
         ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function ClientBindingFields({
+  allowMembershipAutoJoin,
+  allowUserRegistration,
+  applicationId,
+  onAllowMembershipAutoJoinChange,
+  onAllowUserRegistrationChange,
+  onApplicationIdChange,
+  onTenantIdChange,
+  registrationAvailable,
+  tenantId,
+}: {
+  allowMembershipAutoJoin: boolean;
+  allowUserRegistration: boolean;
+  applicationId: string;
+  onAllowMembershipAutoJoinChange: (value: boolean) => void;
+  onAllowUserRegistrationChange: (value: boolean) => void;
+  onApplicationIdChange: (value: string) => void;
+  onTenantIdChange: (value: string) => void;
+  registrationAvailable: boolean;
+  tenantId: string;
+}) {
+  return (
+    <fieldset className="rounded-xl border border-white/8 p-3">
+      <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+        {translate("Platform application binding")}
+      </legend>
+      <p className="mb-3 text-xs leading-5 text-slate-600">
+        {translate("Bound clients issue application-scoped tokens and enforce application membership.")}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={translate("Tenant UUID (optional)")}>
+          <input
+            className={inputClassName}
+            onChange={(event) => onTenantIdChange(event.target.value.trim())}
+            placeholder="00000000-0000-0000-0000-000000000000"
+            value={tenantId}
+          />
+        </Field>
+        <Field label={translate("Application UUID (optional)")}>
+          <input
+            className={inputClassName}
+            onChange={(event) => onApplicationIdChange(event.target.value.trim())}
+            placeholder="00000000-0000-0000-0000-000000000000"
+            value={applicationId}
+          />
+        </Field>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <label className="flex items-center gap-2 text-xs text-slate-400">
+          <input
+            checked={allowMembershipAutoJoin}
+            className="accent-cyan-400"
+            onChange={(event) => onAllowMembershipAutoJoinChange(event.target.checked)}
+            type="checkbox"
+          />
+          {translate("Auto-join existing accounts on login")}
+        </label>
+        <label className="flex items-center gap-2 text-xs text-slate-400">
+          <input
+            checked={allowUserRegistration}
+            className="accent-cyan-400"
+            disabled={!registrationAvailable}
+            onChange={(event) => onAllowUserRegistrationChange(event.target.checked)}
+            type="checkbox"
+          />
+          {translate("Allow trusted backend registration")}
+        </label>
       </div>
     </fieldset>
   );
@@ -1440,6 +2011,12 @@ function parseCsv(value: string): string[] {
 
 function parseLines(value: string): string[] {
   return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function formatTime(value: string): string {

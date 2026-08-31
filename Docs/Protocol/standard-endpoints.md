@@ -10,7 +10,7 @@
 | `/.well-known/openid-configuration` | GET | OIDC Discovery |
 | `/.well-known/jwks` | GET | JSON Web Key Set |
 | `/connect/authorize` | GET、POST | Authorization Code + PKCE 授权 |
-| `/connect/token` | POST | Code、Refresh Token、Client Credentials 交换 |
+| `/connect/token` | POST | Code、Refresh Token、Client Credentials，以及受控业务后端 Password 交换 |
 | `/connect/userinfo` | GET、POST | OIDC UserInfo |
 | `/connect/logout` | GET、POST | OIDC End Session |
 | `/passport/login` | GET、POST | Passport 本地账户交互登录 |
@@ -18,7 +18,8 @@
 约束：
 
 - 交互式客户端只使用 Authorization Code Flow + S256 PKCE。
-- 服务账户使用 Client Credentials；不启用 Implicit 和 Password Flow。
+- 服务账户使用 Client Credentials；绑定 Platform Application 的 Confidential 可信业务后端可使用 Password Flow
+  代自己的登录页面交换用户 Token。浏览器和 Public Client 禁止使用 Password Flow；Implicit Flow 始终禁用。
 - Refresh Token 默认轮换且重用宽限为零；已兑换 Token 不得再次使用，BFF 必须串行刷新。
 - 生产环境必须配置固定 HTTPS Issuer、外部签名/加密证书和持久化 Data
   Protection Key Ring。

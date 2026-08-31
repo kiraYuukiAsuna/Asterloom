@@ -1,13 +1,15 @@
 using System.Security.Claims;
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Errors;
+using Asterloom.Modules.Identity;
 using Asterloom.Protocol.Authorization.V1;
 using Grpc.Core;
 
 namespace Asterloom.Modules.Authorization;
 
 internal sealed class AuthorizationGrpcService(
-    AuthorizationManagementService managementService)
+    AuthorizationManagementService managementService,
+    IApplicationMembershipValidator memberships)
     : AuthorizationService.AuthorizationServiceBase
 {
     public override async Task<AuthorizationDecision> CheckPermission(
@@ -35,10 +37,18 @@ internal sealed class AuthorizationGrpcService(
             .Select(static claim => claim.Value)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var scope = ApplicationTokenScope.Enforce(
+            principal,
+            request.Scope.ToDomain(),
+            inferWhenUnspecified: true);
+        await ApplicationTokenScope.EnforceMembershipAsync(
+            principal,
+            memberships,
+            context.CancellationToken);
         var decision = await managementService.SimulateAsync(
             new AuthorizationDecisionRequest(
                 actorId,
-                request.Scope.ToDomain(),
+                scope,
                 request.Permission,
                 trustedRoles),
             context.CancellationToken);

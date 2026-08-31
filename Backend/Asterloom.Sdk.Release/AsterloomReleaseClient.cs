@@ -72,8 +72,25 @@ public sealed class AsterloomReleaseClient : IDisposable
         return decision;
     }
 
-    public async Task DownloadToAsync(
+    public Task DownloadToAsync(
         AsterloomUpdateDecision decision,
+        Stream destination,
+        Action<int>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        var artifactId = decision.SelectedArtifact?.Id ?? Guid.Empty;
+        return DownloadArtifactToAsync(
+            decision,
+            artifactId,
+            destination,
+            progress,
+            cancellationToken);
+    }
+
+    public async Task DownloadArtifactToAsync(
+        AsterloomUpdateDecision decision,
+        Guid artifactId,
         Stream destination,
         Action<int>? progress = null,
         CancellationToken cancellationToken = default)
@@ -82,8 +99,13 @@ public sealed class AsterloomReleaseClient : IDisposable
         AsterloomReleaseVerifier.VerifyDecision(
             decision,
             _options.TrustedPublicKeysByFingerprint);
-        var artifact = decision.SelectedArtifact!;
-        var ticket = decision.Download!;
+        var delivery = AsterloomReleaseVerifier.GetArtifactDownloads(decision)
+            .FirstOrDefault(item => item.Artifact.Id == artifactId)
+            ?? throw new ArgumentException(
+                "The requested artifact is not available in this update decision.",
+                nameof(artifactId));
+        var artifact = delivery.Artifact;
+        var ticket = delivery.Download;
         var uri = ResolveDownloadUri(ticket.Url);
         using var request = new HttpRequestMessage(ticket.Method, uri);
         foreach (var header in ticket.RequiredHeaders)
@@ -152,8 +174,25 @@ public sealed class AsterloomReleaseClient : IDisposable
         progress?.Invoke(100);
     }
 
-    public async Task DownloadToFileAsync(
+    public Task DownloadToFileAsync(
         AsterloomUpdateDecision decision,
+        string destinationPath,
+        Action<int>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        var artifactId = decision.SelectedArtifact?.Id ?? Guid.Empty;
+        return DownloadArtifactToFileAsync(
+            decision,
+            artifactId,
+            destinationPath,
+            progress,
+            cancellationToken);
+    }
+
+    public async Task DownloadArtifactToFileAsync(
+        AsterloomUpdateDecision decision,
+        Guid artifactId,
         string destinationPath,
         Action<int>? progress = null,
         CancellationToken cancellationToken = default)
@@ -179,7 +218,12 @@ public sealed class AsterloomReleaseClient : IDisposable
                              128 * 1024,
                              FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
-                await DownloadToAsync(decision, destination, progress, cancellationToken)
+                await DownloadArtifactToAsync(
+                        decision,
+                        artifactId,
+                        destination,
+                        progress,
+                        cancellationToken)
                     .ConfigureAwait(false);
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -256,7 +300,10 @@ public sealed class AsterloomReleaseClient : IDisposable
             dto.BucketEvaluated,
             dto.Bucket,
             dto.RolloutBasisPoints,
-            dto.Trace ?? []);
+            dto.Trace ?? [])
+        {
+            ArtifactDownloads = (dto.ArtifactDownloads ?? []).Select(ToModel).ToArray(),
+        };
 
     private static AsterloomReleaseManifest ToModel(ManifestDto dto) =>
         new(
@@ -310,6 +357,9 @@ public sealed class AsterloomReleaseClient : IDisposable
             new HttpMethod(dto.Method),
             dto.RequiredHeaders ?? new Dictionary<string, string>(StringComparer.Ordinal),
             dto.ExpiresAt);
+
+    private static AsterloomReleaseArtifactDownload ToModel(ArtifactDownloadDto dto) =>
+        new(ToModel(dto.Artifact), ToModel(dto.Download));
 
     private static AsterloomUpdateDecisionReason ParseReason(string value) => value switch
     {
@@ -392,7 +442,12 @@ public sealed class AsterloomReleaseClient : IDisposable
         bool BucketEvaluated,
         uint Bucket,
         uint RolloutBasisPoints,
-        IReadOnlyList<string>? Trace);
+        IReadOnlyList<string>? Trace,
+        IReadOnlyList<ArtifactDownloadDto>? ArtifactDownloads);
+
+    private sealed record ArtifactDownloadDto(
+        ArtifactDto Artifact,
+        TransferDto Download);
 
     private sealed record ManifestDto(
         string ReleaseId,

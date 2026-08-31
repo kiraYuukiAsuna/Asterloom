@@ -58,6 +58,68 @@ public sealed class AsterloomIdentityClient : IDisposable
         return _tokenStore.ReadAsync(cancellationToken);
     }
 
+    public async Task<AsterloomTokenSet> AuthenticateWithPasswordAsync(
+        string email,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        EnsurePasswordAuthentication();
+        var normalizedEmail = string.IsNullOrWhiteSpace(email)
+            ? throw new ArgumentException("An email address is required.", nameof(email))
+            : email.Trim();
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new ArgumentException("A password is required.", nameof(password));
+        }
+
+        var scopes = _options.Scopes.ToHashSet(StringComparer.Ordinal);
+        scopes.Add("openid");
+        scopes.Add("profile");
+        scopes.Add("email");
+        scopes.Add("roles");
+        if (_options.RequestRefreshTokens)
+        {
+            scopes.Add("offline_access");
+        }
+
+        var result = await _protocol.AuthenticateWithPasswordAsync(
+            _options.RegistrationId,
+            normalizedEmail,
+            password,
+            scopes,
+            cancellationToken).ConfigureAwait(false);
+        // A server/BFF may authenticate many end users concurrently. User tokens
+        // are therefore returned to the caller and are never serialized through or
+        // written to the singleton service-token store.
+        return MapResult(result, current: null);
+    }
+
+    /// <summary>
+    /// Refreshes one end-user token set without reading or writing the singleton
+    /// token store. Server/BFF applications should use this overload for their
+    /// per-user sessions.
+    /// </summary>
+    public async Task<AsterloomTokenSet> RefreshUserTokensAsync(
+        AsterloomTokenSet current,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        EnsurePasswordAuthentication();
+        ArgumentNullException.ThrowIfNull(current);
+        if (string.IsNullOrWhiteSpace(current.RefreshToken))
+        {
+            throw new InvalidOperationException(
+                "The user token set does not contain a refresh token.");
+        }
+
+        var result = await _protocol.AuthenticateWithRefreshTokenAsync(
+            _options.RegistrationId,
+            current.RefreshToken,
+            cancellationToken).ConfigureAwait(false);
+        return MapResult(result, current);
+    }
+
     public async Task<string> GetAccessTokenAsync(
         CancellationToken cancellationToken = default)
     {
@@ -252,6 +314,15 @@ public sealed class AsterloomIdentityClient : IDisposable
         {
             throw new InvalidOperationException(
                 "Service credential authentication is not enabled for this client registration.");
+        }
+    }
+
+    private void EnsurePasswordAuthentication()
+    {
+        if (!_options.EnablePasswordAuthentication)
+        {
+            throw new InvalidOperationException(
+                "Password authentication is not enabled for this client registration.");
         }
     }
 

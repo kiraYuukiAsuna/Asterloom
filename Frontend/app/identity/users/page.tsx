@@ -17,7 +17,7 @@ export default async function IdentityUsersPage() {
       activeRoute="/identity/users"
       actor={session.record.actor}
       csrfToken={session.record.csrfToken}
-      headerDescription="Passport users, sessions, OIDC clients, grants, secrets, and scopes"
+      headerDescription="Global Passport accounts, application memberships, sessions, OIDC clients, and scopes"
       headerTitle="Identity"
     >
       <IdentityWorkspace csrfToken={session.record.csrfToken} />

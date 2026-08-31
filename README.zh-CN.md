@@ -13,7 +13,7 @@ Rust、Go 或 C++ SDK。
 
 | 能力 | 用途 |
 | --- | --- |
-| Identity / Passport | 用户、邀请、会话、OIDC/OAuth 2.0 登录、Client 与 Scope。 |
+| Identity / Passport | 全局账号、应用成员关系、邀请、会话、OIDC/OAuth 2.0 登录、Client 与 Scope。 |
 | Authorization | Permission、Role、Binding、Policy 和作用域权限判断。 |
 | Targeting / Rollout | Segment、属性规则、模拟和稳定百分比分桶。 |
 | Feature Flag | 类型化 Flag、Variant、草稿、发布、回滚与 OpenFeature 评估。 |
@@ -165,6 +165,7 @@ npm run dev
 
 - [模块使用文档（中文）](Docs/Module/README.zh-CN.md)：按能力拆分的实施、Web、API、SDK、权限与运维文档。
 - [Module Guides (English)](Docs/Module/README.md)：对应的英文模块索引。
+- [业务应用统一账号接入](Docs/Module/Identity-Business-Integration.zh-CN.md)：全局账号、应用成员关系、业务后端注册登录与安全边界。
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)：Web 操作顺序、全部能力说明和 C# SDK 示例。
 - [Feature Usage Guide (English)](Docs/Feature-Guide.md)：对应的英文文档。
 - [桌面自动更新指南](Docs/Module/Desktop-Updates.zh-CN.md)：RID、Velopack 打包、签名、上传、灰度与客户端安装。
@@ -194,11 +195,14 @@ HTTP/传输 SDK 使用 `transport.HttpClient`。
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+$env:ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD = "Use-A-Strong-Test-Password!2026"
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
 ```
 
 - `provision` 创建独立的完整测试资源。
 - `doctor` 分别验证 13 类平台能力，某一项失败不会阻止其他诊断。
 - `login` 使用系统浏览器验证 Passport Authorization Code + PKCE。
+- `account-demo` 通过示例业务 BFF 验证统一账号注册、确认、密码登录、服务端 Session 与退出。
 
 ## 协议工作流
 

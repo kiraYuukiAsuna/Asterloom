@@ -13,6 +13,8 @@ using ProtocolSessionStatus = Asterloom.Protocol.Identity.V1.IdentitySessionStat
 using ProtocolUser = Asterloom.Protocol.Identity.V1.IdentityUser;
 using ProtocolUserInvitation = Asterloom.Protocol.Identity.V1.UserInvitation;
 using ProtocolUserStatus = Asterloom.Protocol.Identity.V1.IdentityUserStatus;
+using ProtocolMembership = Asterloom.Protocol.Identity.V1.ApplicationMembership;
+using ProtocolMembershipStatus = Asterloom.Protocol.Identity.V1.ApplicationMembershipStatus;
 
 namespace Asterloom.Sdk.Identity;
 
@@ -61,6 +63,30 @@ public sealed class AsterloomIdentityAdminClient
         ToModel(await _client.GetUserAsync(
             new GetUserRequest { UserId = FormatId(userId, nameof(userId)) },
             cancellationToken: cancellationToken));
+
+    public async Task<AsterloomIdentityUser> CreateUserAsync(
+        AsterloomIdentityUserRegistration registration,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        var request = new CreateUserRequest
+        {
+            Email = ValidateEmail(registration.Email),
+            DisplayName = RequireText(
+                registration.DisplayName,
+                nameof(registration.DisplayName),
+                200),
+            Password = RequireSecret(
+                registration.Password,
+                nameof(registration.Password),
+                2_048),
+            EmailConfirmed = registration.EmailConfirmed,
+        };
+        request.Roles.AddRange(ValidateRoles(registration.Roles, requireAny: false));
+        return ToModel(await _client.CreateUserAsync(
+            request,
+            cancellationToken: cancellationToken));
+    }
 
     public async Task<AsterloomUserInvitation> InviteUserAsync(
         string email,
@@ -120,7 +146,7 @@ public sealed class AsterloomIdentityAdminClient
             UserId = FormatId(user.Id, nameof(user)),
             ExpectedVersion = ValidateVersion(user.Version, nameof(user)),
         };
-        request.Roles.AddRange(ValidateRoles(roles));
+        request.Roles.AddRange(ValidateRoles(roles, requireAny: false));
         return ToModel(await _client.SetUserRolesAsync(
             request,
             cancellationToken: cancellationToken));
@@ -145,6 +171,83 @@ public sealed class AsterloomIdentityAdminClient
         AsterloomIdentityUser user,
         CancellationToken cancellationToken = default) =>
         ChangeUserStatusAsync(user, UserLifecycleAction.Restore, cancellationToken);
+
+    public async Task<AsterloomIdentityUser> ResetUserPasswordAsync(
+        AsterloomIdentityUser user,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        return ToModel(await _client.ResetUserPasswordAsync(
+            new ResetUserPasswordRequest
+            {
+                UserId = FormatId(user.Id, nameof(user)),
+                NewPassword = RequireSecret(newPassword, nameof(newPassword), 2_048),
+                ExpectedVersion = ValidateVersion(user.Version, nameof(user)),
+            },
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task<AsterloomIdentityPage<AsterloomApplicationMembership>>
+        ListApplicationMembershipsAsync(
+            Guid? userId = null,
+            Guid? tenantId = null,
+            Guid? applicationId = null,
+            bool includeRemoved = false,
+            int pageSize = MaximumPageSize,
+            string? pageToken = null,
+            CancellationToken cancellationToken = default)
+    {
+        var response = await _client.ListApplicationMembershipsAsync(
+            new ListApplicationMembershipsRequest
+            {
+                UserId = userId is null ? string.Empty : FormatId(userId.Value, nameof(userId)),
+                TenantId = tenantId is null
+                    ? string.Empty
+                    : FormatId(tenantId.Value, nameof(tenantId)),
+                ApplicationId = applicationId is null
+                    ? string.Empty
+                    : FormatId(applicationId.Value, nameof(applicationId)),
+                IncludeRemoved = includeRemoved,
+                PageSize = ValidatePageSize(pageSize),
+                PageToken = NormalizeOptional(pageToken, 2_048),
+            },
+            cancellationToken: cancellationToken);
+        return new(
+            response.Memberships.Select(ToModel).ToArray(),
+            EmptyToNull(response.NextPageToken));
+    }
+
+    public async Task<AsterloomApplicationMembership> SetApplicationMembershipAsync(
+        Guid userId,
+        Guid tenantId,
+        Guid applicationId,
+        long expectedVersion = 0,
+        CancellationToken cancellationToken = default) =>
+        ToModel(await _client.SetApplicationMembershipAsync(
+            new SetApplicationMembershipRequest
+            {
+                UserId = FormatId(userId, nameof(userId)),
+                TenantId = FormatId(tenantId, nameof(tenantId)),
+                ApplicationId = FormatId(applicationId, nameof(applicationId)),
+                ExpectedVersion = expectedVersion,
+            },
+            cancellationToken: cancellationToken));
+
+    public async Task<AsterloomApplicationMembership> RemoveApplicationMembershipAsync(
+        AsterloomApplicationMembership membership,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(membership);
+        return ToModel(await _client.RemoveApplicationMembershipAsync(
+            new RemoveApplicationMembershipRequest
+            {
+                UserId = FormatId(membership.UserId, nameof(membership)),
+                ApplicationId = FormatId(membership.ApplicationId, nameof(membership)),
+                ExpectedVersion = ValidateVersion(membership.Version, nameof(membership)),
+            },
+            cancellationToken: cancellationToken));
+    }
 
     public async Task<AsterloomIdentityPage<AsterloomIdentitySession>> ListUserSessionsAsync(
         Guid userId,
@@ -236,6 +339,10 @@ public sealed class AsterloomIdentityAdminClient
                 200),
             ApplicationType = ToProtocol(registration.ApplicationType),
             ClientType = ToProtocol(registration.ClientType),
+            TenantId = registration.TenantId?.ToString("D") ?? string.Empty,
+            ApplicationId = registration.ApplicationId?.ToString("D") ?? string.Empty,
+            AllowUserRegistration = registration.AllowUserRegistration,
+            AllowMembershipAutoJoin = registration.AllowMembershipAutoJoin,
         };
         request.GrantTypes.AddRange(registration.GrantTypes.Select(ToProtocol));
         request.RedirectUris.AddRange(registration.RedirectUris.Select(ToProtocolUri));
@@ -260,6 +367,10 @@ public sealed class AsterloomIdentityAdminClient
             ClientId = RequireText(client.ClientId, nameof(client), 100),
             DisplayName = RequireText(update.DisplayName, nameof(update.DisplayName), 200),
             ExpectedVersion = RequireText(client.Version, nameof(client), 200),
+            TenantId = update.TenantId?.ToString("D") ?? string.Empty,
+            ApplicationId = update.ApplicationId?.ToString("D") ?? string.Empty,
+            AllowUserRegistration = update.AllowUserRegistration,
+            AllowMembershipAutoJoin = update.AllowMembershipAutoJoin,
         };
         request.GrantTypes.AddRange(update.GrantTypes.Select(ToProtocol));
         request.RedirectUris.AddRange(update.RedirectUris.Select(ToProtocolUri));
@@ -430,7 +541,23 @@ public sealed class AsterloomIdentityAdminClient
         user.Roles.Select(ToRole).ToArray(),
         ToDateTimeOffset(user.CreatedAt, "user.created_at"),
         ToDateTimeOffset(user.UpdatedAt, "user.updated_at"),
-        user.ArchivedAt is null ? null : user.ArchivedAt.ToDateTimeOffset());
+        user.ArchivedAt is null ? null : user.ArchivedAt.ToDateTimeOffset(),
+        user.EmailConfirmed);
+
+    private static AsterloomApplicationMembership ToModel(
+        ProtocolMembership membership) => new(
+        ParseGuid(membership.UserId, "membership.user_id"),
+        ParseGuid(membership.TenantId, "membership.tenant_id"),
+        ParseGuid(membership.ApplicationId, "membership.application_id"),
+        membership.Status switch
+        {
+            ProtocolMembershipStatus.Active => AsterloomApplicationMembershipStatus.Active,
+            ProtocolMembershipStatus.Removed => AsterloomApplicationMembershipStatus.Removed,
+            _ => throw InvalidProtocol("application membership status"),
+        },
+        membership.Version,
+        ToDateTimeOffset(membership.CreatedAt, "membership.created_at"),
+        ToDateTimeOffset(membership.UpdatedAt, "membership.updated_at"));
 
     private static AsterloomUserInvitation ToModel(ProtocolUserInvitation invitation) => new(
         ToModel(invitation.User ?? throw InvalidProtocol("invitation user")),
@@ -471,7 +598,11 @@ public sealed class AsterloomIdentityAdminClient
         client.RedirectUris.Select(ToAbsoluteUri).ToArray(),
         client.PostLogoutRedirectUris.Select(ToAbsoluteUri).ToArray(),
         client.Scopes.ToArray(),
-        client.Version);
+        client.Version,
+        ParseOptionalGuid(client.TenantId, "client.tenant_id"),
+        ParseOptionalGuid(client.ApplicationId, "client.application_id"),
+        client.AllowUserRegistration,
+        client.AllowMembershipAutoJoin);
 
     private static AsterloomOidcClientCredential ToModel(
         ProtocolClientCredential credential) => new(
@@ -491,6 +622,7 @@ public sealed class AsterloomIdentityAdminClient
         ProtocolGrantType.AuthorizationCode => AsterloomOidcGrantType.AuthorizationCode,
         ProtocolGrantType.ClientCredentials => AsterloomOidcGrantType.ClientCredentials,
         ProtocolGrantType.RefreshToken => AsterloomOidcGrantType.RefreshToken,
+        ProtocolGrantType.Password => AsterloomOidcGrantType.Password,
         _ => throw InvalidProtocol("OIDC grant type"),
     };
 
@@ -514,6 +646,7 @@ public sealed class AsterloomIdentityAdminClient
         AsterloomOidcGrantType.AuthorizationCode => ProtocolGrantType.AuthorizationCode,
         AsterloomOidcGrantType.ClientCredentials => ProtocolGrantType.ClientCredentials,
         AsterloomOidcGrantType.RefreshToken => ProtocolGrantType.RefreshToken,
+        AsterloomOidcGrantType.Password => ProtocolGrantType.Password,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 
@@ -547,7 +680,11 @@ public sealed class AsterloomIdentityAdminClient
             registration.ApplicationType,
             registration.ClientType,
             registration.GrantTypes,
-            registration.RedirectUris);
+            registration.RedirectUris,
+            registration.TenantId,
+            registration.ApplicationId,
+            registration.AllowUserRegistration,
+            registration.AllowMembershipAutoJoin);
     }
 
     private static void ValidateClientUpdate(
@@ -562,14 +699,22 @@ public sealed class AsterloomIdentityAdminClient
             client.ApplicationType,
             client.ClientType,
             update.GrantTypes,
-            update.RedirectUris);
+            update.RedirectUris,
+            update.TenantId,
+            update.ApplicationId,
+            update.AllowUserRegistration,
+            update.AllowMembershipAutoJoin);
     }
 
     private static void ValidateClientConfiguration(
         AsterloomOidcApplicationType applicationType,
         AsterloomOidcClientType clientType,
         IReadOnlyCollection<AsterloomOidcGrantType> grants,
-        IReadOnlyCollection<Uri> redirectUris)
+        IReadOnlyCollection<Uri> redirectUris,
+        Guid? tenantId,
+        Guid? applicationId,
+        bool allowUserRegistration,
+        bool allowMembershipAutoJoin)
     {
         if (grants.Count == 0)
         {
@@ -592,6 +737,40 @@ public sealed class AsterloomIdentityAdminClient
                 nameof(clientType));
         }
 
+        if (grants.Contains(AsterloomOidcGrantType.Password)
+            && (clientType != AsterloomOidcClientType.Confidential
+                || applicationType != AsterloomOidcApplicationType.Web))
+        {
+            throw new ArgumentException(
+                "Password authentication requires a confidential Web client.",
+                nameof(grants));
+        }
+
+        if (tenantId.HasValue != applicationId.HasValue)
+        {
+            throw new ArgumentException(
+                "Tenant and application identifiers must be supplied together.",
+                nameof(applicationId));
+        }
+
+        if ((grants.Contains(AsterloomOidcGrantType.Password)
+                || allowUserRegistration
+                || allowMembershipAutoJoin)
+            && applicationId is null)
+        {
+            throw new ArgumentException(
+                "Application capabilities require a platform application binding.",
+                nameof(applicationId));
+        }
+
+        if (allowUserRegistration
+            && !grants.Contains(AsterloomOidcGrantType.ClientCredentials))
+        {
+            throw new ArgumentException(
+                "Account registration requires client credentials.",
+                nameof(allowUserRegistration));
+        }
+
         if (applicationType == AsterloomOidcApplicationType.Native
             && (clientType != AsterloomOidcClientType.Public
                 || !grants.Contains(AsterloomOidcGrantType.AuthorizationCode)))
@@ -602,20 +781,22 @@ public sealed class AsterloomIdentityAdminClient
         }
 
         if (grants.Contains(AsterloomOidcGrantType.RefreshToken)
-            && !grants.Contains(AsterloomOidcGrantType.AuthorizationCode))
+            && !grants.Contains(AsterloomOidcGrantType.AuthorizationCode)
+            && !grants.Contains(AsterloomOidcGrantType.Password))
         {
             throw new ArgumentException(
-                "Refresh tokens require the authorization-code grant.",
+                "Refresh tokens require authorization-code or password authentication.",
                 nameof(grants));
         }
     }
 
     private static string[] ValidateRoles(
-        IEnumerable<AsterloomPassportRole> roles)
+        IEnumerable<AsterloomPassportRole> roles,
+        bool requireAny = true)
     {
         ArgumentNullException.ThrowIfNull(roles);
         var values = roles.Distinct().Order().Select(ToProtocol).ToArray();
-        if (values.Length == 0)
+        if (requireAny && values.Length == 0)
         {
             throw new ArgumentException("At least one role is required.", nameof(roles));
         }
@@ -659,6 +840,21 @@ public sealed class AsterloomIdentityAdminClient
         }
 
         return normalized;
+    }
+
+    private static string RequireSecret(
+        string? value,
+        string parameterName,
+        int maximumLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > maximumLength)
+        {
+            throw new ArgumentException(
+                $"A non-empty value of at most {maximumLength} characters is required.",
+                parameterName);
+        }
+
+        return value;
     }
 
     private static string NormalizeOptional(string? value, int maximumLength)
@@ -715,6 +911,9 @@ public sealed class AsterloomIdentityAdminClient
         Guid.TryParse(value, out var parsed) && parsed != Guid.Empty
             ? parsed
             : throw InvalidProtocol(field);
+
+    private static Guid? ParseOptionalGuid(string value, string field) =>
+        string.IsNullOrWhiteSpace(value) ? null : ParseGuid(value, field);
 
     private static DateTimeOffset ToDateTimeOffset(Timestamp? value, string field) =>
         value?.ToDateTimeOffset() ?? throw InvalidProtocol(field);

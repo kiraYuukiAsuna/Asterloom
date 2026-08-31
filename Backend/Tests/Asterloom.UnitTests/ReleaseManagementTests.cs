@@ -177,7 +177,7 @@ public sealed class ReleaseManagementTests
             firstRelease.Version,
             CancellationToken.None);
 
-        var secondArtifact = await UploadArtifactAsync(
+        var secondFullArtifact = await UploadArtifactAsync(
             releases,
             transport,
             route,
@@ -185,6 +185,16 @@ public sealed class ReleaseManagementTests
             rsa,
             "2.0.0",
             "second signed package"u8.ToArray());
+        var secondDeltaArtifact = await UploadArtifactAsync(
+            releases,
+            transport,
+            route,
+            signingKey,
+            rsa,
+            "2.0.0",
+            "second delta package"u8.ToArray(),
+            ReleaseArtifactKind.Delta,
+            deltaFromVersion: "1.0.0");
         var secondRelease = await releases.CreateReleaseAsync(
             route.Tenant,
             route.Application,
@@ -193,7 +203,7 @@ public sealed class ReleaseManagementTests
             "2.0.0",
             "Version 2.0.0",
             "Second stable release.",
-            [secondArtifact.Id.ToString()],
+            [secondFullArtifact.Id.ToString(), secondDeltaArtifact.Id.ToString()],
             100_000,
             targetSegmentId: null,
             mandatory: true,
@@ -221,6 +231,45 @@ public sealed class ReleaseManagementTests
             secondRelease.Version,
             channel.Version,
             CancellationToken.None);
+
+        var deltaContext = new TargetingEvaluationContext(
+            "release-user",
+            application.Id,
+            environment.Id,
+            clientVersion: "1.0.0",
+            platform: "windows");
+        var deltaDecision = await evaluator.CheckForUpdateAsync(
+            new(
+                new(tenant.Id, application.Id, environment.Id),
+                "stable",
+                "1.0.0",
+                "win-x64",
+                deltaContext),
+            CancellationToken.None);
+        Assert.True(deltaDecision.UpdateAvailable);
+        Assert.Equal(secondDeltaArtifact.Id, deltaDecision.SelectedArtifact!.Id);
+        Assert.Collection(
+            deltaDecision.ArtifactDownloads,
+            item => Assert.Equal(secondFullArtifact.Id, item.Artifact.Id),
+            item => Assert.Equal(secondDeltaArtifact.Id, item.Artifact.Id));
+        Assert.Equal(
+            deltaDecision.SelectedArtifact.Id,
+            deltaDecision.ArtifactDownloads.Single(item =>
+                item.Download == deltaDecision.Download).Artifact.Id);
+        VerifyWithSdk(deltaDecision, signingKey.PublicKeyPem);
+
+        var belowMinimumDecision = await evaluator.CheckForUpdateAsync(
+            new(
+                new(tenant.Id, application.Id, environment.Id),
+                "stable",
+                "0.9.0",
+                "win-x64",
+                context),
+            CancellationToken.None);
+        Assert.Equal(secondFullArtifact.Id, belowMinimumDecision.SelectedArtifact!.Id);
+        Assert.Single(belowMinimumDecision.ArtifactDownloads);
+        Assert.True(belowMinimumDecision.Mandatory);
+
         channel = await releases.GetChannelAsync(
             route.Tenant,
             route.Application,
@@ -300,7 +349,7 @@ public sealed class ReleaseManagementTests
             "desktop",
             includeArchived: true,
             CancellationToken.None)).Items);
-        Assert.Equal(2, (await releases.ListArtifactsAsync(
+        Assert.Equal(3, (await releases.ListArtifactsAsync(
             route.Tenant,
             route.Application,
             route.Environment,
@@ -327,7 +376,9 @@ public sealed class ReleaseManagementTests
         ReleaseSigningKey signingKey,
         RSA rsa,
         string version,
-        byte[] content)
+        byte[] content,
+        ReleaseArtifactKind artifactKind = ReleaseArtifactKind.Full,
+        string? deltaFromVersion = null)
     {
         var hash = Convert.ToHexStringLower(SHA256.HashData(content));
         var upload = await releases.CreateArtifactUploadAsync(
@@ -336,9 +387,9 @@ public sealed class ReleaseManagementTests
             route.Environment,
             version,
             "win-x64",
-            ReleaseArtifactKind.Full,
-            deltaFromVersion: null,
-            $"desktop-{version}-full.nupkg",
+            artifactKind,
+            deltaFromVersion,
+            $"desktop-{version}-{(artifactKind == ReleaseArtifactKind.Full ? "full" : $"delta-{deltaFromVersion}")}.nupkg",
             "application/octet-stream",
             content.LongLength,
             hash,
@@ -432,7 +483,35 @@ public sealed class ReleaseManagementTests
             source.BucketEvaluated,
             source.Bucket,
             source.RolloutBasisPoints,
-            source.Trace);
+            source.Trace)
+        {
+            ArtifactDownloads = source.ArtifactDownloads.Select(item =>
+            {
+                var artifact = item.Artifact;
+                return new AsterloomReleaseArtifactDownload(
+                    new AsterloomReleaseArtifact(
+                        artifact.Id,
+                        artifact.ReleaseVersion,
+                        artifact.TargetRuntimeId,
+                        artifact.ArtifactKind == ReleaseArtifactKind.Full
+                            ? AsterloomReleaseArtifactKind.Full
+                            : AsterloomReleaseArtifactKind.Delta,
+                        string.IsNullOrEmpty(artifact.DeltaFromVersion)
+                            ? null
+                            : artifact.DeltaFromVersion,
+                        artifact.FileName,
+                        artifact.ContentType,
+                        artifact.SizeBytes,
+                        artifact.Sha256,
+                        artifact.Signature,
+                        artifact.SigningKeyId),
+                    new AsterloomReleaseTransferTicket(
+                        new Uri(item.Download.Url, UriKind.RelativeOrAbsolute),
+                        new HttpMethod(item.Download.Method),
+                        item.Download.RequiredHeaders,
+                        item.Download.ExpiresAt));
+            }).ToArray(),
+        };
         AsterloomReleaseVerifier.VerifyDecision(
             sdkDecision,
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -449,6 +528,22 @@ public sealed class ReleaseManagementTests
                 {
                     [manifest.SigningKeyFingerprint] = publicKeyPem,
                 }));
+        if (sdkArtifact.ArtifactKind == AsterloomReleaseArtifactKind.Delta)
+        {
+            Assert.Throws<AsterloomReleaseIntegrityException>(() =>
+                AsterloomReleaseVerifier.VerifyDecision(
+                    sdkDecision with
+                    {
+                        ArtifactDownloads = sdkDecision.ArtifactDownloads
+                            .Where(item =>
+                                item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Delta)
+                            .ToArray(),
+                    },
+                    new Dictionary<string, string>
+                    {
+                        [manifest.SigningKeyFingerprint] = publicKeyPem,
+                    }));
+        }
     }
 
     private static ServiceProvider CreateProvider()

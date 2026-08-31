@@ -208,6 +208,10 @@ public sealed record UpdateCheckRequest(
     string TargetRuntimeId,
     TargetingEvaluationContext Context);
 
+public sealed record ReleaseArtifactDownload(
+    ReleaseArtifact Artifact,
+    StorageTransferTicket Download);
+
 public sealed record UpdateDecision(
     bool UpdateAvailable,
     UpdateDecisionReason Reason,
@@ -216,6 +220,7 @@ public sealed record UpdateDecision(
     ReleaseManifest? Manifest,
     ReleaseArtifact? SelectedArtifact,
     StorageTransferTicket? Download,
+    IReadOnlyList<ReleaseArtifactDownload> ArtifactDownloads,
     bool Mandatory,
     bool BucketEvaluated,
     uint Bucket,

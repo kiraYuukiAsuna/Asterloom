@@ -94,14 +94,16 @@ Archive 是默认的可恢复移除方式。父级被归档或保护后，可能
 
 路由：`/identity/users`
 
-- **用户：**邀请、重发邀请、编辑资料、设置 Passport 角色、暂停/恢复、归档/还原。
+- **用户：**创建或邀请全局账号、重发邀请、编辑资料、设置 Passport 角色、重置密码、暂停/恢复、归档/还原。
 - **会话：**查看用户会话、撤销单个会话或撤销该用户全部会话。
-- **OIDC Client：**创建 Native Public Client、Web/Service Confidential Client，配置 Redirect URI、Grant 与 Scope，轮换 Secret，删除 Client。
+- **应用成员关系：**按应用添加、恢复、筛选或移除全局账号。
+- **OIDC Client：**创建 Native Public Client、Web/Service Confidential Client，绑定 Platform Application，配置注册/自动加入、Redirect URI、Grant 与 Scope，轮换 Secret，删除 Client。
 - **OIDC Scope：**创建、修改和删除 Passport 对外提供的 Scope。
 
-交互式桌面/Web 客户端使用 Authorization Code + S256 PKCE，后端服务使用 Client
-Credentials。不要使用 Implicit 或 Password Flow。新生成的 Client Secret 应立即复制到
-Secret Manager，它不是普通业务配置。
+交互式桌面/管理 Web 客户端使用 Authorization Code + S256 PKCE，后端服务使用 Client Credentials。
+只有绑定应用的 Confidential 可信业务后端可使用受控 Password Flow 来承接自己的用户登录页，浏览器 JavaScript
+不得直接调用；禁止 Implicit Flow。完整流程见
+[业务应用统一账号接入](Module/Identity-Business-Integration.zh-CN.md)。新生成的 Client Secret 应立即保存到 Secret Manager。
 
 ### 4.3 Authorization
 
@@ -535,11 +537,14 @@ builder.Services.AddSingleton(_ =>
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+$env:ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD = "Use-A-Strong-Test-Password!2026"
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
 ```
 
 - `provision` 创建一套隔离的全能力资源。
 - `doctor` 分别验证 Identity、Authorization、Targeting、Feature/Rollout、Config、Release、Analytics、Telemetry、原生 gRPC、JSON Transcoding、Storage、PostgreSQL Persistence 和 Operations/OpenAPI。
 - `login` 验证交互式 Passport Authorization Code + PKCE。
+- `account-demo` 验证全局账号注册、确认、应用成员关系、业务 BFF 登录和退出。
 
 环境变量、生产 Compose 命令和诊断成功条件见
 [Reference-Application.md](Reference-Application.md)。

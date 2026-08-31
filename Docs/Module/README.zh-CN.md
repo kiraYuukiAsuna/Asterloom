@@ -10,7 +10,8 @@ C# SDK、Next.js Web 管理后台和 Protobuf 契约为准；Rust、Go、C++ 不
 首次建设一个应用时，建议依次阅读：
 
 1. [Platform](Platform.zh-CN.md)：建立 Tenant、Application、Environment 作用域。
-2. [Identity](Identity.zh-CN.md)：注册 Passport Client，选择用户登录或服务登录。
+2. [Identity](Identity.zh-CN.md)：注册 Passport Client，选择用户登录或服务登录。自带注册/登录页面的业务还应阅读
+   [业务应用统一账号接入](Identity-Business-Integration.zh-CN.md)。
 3. [Authorization](Authorization.zh-CN.md)：授予角色、Binding 和最小权限。
 4. 根据业务选择 Feature、Config、Release、Analytics、Telemetry、Storage 等能力。
 5. [RPC/HTTP](Rpc-Http.zh-CN.md) 与 [Web Console/BFF](Web-Console-Bff.zh-CN.md)：理解传输和浏览器安全边界。
@@ -22,6 +23,7 @@ C# SDK、Next.js Web 管理后台和 Protobuf 契约为准；Rust、Go、C++ 不
 | --- | --- | --- | --- |
 | Platform | [平台作用域](Platform.zh-CN.md) | `/tenants` | gRPC/JSON Admin API |
 | Identity | [Passport 与账号](Identity.zh-CN.md) | `/identity/users` | `Asterloom.Sdk.Identity` |
+| 业务账号接入 | [注册、登录与应用成员关系](Identity-Business-Integration.zh-CN.md) | Identity + Authorization 工作区 | `AsterloomIdentityAccessClient` |
 | Authorization | [权限控制](Authorization.zh-CN.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
 | Targeting / Rollout | [定向与稳定灰度](Targeting-Rollout.zh-CN.md) | `/targeting/segments` | `Asterloom.Sdk.Targeting` |
 | Feature Flag | [功能开关](Feature-Flags.zh-CN.md) | `/features` | `Asterloom.Sdk.Feature` + OpenFeature |

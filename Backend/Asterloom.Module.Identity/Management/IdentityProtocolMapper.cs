@@ -11,6 +11,8 @@ using ProtocolSessionStatus = Asterloom.Protocol.Identity.V1.IdentitySessionStat
 using ProtocolUser = Asterloom.Protocol.Identity.V1.IdentityUser;
 using ProtocolUserInvitation = Asterloom.Protocol.Identity.V1.UserInvitation;
 using ProtocolUserStatus = Asterloom.Protocol.Identity.V1.IdentityUserStatus;
+using ProtocolMembership = Asterloom.Protocol.Identity.V1.ApplicationMembership;
+using ProtocolMembershipStatus = Asterloom.Protocol.Identity.V1.ApplicationMembershipStatus;
 
 namespace Asterloom.Modules.Identity.Management;
 
@@ -34,6 +36,7 @@ internal static class IdentityProtocolMapper
             Version = user.Version,
             CreatedAt = user.CreatedAt.ToTimestamp(),
             UpdatedAt = user.UpdatedAt.ToTimestamp(),
+            EmailConfirmed = user.EmailConfirmed,
         };
         result.Roles.AddRange(user.Roles);
         if (user.ArchivedAt is not null)
@@ -43,6 +46,26 @@ internal static class IdentityProtocolMapper
 
         return result;
     }
+
+    public static ProtocolMembership ToProtocol(
+        this ManagedApplicationMembership membership) =>
+        new()
+        {
+            UserId = membership.UserId.ToString("D"),
+            TenantId = membership.TenantId.ToString("D"),
+            ApplicationId = membership.ApplicationId.ToString("D"),
+            Status = membership.Status switch
+            {
+                Model.AsterloomApplicationMembershipStatus.Active =>
+                    ProtocolMembershipStatus.Active,
+                Model.AsterloomApplicationMembershipStatus.Removed =>
+                    ProtocolMembershipStatus.Removed,
+                _ => ProtocolMembershipStatus.Unspecified,
+            },
+            Version = membership.Version,
+            CreatedAt = membership.CreatedAt.ToTimestamp(),
+            UpdatedAt = membership.UpdatedAt.ToTimestamp(),
+        };
 
     public static ProtocolUserInvitation ToProtocol(this ManagedUserInvitation invitation) =>
         new()
@@ -72,6 +95,10 @@ internal static class IdentityProtocolMapper
                 _ => ProtocolApplicationType.Unspecified,
             },
             Version = client.Version,
+            TenantId = client.TenantId?.ToString("D") ?? string.Empty,
+            ApplicationId = client.ApplicationId?.ToString("D") ?? string.Empty,
+            AllowUserRegistration = client.AllowUserRegistration,
+            AllowMembershipAutoJoin = client.AllowMembershipAutoJoin,
         };
         result.GrantTypes.AddRange(client.GrantTypes.Select(ToProtocol));
         result.RedirectUris.AddRange(client.RedirectUris);
@@ -141,6 +168,7 @@ internal static class IdentityProtocolMapper
         ProtocolGrantType.AuthorizationCode => ManagedOidcGrantType.AuthorizationCode,
         ProtocolGrantType.ClientCredentials => ManagedOidcGrantType.ClientCredentials,
         ProtocolGrantType.RefreshToken => ManagedOidcGrantType.RefreshToken,
+        ProtocolGrantType.Password => ManagedOidcGrantType.Password,
         _ => throw Invalid("grantTypes", "A supported OIDC grant type is required."),
     };
 
@@ -149,6 +177,7 @@ internal static class IdentityProtocolMapper
         ManagedOidcGrantType.AuthorizationCode => ProtocolGrantType.AuthorizationCode,
         ManagedOidcGrantType.ClientCredentials => ProtocolGrantType.ClientCredentials,
         ManagedOidcGrantType.RefreshToken => ProtocolGrantType.RefreshToken,
+        ManagedOidcGrantType.Password => ProtocolGrantType.Password,
         _ => ProtocolGrantType.Unspecified,
     };
 
