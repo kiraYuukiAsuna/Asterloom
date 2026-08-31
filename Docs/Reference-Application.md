@@ -145,9 +145,9 @@ Asterloom.ReferenceApp.Client.exe update "$env:TEMP/full-result.json" --force-fu
 
 生产 Compose 新增 `reference-backend`，Nginx 路由如下：
 
-- `/api/reference/*` → 参考后台 JSON Transcoding (`127.0.0.1:15082`)
-- `/asterloom.reference.v1.ReferenceAppService/*` → 参考后台原生 gRPC (`127.0.0.1:15083`)
-- 其他 `/asterloom.*` → Asterloom Server 专用 HTTP/2 端口 (`127.0.0.1:15084`)，HTTP/JSON 继续使用 `127.0.0.1:15080`。
+- `/api/reference/*` → 参考后台 JSON Transcoding (`127.0.0.1:60004`)
+- `/asterloom.reference.v1.ReferenceAppService/*` → 参考后台原生 gRPC (`127.0.0.1:60005`)
+- 其他 `/asterloom.*` → Asterloom Server 专用 HTTP/2 端口 (`127.0.0.1:60002`)，HTTP/JSON 使用 `127.0.0.1:60001`。
 
 生产执行：
 
@@ -175,7 +175,7 @@ Web 的多个 `An unexpected error occurred.` 并非前端统一主题问题，�
 | 参考客户端拿不到 service secret | Compose 的 `environment` 空值覆盖了 `env_file` | 不再声明空 secret；凭据只由权限为 `0600` 的 `reference.env` 注入。 |
 | Release/Storage 预签名传输返回 S3 `multiple authentication types` | 统一 HttpClient 又给 AWS Signature V4 URL 添加 Bearer | API 与对象传输使用不同 HttpClient；公共 Bearer Handler 同时跳过预签名 URL，并禁止向非 Asterloom origin 泄漏 token。 |
 | `reference-state.json` 无法写入 | bind mount 为 `root:root`，容器以 UID 1654 运行 | 凭据目录与可写状态目录分离，state 目录只授权给 UID 1654，容器保持非 root。 |
-| Authorization/Targeting/Feature 原生 gRPC 返回 502 | 明文单端口无法在 HTTP/1.1 和 HTTP/2 间通过 ALPN 协商 | Asterloom Server 使用 `8080/Http1` 与 `8081/Http2` 独立端点；Nginx gRPC upstream 改到生产端口 `15084`。 |
+| Authorization/Targeting/Feature 原生 gRPC 返回 502 | 明文单端口无法在 HTTP/1.1 和 HTTP/2 间通过 ALPN 协商 | Asterloom Server 使用 `8000/Http1` 与 `8001/Http2` 独立容器端点；Nginx gRPC upstream 使用宿主机端口 `60002`。 |
 | `compose run` 重建平台依赖 | 一次性诊断命令默认启动 `depends_on` | 生产命令统一使用 `run --rm --no-deps`，参考后端和平台服务单独常驻。 |
 | PostgreSQL 首次连接打印缺少 `libgssapi` | Npgsql 默认优先探测 GSS，而容器部署只使用密码认证 | 容器连接串显式设置 `GSS Encryption Mode=Disable`，避免无意义的 Kerberos native library 探测。 |
 

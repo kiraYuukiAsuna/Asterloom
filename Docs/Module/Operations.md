@@ -50,11 +50,11 @@ Kubernetes example:
 
 ```yaml
 livenessProbe:
-  httpGet: { path: /health/live, port: 5080 }
+  httpGet: { path: /health/live, port: 8000 }
 readinessProbe:
-  httpGet: { path: /health/ready, port: 5080 }
+  httpGet: { path: /health/ready, port: 8000 }
 startupProbe:
-  httpGet: { path: /health/startup, port: 5080 }
+  httpGet: { path: /health/startup, port: 8000 }
   failureThreshold: 30
   periodSeconds: 2
 ```
@@ -84,7 +84,7 @@ the protected `GetOpenApiDocument` endpoint or retained generated artifacts.
 
 1. `/health/live` fails: inspect process/container exit state and startup logs.
 2. live succeeds but ready/startup fails: inspect dependencies in `/operations/health`, currently focusing on PostgreSQL.
-3. Web reports Backend Unavailable: verify `ASTERLOOM_BACKEND_URL`, Nginx routing, and Server port 5080.
+3. Web reports Backend Unavailable: verify `ASTERLOOM_BACKEND_URL`, Nginx routing, Server container port `8000`, and Compose host port `60001`.
 4. An API returns a structured error: retain `X-Request-ID` and correlate it through Audit, Telemetry, and Server logs.
 5. An RPC is absent from the catalog: ensure its Proto descriptor is compiled and rerun protocol sync/coverage checks.
 6. The OpenAPI hash differs: verify the Server version reached by the request and compare the JSON documents semantically.

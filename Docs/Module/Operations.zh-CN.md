@@ -48,11 +48,11 @@ Kubernetes 示例：
 
 ```yaml
 livenessProbe:
-  httpGet: { path: /health/live, port: 5080 }
+  httpGet: { path: /health/live, port: 8000 }
 readinessProbe:
-  httpGet: { path: /health/ready, port: 5080 }
+  httpGet: { path: /health/ready, port: 8000 }
 startupProbe:
-  httpGet: { path: /health/startup, port: 5080 }
+  httpGet: { path: /health/startup, port: 8000 }
   failureThreshold: 30
   periodSeconds: 2
 ```
@@ -82,7 +82,7 @@ dotnet run --project Backend/Tools/Asterloom.ApiCoverage -- --repo-root .
 
 1. `/health/live` 失败：先看进程、容器退出原因与启动日志。
 2. live 正常但 ready/startup 失败：查看 `/operations/health` 的 Dependency，当前重点检查 PostgreSQL。
-3. Web 显示 Backend Unavailable：确认 BFF 的 `ASTERLOOM_BACKEND_URL`、Nginx 路由和 Server 5080 端口。
+3. Web 显示 Backend Unavailable：确认 BFF 的 `ASTERLOOM_BACKEND_URL`、Nginx 路由、Server 容器端口 `8000` 和 Compose 宿主机端口 `60001`。
 4. API 返回结构化错误：保留响应中的 `X-Request-ID`，在 Audit、Telemetry 和 Server Log 中关联。
 5. API Catalog 缺少 RPC：检查 Proto 是否已编译进入 Protocol Assembly，并重新执行协议同步/覆盖检查。
 6. OpenAPI Hash 与预期不符：确认命中的 Server 版本，下载两份 JSON 做语义 Diff。

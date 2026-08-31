@@ -12,8 +12,8 @@ services:
       Identity__Bootstrap__AdminPassword: ${ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD:-Asterloom-Local-Admin!2026}
       Identity__WebClient__ClientId: asterloom-web
       Identity__WebClient__ClientSecret: ${ASTERLOOM_OIDC_CLIENT_SECRET:-Asterloom-Web-Local-Secret!2026}
-      Identity__WebClient__RedirectUri: http://localhost:3000/api/auth/callback
-      Identity__WebClient__PostLogoutRedirectUri: http://localhost:3000/api/auth/logout/callback
+      Identity__WebClient__RedirectUri: http://localhost:60000/api/auth/callback
+      Identity__WebClient__PostLogoutRedirectUri: http://localhost:60000/api/auth/logout/callback
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,10 +28,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       Persistence__Provider: PostgreSql
       ConnectionStrings__Asterloom: Host=postgres;Port=5432;Database=asterloom;Username=asterloom;Password=${POSTGRES_PASSWORD:-asterloom-dev};GSS Encryption Mode=Disable
-      Identity__Issuer: http://localhost:5080/
+      Identity__Issuer: http://localhost:60001/
       Identity__DataProtectionKeysPath: /var/lib/asterloom/dataprotection-keys
       Storage__Endpoint: http://minio:9000
-      Storage__PublicEndpoint: http://localhost:9000
+      Storage__PublicEndpoint: http://localhost:60003
       Storage__PhysicalBucket: asterloom-objects
       Storage__AccessKey: ${MINIO_ROOT_USER:-asterloom}
       Storage__SecretKey: ${MINIO_ROOT_PASSWORD:-asterloom-dev-secret}
@@ -46,8 +46,8 @@ services:
       otel-collector:
         condition: service_started
     ports:
-      - "5080:8080"
-      - "5081:8081"
+      - "60001:8000"
+      - "60002:8001"
     volumes:
       - dataprotection-keys:/var/lib/asterloom/dataprotection-keys
     restart: unless-stopped
@@ -58,10 +58,10 @@ services:
       dockerfile: Frontend/Dockerfile
     image: asterloom-web:local
     environment:
-      ASTERLOOM_BACKEND_URL: http://server:8080
-      ASTERLOOM_PASSPORT_PUBLIC_URL: http://localhost:5080
-      ASTERLOOM_WEB_ORIGIN: http://localhost:3000
-      ASTERLOOM_OIDC_ISSUER: http://localhost:5080
+      ASTERLOOM_BACKEND_URL: http://server:8000
+      ASTERLOOM_PASSPORT_PUBLIC_URL: http://localhost:60001
+      ASTERLOOM_WEB_ORIGIN: http://localhost:60000
+      ASTERLOOM_OIDC_ISSUER: http://localhost:60001
       ASTERLOOM_OIDC_CLIENT_ID: asterloom-web
       ASTERLOOM_OIDC_CLIENT_SECRET: ${ASTERLOOM_OIDC_CLIENT_SECRET:-Asterloom-Web-Local-Secret!2026}
       ASTERLOOM_SESSION_STORE: redis
@@ -75,7 +75,7 @@ services:
       server:
         condition: service_started
     ports:
-      - "3000:3000"
+      - "60000:3000"
     restart: unless-stopped
 
   reference-backend:
@@ -99,8 +99,8 @@ services:
       otel-collector:
         condition: service_started
     ports:
-      - "5090:5090"
-      - "5091:5091"
+      - "60004:5090"
+      - "60005:5091"
     restart: unless-stopped
 
   reference-client:
@@ -111,8 +111,8 @@ services:
       target: client
     image: asterloom-reference-client:local
     environment:
-      ASTERLOOM_BASE_URL: ${ASTERLOOM_BASE_URL:-http://host.docker.internal:5080/}
-      ASTERLOOM_ISSUER: ${ASTERLOOM_ISSUER:-http://host.docker.internal:5080/}
+      ASTERLOOM_BASE_URL: ${ASTERLOOM_BASE_URL:-http://host.docker.internal:60001/}
+      ASTERLOOM_ISSUER: ${ASTERLOOM_ISSUER:-http://host.docker.internal:60001/}
       ASTERLOOM_REFERENCE_BACKEND_URL: http://reference-backend:5090/
       ASTERLOOM_REFERENCE_BACKEND_GRPC_URL: http://reference-backend:5091/
       ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "true"
@@ -137,8 +137,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     restart: unless-stopped
@@ -167,8 +165,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-asterloom}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-asterloom-dev-secret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "60003:9000"
     volumes:
       - minio-data:/data
     restart: unless-stopped
@@ -178,10 +175,6 @@ services:
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
       - ./Deploy/OpenTelemetry/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "13133:13133"
     restart: unless-stopped
 
 volumes:

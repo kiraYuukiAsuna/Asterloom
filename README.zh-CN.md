@@ -96,7 +96,7 @@ Copy-Item Deploy/.env.example .env
 docker compose up --build
 ```
 
-打开 `http://localhost:3000`。默认本地管理员为：
+打开 `http://localhost:60000`。默认本地管理员为：
 
 ```text
 Email:    admin@asterloom.local
@@ -110,15 +110,19 @@ Secret Manager 注入。
 
 | 服务 | 容器内端口 | 本地地址 |
 | --- | --- | --- |
-| Web Console | `3000` | `http://localhost:3000` |
-| Server HTTP/JSON + Passport | `8080` | `http://localhost:5080` |
-| Server native gRPC | `8081` | `http://localhost:5081` |
-| PostgreSQL | `5432` | `localhost:5432` |
+| Web Console | `3000` | `http://localhost:60000` |
+| Server HTTP/JSON + Passport | `8000` | `http://localhost:60001` |
+| Server native gRPC | `8001` | `http://localhost:60002` |
+| PostgreSQL | `5432` | 不映射到宿主机 |
 | Redis | `6379` | 不映射到宿主机 |
-| MinIO S3 / Console | `9000` / `9001` | `http://localhost:9000` / `http://localhost:9001` |
-| OTLP gRPC / HTTP | `4317` / `4318` | `localhost:4317` / `localhost:4318` |
+| MinIO S3 API | `9000` | `http://localhost:60003` |
+| MinIO Console | `9001` | 不映射到宿主机 |
+| Reference HTTP / gRPC | `5090` / `5091` | `http://localhost:60004` / `http://localhost:60005` |
+| OTLP gRPC / HTTP | `4317` / `4318` | 不映射到宿主机 |
+| Collector Health | `13133` | 不映射到宿主机 |
 
-完整的本地及生产容器端口、回环绑定和公网 Nginx 路由见
+宿主机端口统一保留 `60000–60010`，其中 `60006–60010` 暂未分配。完整的本地及生产
+容器端口、回环绑定和公网 Nginx 路由见
 [开发与部署指南的端口说明](Deploy/README.zh-CN.md#3-当前生产拓扑)。
 
 ## 从源码运行
@@ -126,6 +130,7 @@ Secret Manager 注入。
 前置要求：`.NET SDK 10.0.400` 与 `Node.js 24+`。
 源码模式与完整 Compose 集成模式的适用边界见
 [开发与部署指南](Deploy/README.zh-CN.md)。
+下面的 `5080/3000` 是直接启动进程时的开发端口，不是容器映射。
 
 先构建后端：
 

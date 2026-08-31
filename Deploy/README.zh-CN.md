@@ -53,29 +53,30 @@ cp Deploy/.env.example .env
 ```
 
 `migrations` 是一次性容器。它成功退出并显示 `Exited (0)` 属于正常状态；只有迁移成功后
-`server` 才会启动。打开 `http://localhost:3000`，使用以下仅供本地开发的管理员登录：
+`server` 才会启动。打开 `http://localhost:60000`，使用以下仅供本地开发的管理员登录：
 
 ```text
 Email:    admin@asterloom.local
 Password: Asterloom-Local-Admin!2026
 ```
 
-本地端口如下。容器之间应使用 Compose Service 名和容器端口，例如 Web BFF 访问
-`http://server:8080`，不能使用宿主机映射端口：
+本地 Compose 的宿主机端口统一保留在 `60000–60010`，当前使用 `60000–60005`，
+`60006–60010` 预留。容器之间应使用 Compose Service 名和容器端口，例如 Web BFF
+访问 `http://server:8000`，不能使用宿主机映射端口：
 
 | Compose Service / 监听器 | 容器内端口 | 本地宿主机端口 | 说明 |
 | --- | --- | --- | --- |
-| `web` | `3000` | `3000` | 管理页面以及 `/api/auth/*`、`/api/asterloom/*` BFF 路由。 |
-| `server` HTTP/JSON / Passport | `8080` | `5080` | HTTP/1.1、JSON Transcoding、OIDC/OAuth 和健康检查。 |
-| `server` 原生 gRPC | `8081` | `5081` | HTTP/2 原生 gRPC；浏览器不直接连接。 |
-| `reference-backend` HTTP/JSON | `5090` | `5090` | 参考应用的 JSON Transcoding 入口。 |
-| `reference-backend` 原生 gRPC | `5091` | `5091` | 参考应用的 HTTP/2 gRPC 入口。 |
-| `postgres` | `5432` | `5432` | PostgreSQL。 |
+| `web` | `3000` | `60000` | 管理页面以及 `/api/auth/*`、`/api/asterloom/*` BFF 路由。 |
+| `server` HTTP/JSON / Passport | `8000` | `60001` | HTTP/1.1、JSON Transcoding、OIDC/OAuth 和健康检查。 |
+| `server` 原生 gRPC | `8001` | `60002` | HTTP/2 原生 gRPC；浏览器不直接连接。 |
+| `reference-backend` HTTP/JSON | `5090` | `60004` | 参考应用的 JSON Transcoding 入口。 |
+| `reference-backend` 原生 gRPC | `5091` | `60005` | 参考应用的 HTTP/2 gRPC 入口。 |
+| `postgres` | `5432` | 不映射 | 仅 Compose 网络可达。 |
 | `redis` | `6379` | 不映射 | 只在 Compose 网络中存储 Web BFF Session。 |
-| `minio` S3 API | `9000` | `9000` | S3 兼容对象传输。 |
-| `minio` Console | `9001` | `9001` | MinIO 管理界面。 |
-| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | `4317` / `4318` | OpenTelemetry 数据接收。 |
-| `otel-collector` Health | `13133` | `13133` | Collector 健康检查。 |
+| `minio` S3 API | `9000` | `60003` | S3 兼容对象传输。 |
+| `minio` Console | `9001` | 不映射 | 仅 Compose 网络可达。 |
+| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | 不映射 | 仅 Compose 网络接收 OpenTelemetry 数据。 |
+| `otel-collector` Health | `13133` | 不映射 | 仅 Compose 网络可达。 |
 | `migrations` / `reference-client` | 无 | 无 | 执行命令后退出的一次性容器，不启动网络监听器。 |
 
 常用生命周期命令：
@@ -93,6 +94,7 @@ Redis 和 Data Protection 等本地数据，只能在确认需要重置环境时
 
 后端的 Development 配置可使用内存持久化，适合 Identity、BFF 和管理 UI 的快速调试，
 但不会验证 PostgreSQL、MinIO、Redis 或 Collector 的真实集成。
+本节的 `5080/3000` 是直接启动进程时的开发端口，不是上表的容器映射。
 
 第一个 PowerShell 终端：
 
@@ -164,12 +166,12 @@ dotnet run --project Backend/Tools/Asterloom.ApiCoverage -- --repo-root .
 ```text
 Internet :80/:443
   └─ host Nginx
-       ├─ Web / BFF                    → 127.0.0.1:15081
-       ├─ Asterloom HTTP/JSON/OIDC     → 127.0.0.1:15080
-       ├─ Asterloom native gRPC        → 127.0.0.1:15084
-       ├─ Reference HTTP/JSON           → 127.0.0.1:15082
-       ├─ Reference native gRPC         → 127.0.0.1:15083
-       └─ signed object transfer        → 127.0.0.1:19000
+       ├─ Web / BFF                    → 127.0.0.1:60000
+       ├─ Asterloom HTTP/JSON/OIDC     → 127.0.0.1:60001
+       ├─ Asterloom native gRPC        → 127.0.0.1:60002
+       ├─ signed object transfer        → 127.0.0.1:60003
+       ├─ Reference HTTP/JSON           → 127.0.0.1:60004
+       └─ Reference native gRPC         → 127.0.0.1:60005
 
 Docker network only
   ├─ PostgreSQL
@@ -185,12 +187,12 @@ Collector 和 MinIO Console 不对宿主机或公网直接开放。公网通常�
 
 | Compose Service / 监听器 | 容器内端口 | 生产宿主机绑定 | 公网入口 |
 | --- | --- | --- | --- |
-| `web` | `3000` | `127.0.0.1:15081` | Nginx 的默认 Web/BFF 路由。 |
-| `server` HTTP/JSON / Passport | `8080` | `127.0.0.1:15080` | Nginx HTTP upstream。 |
-| `server` 原生 gRPC | `8081` | `127.0.0.1:15084` | Nginx `grpc_pass` upstream。 |
-| `reference-backend` HTTP/JSON | `5090` | `127.0.0.1:15082` | `/api/reference/*`。 |
-| `reference-backend` 原生 gRPC | `5091` | `127.0.0.1:15083` | ReferenceAppService 原生 gRPC 路由。 |
-| `minio` S3 API | `9000` | `127.0.0.1:19000` | `/asterloom-objects/*` 预签名传输。 |
+| `web` | `3000` | `127.0.0.1:60000` | Nginx 的默认 Web/BFF 路由。 |
+| `server` HTTP/JSON / Passport | `8000` | `127.0.0.1:60001` | Nginx HTTP upstream。 |
+| `server` 原生 gRPC | `8001` | `127.0.0.1:60002` | Nginx `grpc_pass` upstream。 |
+| `minio` S3 API | `9000` | `127.0.0.1:60003` | `/asterloom-objects/*` 预签名传输。 |
+| `reference-backend` HTTP/JSON | `5090` | `127.0.0.1:60004` | `/api/reference/*`。 |
+| `reference-backend` 原生 gRPC | `5091` | `127.0.0.1:60005` | ReferenceAppService 原生 gRPC 路由。 |
 | `minio` Console | `9001` | 不映射 | 仅 Compose 网络可达，不提供公网管理界面。 |
 | `postgres` | `5432` | 不映射 | 仅 Compose 网络可达。 |
 | `redis` | `6379` | 不映射 | 仅 Compose 网络可达。 |
@@ -372,14 +374,27 @@ Provision 脚本会创建或更新参考应用的 OIDC Client，并轮换两个 
 ```bash
 cd /home/Dev/Asterloom
 git pull --ff-only
+
+sudo install -m 0644 \
+  Deploy/Nginx/asterloom.conf \
+  /etc/nginx/sites-available/asterloom.kirayuukiasuna.cloud
+sudo nginx -t
+
 docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
-  up -d --build --remove-orphans
+  build server web reference-backend
+docker compose \
+  -f docker-compose.yml \
+  -f Deploy/docker-compose.production.yml \
+  up -d --no-build --remove-orphans
+sudo systemctl reload nginx
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
-`up` 会根据新镜像重建服务，并再次通过一次性迁移服务确保数据库 Schema 已更新。不要只用
+先构建镜像可让旧容器在构建期间继续提供服务；`up` 会使用新镜像重建服务，并再次通过
+一次性迁移服务确保数据库 Schema 已更新。宿主机 Nginx 配置不会由 Compose 自动更新，
+因此端口或路由变更必须安装、校验并 reload `Deploy/Nginx/asterloom.conf`。不要只用
 `docker compose restart` 应用镜像或环境变量变更，因为 restart 不会重建容器。
 
 ### 5.2 常用排障命令

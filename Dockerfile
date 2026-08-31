@@ -21,13 +21,13 @@ RUN dotnet publish Backend/Tools/Asterloom.Migrations/Asterloom.Migrations.cspro
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS final
 WORKDIR /app
 
-ENV Kestrel__Endpoints__Http__Url=http://+:8080 \
+ENV Kestrel__Endpoints__Http__Url=http://+:8000 \
     Kestrel__Endpoints__Http__Protocols=Http1 \
-    Kestrel__Endpoints__Grpc__Url=http://+:8081 \
+    Kestrel__Endpoints__Grpc__Url=http://+:8001 \
     Kestrel__Endpoints__Grpc__Protocols=Http2 \
     DOTNET_EnableDiagnostics=0
 
-EXPOSE 8080 8081
+EXPOSE 8000 8001
 
 COPY --from=build --chown=$APP_UID:$APP_UID /app/publish ./
 COPY --from=build --chown=$APP_UID:$APP_UID /app/migrations ./migrations/

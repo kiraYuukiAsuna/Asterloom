@@ -109,7 +109,11 @@ storage, Redis BFF session store, and OpenTelemetry Collector:
 docker compose up --build
 ```
 
-The example credentials are for local development only.
+Open `http://localhost:60000`. Compose host ports are reserved in the
+`60000–60010` range; see the [complete port map](Deploy/README.md#3-current-production-topology).
+The example credentials are for local development only. The earlier
+`5080/3000` source workflow uses direct-process development ports and is not a
+container-to-host mapping.
 
 Production schema changes are never run implicitly by Asterloom.Server. Run
 the dedicated migration executable as a deployment step with

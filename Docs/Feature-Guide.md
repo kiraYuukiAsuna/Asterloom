@@ -64,7 +64,7 @@ Copy-Item Deploy/.env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost:3000` and sign in with the local-only administrator from
+Open `http://localhost:60000` and sign in with the local-only administrator from
 `.env`. The checked-in example defaults are `admin@asterloom.local` and
 `Asterloom-Local-Admin!2026`; never reuse them outside local development.
 
@@ -72,11 +72,12 @@ The local endpoints are:
 
 | Endpoint | Address |
 | --- | --- |
-| Web Console/BFF | `http://localhost:3000` |
-| Server HTTP/JSON and Passport | `http://localhost:5080` |
-| Server native gRPC | `http://localhost:5081` |
-| MinIO S3 API / Console | `http://localhost:9000` / `http://localhost:9001` |
-| OTLP gRPC / HTTP | `http://localhost:4317` / `http://localhost:4318` |
+| Web Console/BFF | `http://localhost:60000` |
+| Server HTTP/JSON and Passport | `http://localhost:60001` |
+| Server native gRPC | `http://localhost:60002` |
+| MinIO S3 API | `http://localhost:60003` |
+| Reference HTTP / gRPC | `http://localhost:60004` / `http://localhost:60005` |
+| PostgreSQL, Redis, MinIO Console, OTLP, Collector health | Not published; Compose-network only |
 
 ## 4. Web Console workflows
 

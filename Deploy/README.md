@@ -53,7 +53,7 @@ cp Deploy/.env.example .env
 ```
 
 `migrations` is a one-shot container. An `Exited (0)` status is expected; the
-`server` starts only after it succeeds. Open `http://localhost:3000` and use the
+`server` starts only after it succeeds. Open `http://localhost:60000` and use the
 local-development-only administrator:
 
 ```text
@@ -61,23 +61,24 @@ Email:    admin@asterloom.local
 Password: Asterloom-Local-Admin!2026
 ```
 
-The local ports are listed below. Containers must use Compose service names and
-container ports—for example, the Web BFF calls `http://server:8080`—rather than
-host-published ports:
+Local Compose reserves host ports `60000–60010`; `60000–60005` are currently
+assigned and `60006–60010` remain reserved. Containers must use Compose service
+names and container ports—for example, the Web BFF calls `http://server:8000`—
+rather than host-published ports:
 
 | Compose service / listener | Container port | Local host port | Purpose |
 | --- | --- | --- | --- |
-| `web` | `3000` | `3000` | Management UI and the `/api/auth/*` and `/api/asterloom/*` BFF routes. |
-| `server` HTTP/JSON / Passport | `8080` | `5080` | HTTP/1.1, JSON Transcoding, OIDC/OAuth, and health endpoints. |
-| `server` native gRPC | `8081` | `5081` | HTTP/2 native gRPC; browsers do not connect directly. |
-| `reference-backend` HTTP/JSON | `5090` | `5090` | Reference application JSON Transcoding. |
-| `reference-backend` native gRPC | `5091` | `5091` | Reference application HTTP/2 gRPC. |
-| `postgres` | `5432` | `5432` | PostgreSQL. |
+| `web` | `3000` | `60000` | Management UI and the `/api/auth/*` and `/api/asterloom/*` BFF routes. |
+| `server` HTTP/JSON / Passport | `8000` | `60001` | HTTP/1.1, JSON Transcoding, OIDC/OAuth, and health endpoints. |
+| `server` native gRPC | `8001` | `60002` | HTTP/2 native gRPC; browsers do not connect directly. |
+| `reference-backend` HTTP/JSON | `5090` | `60004` | Reference application JSON Transcoding. |
+| `reference-backend` native gRPC | `5091` | `60005` | Reference application HTTP/2 gRPC. |
+| `postgres` | `5432` | not published | Compose-network only. |
 | `redis` | `6379` | not published | Stores Web BFF sessions only inside the Compose network. |
-| `minio` S3 API | `9000` | `9000` | S3-compatible object transfer. |
-| `minio` Console | `9001` | `9001` | MinIO administration. |
-| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | `4317` / `4318` | OpenTelemetry ingestion. |
-| `otel-collector` health | `13133` | `13133` | Collector health endpoint. |
+| `minio` S3 API | `9000` | `60003` | S3-compatible object transfer. |
+| `minio` Console | `9001` | not published | Compose-network only. |
+| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | not published | Compose-network-only OpenTelemetry ingestion. |
+| `otel-collector` health | `13133` | not published | Compose-network only. |
 | `migrations` / `reference-client` | none | none | One-shot command containers with no network listener. |
 
 Common lifecycle commands:
@@ -97,6 +98,8 @@ intentional full reset is required.
 The Development server can use in-memory persistence for fast Identity, BFF,
 and management UI iteration. This mode does not validate the real PostgreSQL,
 MinIO, Redis, or Collector integrations.
+The `5080/3000` values in this section are direct-process development ports, not
+container-to-host mappings from the table above.
 
 In the first PowerShell terminal:
 
@@ -169,12 +172,12 @@ run Nginx on the host and the application services in containers:
 ```text
 Internet :80/:443
   └─ host Nginx
-       ├─ Web / BFF                    → 127.0.0.1:15081
-       ├─ Asterloom HTTP/JSON/OIDC     → 127.0.0.1:15080
-       ├─ Asterloom native gRPC        → 127.0.0.1:15084
-       ├─ Reference HTTP/JSON           → 127.0.0.1:15082
-       ├─ Reference native gRPC         → 127.0.0.1:15083
-       └─ signed object transfer        → 127.0.0.1:19000
+       ├─ Web / BFF                    → 127.0.0.1:60000
+       ├─ Asterloom HTTP/JSON/OIDC     → 127.0.0.1:60001
+       ├─ Asterloom native gRPC        → 127.0.0.1:60002
+       ├─ signed object transfer        → 127.0.0.1:60003
+       ├─ Reference HTTP/JSON           → 127.0.0.1:60004
+       └─ Reference native gRPC         → 127.0.0.1:60005
 
 Docker network only
   ├─ PostgreSQL
@@ -191,12 +194,12 @@ The production container ports and host bindings are:
 
 | Compose service / listener | Container port | Production host binding | Public entry point |
 | --- | --- | --- | --- |
-| `web` | `3000` | `127.0.0.1:15081` | Nginx default Web/BFF route. |
-| `server` HTTP/JSON / Passport | `8080` | `127.0.0.1:15080` | Nginx HTTP upstream. |
-| `server` native gRPC | `8081` | `127.0.0.1:15084` | Nginx `grpc_pass` upstream. |
-| `reference-backend` HTTP/JSON | `5090` | `127.0.0.1:15082` | `/api/reference/*`. |
-| `reference-backend` native gRPC | `5091` | `127.0.0.1:15083` | Native ReferenceAppService gRPC route. |
-| `minio` S3 API | `9000` | `127.0.0.1:19000` | `/asterloom-objects/*` presigned transfers. |
+| `web` | `3000` | `127.0.0.1:60000` | Nginx default Web/BFF route. |
+| `server` HTTP/JSON / Passport | `8000` | `127.0.0.1:60001` | Nginx HTTP upstream. |
+| `server` native gRPC | `8001` | `127.0.0.1:60002` | Nginx `grpc_pass` upstream. |
+| `minio` S3 API | `9000` | `127.0.0.1:60003` | `/asterloom-objects/*` presigned transfers. |
+| `reference-backend` HTTP/JSON | `5090` | `127.0.0.1:60004` | `/api/reference/*`. |
+| `reference-backend` native gRPC | `5091` | `127.0.0.1:60005` | Native ReferenceAppService gRPC route. |
 | `minio` Console | `9001` | not published | Compose-network only; no public administration UI. |
 | `postgres` | `5432` | not published | Compose-network only. |
 | `redis` | `6379` | not published | Compose-network only. |
@@ -392,16 +395,30 @@ for the full behavior.
 ```bash
 cd /home/Dev/Asterloom
 git pull --ff-only
+
+sudo install -m 0644 \
+  Deploy/Nginx/asterloom.conf \
+  /etc/nginx/sites-available/asterloom.kirayuukiasuna.cloud
+sudo nginx -t
+
 docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
-  up -d --build --remove-orphans
+  build server web reference-backend
+docker compose \
+  -f docker-compose.yml \
+  -f Deploy/docker-compose.production.yml \
+  up -d --no-build --remove-orphans
+sudo systemctl reload nginx
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
-`up` recreates services for new images and executes the one-shot migration path
-before the server starts. Do not use only `docker compose restart` for image or
-environment changes: restart does not recreate containers.
+Building first lets the old containers continue serving traffic during the
+build. `up` then recreates services from the new images and executes the one-shot
+migration path before the server starts. Compose does not update host Nginx, so
+port or route changes require installing, validating, and reloading
+`Deploy/Nginx/asterloom.conf`. Do not use only `docker compose restart` for image
+or environment changes: restart does not recreate containers.
 
 ### 5.2 Troubleshooting commands
 

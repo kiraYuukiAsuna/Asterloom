@@ -60,18 +60,19 @@ Copy-Item Deploy/.env.example .env
 docker compose up --build
 ```
 
-打开 `http://localhost:3000`，使用 `.env` 中的本地管理员登录。仓库示例默认值为
+打开 `http://localhost:60000`，使用 `.env` 中的本地管理员登录。仓库示例默认值为
 `admin@asterloom.local` / `Asterloom-Local-Admin!2026`，只能用于本地开发，禁止复用到生产。
 
 本地端点如下：
 
 | 端点 | 地址 |
 | --- | --- |
-| Web Console/BFF | `http://localhost:3000` |
-| Server HTTP/JSON 与 Passport | `http://localhost:5080` |
-| Server 原生 gRPC | `http://localhost:5081` |
-| MinIO S3 API / Console | `http://localhost:9000` / `http://localhost:9001` |
-| OTLP gRPC / HTTP | `http://localhost:4317` / `http://localhost:4318` |
+| Web Console/BFF | `http://localhost:60000` |
+| Server HTTP/JSON 与 Passport | `http://localhost:60001` |
+| Server 原生 gRPC | `http://localhost:60002` |
+| MinIO S3 API | `http://localhost:60003` |
+| Reference HTTP / gRPC | `http://localhost:60004` / `http://localhost:60005` |
+| PostgreSQL、Redis、MinIO Console、OTLP、Collector Health | 不映射到宿主机，仅 Compose 网络可达 |
 
 ## 4. Web 管理后台使用方法
 
