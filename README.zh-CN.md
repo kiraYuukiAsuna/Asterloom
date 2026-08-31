@@ -85,9 +85,11 @@ Docs/                           # 架构、使用指南、ADR 与协议文档
 Deploy/                         # Compose、Nginx、OpenTelemetry 与部署脚本
 ```
 
-## 快速开始：Docker Compose
+## 开发：Docker Compose 快速开始
 
 前置要求：Docker 与 Docker Compose。
+完整的前置条件、端口、服务依赖、数据清理和排障方式见
+[开发与部署指南](Deploy/README.zh-CN.md)。
 
 ```powershell
 Copy-Item Deploy/.env.example .env
@@ -106,18 +108,24 @@ Secret Manager 注入。
 
 默认本地端口：
 
-| 服务 | 地址 |
-| --- | --- |
-| Web Console | `http://localhost:3000` |
-| Server HTTP/JSON + Passport | `http://localhost:5080` |
-| Server native gRPC | `http://localhost:5081` |
-| PostgreSQL | `localhost:5432` |
-| MinIO S3 / Console | `http://localhost:9000` / `http://localhost:9001` |
-| OTLP gRPC / HTTP | `localhost:4317` / `localhost:4318` |
+| 服务 | 容器内端口 | 本地地址 |
+| --- | --- | --- |
+| Web Console | `3000` | `http://localhost:3000` |
+| Server HTTP/JSON + Passport | `8080` | `http://localhost:5080` |
+| Server native gRPC | `8081` | `http://localhost:5081` |
+| PostgreSQL | `5432` | `localhost:5432` |
+| Redis | `6379` | 不映射到宿主机 |
+| MinIO S3 / Console | `9000` / `9001` | `http://localhost:9000` / `http://localhost:9001` |
+| OTLP gRPC / HTTP | `4317` / `4318` | `localhost:4317` / `localhost:4318` |
+
+完整的本地及生产容器端口、回环绑定和公网 Nginx 路由见
+[开发与部署指南的端口说明](Deploy/README.zh-CN.md#3-当前生产拓扑)。
 
 ## 从源码运行
 
 前置要求：`.NET SDK 10.0.400` 与 `Node.js 24+`。
+源码模式与完整 Compose 集成模式的适用边界见
+[开发与部署指南](Deploy/README.zh-CN.md)。
 
 先构建后端：
 
@@ -232,7 +240,7 @@ npm run test:e2e
 生产环境回归使用 `npm run test:e2e:production`，管理员凭据通过
 `ASTERLOOM_E2E_*` 环境变量注入，不能写入仓库。
 
-## 数据库迁移与生产说明
+## 生产部署
 
 - 生产 Schema 变更不会由 `Asterloom.Server` 隐式执行。
 - 部署时先运行 `Backend/Tools/Asterloom.Migrations`，成功后再启动 Server。
@@ -240,8 +248,15 @@ npm run test:e2e
 - Redis、PostgreSQL、S3、Client Secret、Write Key、Session Encryption Key 等凭据必须从 Secret Manager 注入。
 - Server 暴露 `/health/live`、`/health/ready` 和 `/health/startup`，部署后还应执行 Production Smoke Test 与参考应用 `doctor`。
 
+当前生产环境由根目录 Compose、`Deploy/docker-compose.production.yml` 覆盖文件和宿主机
+Nginx 共同组成，生产覆盖文件不能单独启动。首次部署、TLS、域名修改、Secret、端口、
+升级回滚、备份以及 `Deploy` 中每个文件的具体作用见
+[开发与部署指南](Deploy/README.zh-CN.md)。
+
 ## 文档
 
+- [开发与部署指南](Deploy/README.zh-CN.md)
+- [Development and Deployment Guide](Deploy/README.md)
 - [技术架构与实施基线](Docs/Architecture.md)
 - [模块使用文档（中文）](Docs/Module/README.zh-CN.md)
 - [Module Guides (English)](Docs/Module/README.md)

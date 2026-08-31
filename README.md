@@ -9,6 +9,8 @@ telemetry, RPC/HTTP, object storage, and persistence.
 
 ## Documentation
 
+- [Development and deployment guide](Deploy/README.md)
+- [开发与部署指南（中文）](Deploy/README.zh-CN.md)
 - [Architecture and implementation baseline](Docs/Architecture.md)
 - [Module-by-module guides](Docs/Module/README.md)
 - [模块使用文档（中文）](Docs/Module/README.zh-CN.md)
@@ -29,9 +31,13 @@ telemetry, RPC/HTTP, object storage, and persistence.
 - `Frontend`: Next.js management console and BFF.
 - `Proto/Asterloom`: versioned Protobuf API contracts.
 - `Docs/Protocol`: generated OpenAPI and API/UI coverage data.
-- `Deploy`: local and production deployment assets.
+- [`Deploy`](Deploy/README.md): local and production deployment assets and their operating guide.
 
 ## Development
+
+The commands below cover the shortest source workflow. For prerequisites,
+Docker-based development, the complete port map, data reset behavior, and
+troubleshooting, see the [development and deployment guide](Deploy/README.md).
 
 ```powershell
 dotnet restore Backend/Asterloom.sln
@@ -110,3 +116,13 @@ the dedicated migration executable as a deployment step with
 `Persistence:Provider=PostgreSql` and `ConnectionStrings:Asterloom` configured.
 The Compose stack models this as a one-shot `migrations` service that must
 complete before the server starts.
+
+## Production deployment
+
+Production combines the root Compose file with
+`Deploy/docker-compose.production.yml`, while Nginx and TLS run on the host.
+The checked-in assets currently target `asterloom.kirayuukiasuna.cloud` and
+require generated secrets, explicit migrations, persistent cryptographic keys,
+and post-deployment smoke tests. Follow the
+[production deployment procedure and per-file reference](Deploy/README.md)
+instead of running the production override by itself.
