@@ -95,9 +95,7 @@ service IdentityAdminService {
     };
   }
   rpc RemoveApplicationMembership(RemoveApplicationMembershipRequest) returns (asterloom.identity.v1.ApplicationMembership) {
-    option (google.api.http) = {
-      delete: "/api/v1/identity/application-memberships/{application_id}/{user_id}"
-    };
+    option (google.api.http) = {delete: "/api/v1/identity/application-memberships/{application_id}/{user_id}"};
   }
 
   rpc ListClients(ListClientsRequest) returns (ListClientsResponse) {

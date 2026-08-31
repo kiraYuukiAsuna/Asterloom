@@ -1,12 +1,14 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Globalization;
 
 namespace Asterloom.ReferenceApp.Client;
 
-internal sealed class ReferenceAppProvisioner(HttpClient client)
+internal sealed class ReferenceAppProvisioner(
+    HttpClient client,
+    ReferenceDesktopReleaseSettings desktopRelease)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly string[] StorageContentTypes =
@@ -146,52 +148,97 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
                 description = "Reference desktop update channel.",
             },
             cancellationToken);
-        var artifactContent = Encoding.UTF8.GetBytes(
-            JsonSerializer.Serialize(new
-            {
-                package = "asterloom-reference-client",
-                version = "1.0.0",
-                provisionedAt = DateTimeOffset.UtcNow,
-            }, JsonOptions));
-        var artifact = await UploadReleaseArtifactAsync(
-            scopePath,
-            signingKey,
-            rsa,
-            artifactContent,
-            cancellationToken);
-        var release = await PostAsync<ResourceVersion>(
-            scopePath + "/releases",
-            new
-            {
-                channelId = channel.Id,
-                releaseVersion = "1.0.0",
-                displayName = "Reference 1.0.0",
-                releaseNotes = "Signed update used by the reference diagnostics.",
-                artifactIds = new[] { artifact.Id },
-                rolloutBasisPoints = 100_000,
-                mandatory = false,
-                minimumVersion = "0.0.0",
-            },
-            cancellationToken);
-        var validation = await PostAsync<ReleaseValidation>(
-            scopePath + $"/releases/{release.Id}:validate",
-            new { },
-            cancellationToken);
-        if (!validation.Valid)
+        if (desktopRelease.UsesVelopackPackages)
         {
-            throw new InvalidOperationException("The reference release failed platform validation.");
-        }
+            var baselineArtifact = await UploadReleaseArtifactAsync(
+                scopePath,
+                signingKey,
+                rsa,
+                desktopRelease.BaselineVersion,
+                desktopRelease.RuntimeId,
+                "RELEASE_ARTIFACT_KIND_FULL",
+                deltaFromVersion: null,
+                desktopRelease.BaselineFullPackage!,
+                await File.ReadAllBytesAsync(
+                    desktopRelease.BaselineFullPackage!,
+                    cancellationToken),
+                cancellationToken);
+            await PublishReleaseAsync(
+                scopePath,
+                channel.Id,
+                signingKey,
+                rsa,
+                desktopRelease.BaselineVersion,
+                "0.0.0",
+                [baselineArtifact.Id],
+                cancellationToken);
 
-        await PostAsync<ResourceVersion>(
-            scopePath + $"/releases/{release.Id}:publish",
-            new
-            {
-                manifestSigningKeyId = signingKey.Id,
-                manifestSignature = SignDigest(rsa, validation.CandidateManifest.Sha256),
-                expectedVersion = release.Version,
-                expectedChannelVersion = channel.Version,
-            },
-            cancellationToken);
+            var targetFullArtifact = await UploadReleaseArtifactAsync(
+                scopePath,
+                signingKey,
+                rsa,
+                desktopRelease.TargetVersion,
+                desktopRelease.RuntimeId,
+                "RELEASE_ARTIFACT_KIND_FULL",
+                deltaFromVersion: null,
+                desktopRelease.TargetFullPackage!,
+                await File.ReadAllBytesAsync(
+                    desktopRelease.TargetFullPackage!,
+                    cancellationToken),
+                cancellationToken);
+            var targetDeltaArtifact = await UploadReleaseArtifactAsync(
+                scopePath,
+                signingKey,
+                rsa,
+                desktopRelease.TargetVersion,
+                desktopRelease.RuntimeId,
+                "RELEASE_ARTIFACT_KIND_DELTA",
+                desktopRelease.BaselineVersion,
+                desktopRelease.TargetDeltaPackage!,
+                await File.ReadAllBytesAsync(
+                    desktopRelease.TargetDeltaPackage!,
+                    cancellationToken),
+                cancellationToken);
+            await PublishReleaseAsync(
+                scopePath,
+                channel.Id,
+                signingKey,
+                rsa,
+                desktopRelease.TargetVersion,
+                desktopRelease.BaselineVersion,
+                [targetFullArtifact.Id, targetDeltaArtifact.Id],
+                cancellationToken);
+        }
+        else
+        {
+            var artifactContent = Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(new
+                {
+                    package = desktopRelease.PackageId,
+                    version = desktopRelease.TargetVersion,
+                    provisionedAt = DateTimeOffset.UtcNow,
+                }, JsonOptions));
+            var artifact = await UploadReleaseArtifactAsync(
+                scopePath,
+                signingKey,
+                rsa,
+                desktopRelease.TargetVersion,
+                desktopRelease.RuntimeId,
+                "RELEASE_ARTIFACT_KIND_FULL",
+                deltaFromVersion: null,
+                $"{desktopRelease.PackageId}-{desktopRelease.TargetVersion}-full.nupkg",
+                artifactContent,
+                cancellationToken);
+            await PublishReleaseAsync(
+                scopePath,
+                channel.Id,
+                signingKey,
+                rsa,
+                desktopRelease.TargetVersion,
+                desktopRelease.BaselineVersion,
+                [artifact.Id],
+                cancellationToken);
+        }
 
         var analyticsPath = scopePath + "/analytics";
         await PostAsync<ResourceVersion>(
@@ -244,6 +291,11 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
             configKey,
             Guid.Parse(bucket.Id),
             "stable",
+            desktopRelease.PackageId,
+            desktopRelease.RuntimeId,
+            desktopRelease.BaselineVersion,
+            desktopRelease.TargetVersion,
+            desktopRelease.UsesVelopackPackages,
             signingKey.Fingerprint,
             signingKey.PublicKeyPem,
             writeKey.Secret,
@@ -255,6 +307,11 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
         string scopePath,
         SigningKeyResource signingKey,
         RSA rsa,
+        string releaseVersion,
+        string runtimeId,
+        string artifactKind,
+        string? deltaFromVersion,
+        string packagePath,
         byte[] content,
         CancellationToken cancellationToken)
     {
@@ -263,10 +320,11 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
             scopePath + "/release/artifacts:begin-upload",
             new
             {
-                releaseVersion = "1.0.0",
-                targetRuntimeId = GetRuntimeIdentifier(),
-                artifactKind = "RELEASE_ARTIFACT_KIND_FULL",
-                fileName = "asterloom-reference-client-1.0.0-full.nupkg",
+                releaseVersion,
+                targetRuntimeId = runtimeId,
+                artifactKind,
+                deltaFromVersion,
+                fileName = Path.GetFileName(packagePath),
                 contentType = "application/octet-stream",
                 sizeBytes = content.LongLength,
                 sha256,
@@ -278,6 +336,55 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
         return await PostAsync<ResourceVersion>(
             scopePath + $"/release/artifacts/{upload.Artifact.Id}:complete",
             new { expectedVersion = upload.Artifact.Version },
+            cancellationToken);
+    }
+
+    private async Task PublishReleaseAsync(
+        string scopePath,
+        string channelId,
+        SigningKeyResource signingKey,
+        RSA rsa,
+        string releaseVersion,
+        string minimumVersion,
+        string[] artifactIds,
+        CancellationToken cancellationToken)
+    {
+        var release = await PostAsync<ResourceVersion>(
+            scopePath + "/releases",
+            new
+            {
+                channelId,
+                releaseVersion,
+                displayName = "Reference " + releaseVersion,
+                releaseNotes = "Signed Velopack update used by the reference diagnostics.",
+                artifactIds,
+                rolloutBasisPoints = 100_000,
+                mandatory = false,
+                minimumVersion,
+            },
+            cancellationToken);
+        var validation = await PostAsync<ReleaseValidation>(
+            scopePath + $"/releases/{release.Id}:validate",
+            new { },
+            cancellationToken);
+        if (!validation.Valid)
+        {
+            throw new InvalidOperationException(
+                $"Reference release {releaseVersion} failed platform validation.");
+        }
+
+        var channel = await GetAsync<ResourceVersion>(
+            scopePath + $"/release/channels/{channelId}",
+            cancellationToken);
+        await PostAsync<ResourceVersion>(
+            scopePath + $"/releases/{release.Id}:publish",
+            new
+            {
+                manifestSigningKeyId = signingKey.Id,
+                manifestSignature = SignDigest(rsa, validation.CandidateManifest.Sha256),
+                expectedVersion = release.Version,
+                expectedChannelVersion = channel.Version,
+            },
             cancellationToken);
     }
 
@@ -317,6 +424,9 @@ internal sealed class ReferenceAppProvisioner(HttpClient client)
         object body,
         CancellationToken cancellationToken) =>
         SendAsync<T>(HttpMethod.Post, path, body, cancellationToken);
+
+    private Task<T> GetAsync<T>(string path, CancellationToken cancellationToken) =>
+        SendAsync<T>(HttpMethod.Get, path, body: null, cancellationToken);
 
     private async Task<T> SendAsync<T>(
         HttpMethod method,

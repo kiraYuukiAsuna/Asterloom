@@ -437,7 +437,7 @@ Velopack 下载与回退说明：<https://docs.velopack.io/integrating/overview>
 
 不要直接下载 Decision 中的 Signed URL。URL 可能指向 S3 Origin，而且绕过 SDK 会失去完整性验证。
 
-### 6.4 Mandatory 更新
+### 6.5 Mandatory 更新
 
 `Mandatory` 是 Asterloom 更新决策中的业务标记，不会自动锁住应用 UI。若需要“不可跳过”的体验，应用应先调用
 `AsterloomReleaseClient.CheckForUpdateAsync` 读取 `decision.Mandatory`，然后控制：
@@ -487,7 +487,25 @@ Channel Rollback 当作客户端降级。
 
 直接归档旧公钥并立即用新私钥发布，会使尚未获得新公钥的旧客户端无法验证更新。
 
-## 10. CI 发布检查表
+## 10. 可执行 Reference App 回归
+
+仓库把 C# Package 与 `vpk` 都固定为 1.2.0。使用以下命令构建两个真实 Sample App 版本：
+
+```powershell
+./Deploy/Scripts/Build-Reference-DesktopUpdate.ps1 `
+  -OutputDirectory "$env:TEMP/asterloom-reference-update"
+```
+
+脚本会保留 1.0.0 安装程序，生成 1.0.0/1.1.0 Full 及直接 Delta，再用 `vpk delta patch` 还原目标 Full，
+并要求 SHA-256 逐字节一致。将三个包路径分别配置为 `ASTERLOOM_REFERENCE_RELEASE_BASE_FULL`、
+`_TARGET_FULL` 和 `_TARGET_DELTA` 后运行 Reference App `provision`，即可上传、签名并依次发布两个版本。
+
+安装保留的基线 Setup，再运行 `Asterloom.ReferenceApp.Client.exe update RESULT.json`。安装态客户端会记录
+Asterloom Source 实际下载的 Artifact 类型，应用更新并在重启后记录 Velopack Restart Version。卸载、重装基线，
+加 `--force-full` 可单独证明 Full 路径。只有普通场景仅下载 Delta、强制场景仅下载 Full，且两者都重启到目标
+程序集版本时才算通过。从 `bin/` 或 Portable 目录运行会被明确拒绝，因为它不能证明真实文件替换。
+
+## 11. CI 发布检查表
 
 - [ ] `dotnet publish` 使用正确 RID 与 Release 配置。
 - [ ] `vpk` 与应用 Velopack Package 使用同一版本。
@@ -506,7 +524,7 @@ Channel Rollback 当作客户端降级。
 - [ ] Telemetry/Analytics 监控已准备。
 - [ ] Promote 前已确认暂停和回滚目标。
 
-## 11. 相关实现
+## 12. 相关实现
 
 - Release 客户端：[AsterloomReleaseClient.cs](../../Backend/Asterloom.Sdk.Release/AsterloomReleaseClient.cs)
 - Velopack Adapter：[AsterloomVelopackUpdateSource.cs](../../Backend/Asterloom.Sdk.Release/AsterloomVelopackUpdateSource.cs)
@@ -514,6 +532,7 @@ Channel Rollback 当作客户端降级。
 - Release Protocol：[release.proto](../../Proto/Asterloom/release/v1/release.proto)
 - 管理 Protocol：[release_admin.proto](../../Proto/Asterloom/release/v1/release_admin.proto)
 - 可执行签名/上传示例：[ReferenceAppProvisioner.cs](../../Backend/Samples/Asterloom.ReferenceApp.Client/ReferenceAppProvisioner.cs)
+- 可复现 Full/Delta 构建器：[Build-Reference-DesktopUpdate.ps1](../../Deploy/Scripts/Build-Reference-DesktopUpdate.ps1)
 - 总功能指南：[Feature-Guide.zh-CN.md](../Feature-Guide.zh-CN.md)
 - Velopack C# 指南：<https://docs.velopack.io/getting-started/csharp>
 - Velopack UpdateManager：<https://docs.velopack.io/reference/cs/Velopack/UpdateManager>

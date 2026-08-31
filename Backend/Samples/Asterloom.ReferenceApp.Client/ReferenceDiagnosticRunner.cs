@@ -181,8 +181,8 @@ internal sealed class ReferenceDiagnosticRunner(
             new AsterloomReleaseClientOptions
             {
                 Scope = scope,
-                TargetRuntimeId = ReferenceAppProvisioner.GetRuntimeIdentifier(),
-                PackageId = "asterloom-reference-client",
+                TargetRuntimeId = state.ReleaseRuntimeId,
+                PackageId = state.ReleasePackageId,
                 TrustedPublicKeysByFingerprint = new Dictionary<string, string>
                 {
                     [state.ReleaseSigningKeyFingerprint] = state.ReleasePublicKeyPem,
@@ -191,12 +191,12 @@ internal sealed class ReferenceDiagnosticRunner(
             });
         var decision = await client.CheckForUpdateAsync(
             state.ReleaseChannelKey,
-            "0.0.0",
+            state.ReleaseBaselineVersion,
             AsterloomReleaseContext.Create(
                 scope,
                 "reference-update-client",
-                clientVersion: "0.0.0",
-                platform: ReferenceAppProvisioner.GetRuntimeIdentifier(),
+                clientVersion: state.ReleaseBaselineVersion,
+                platform: state.ReleaseRuntimeId,
                 region: "CN"),
             cancellationToken);
         if (!decision.UpdateAvailable)
@@ -204,17 +204,48 @@ internal sealed class ReferenceDiagnosticRunner(
             throw new InvalidOperationException($"Expected an update: {decision.Reason}.");
         }
 
-        using var destination = new MemoryStream();
-        await client.DownloadToAsync(
-            decision,
-            destination,
-            cancellationToken: cancellationToken);
-        if (destination.Length == 0)
+        if (!string.Equals(
+                decision.Manifest!.ReleaseVersion,
+                state.ReleaseTargetVersion,
+                StringComparison.Ordinal))
         {
-            throw new InvalidDataException("The verified update artifact was empty.");
+            throw new InvalidDataException(
+                $"Expected release {state.ReleaseTargetVersion}, got {decision.Manifest.ReleaseVersion}.");
         }
 
-        return $"Signed {decision.Manifest!.ReleaseVersion} update downloaded and verified ({destination.Length} bytes).";
+        var downloads = decision.ArtifactDownloads;
+        if (state.ReleaseHasDelta
+            && (decision.SelectedArtifact?.ArtifactKind != AsterloomReleaseArtifactKind.Delta
+                || !downloads.Any(static item =>
+                    item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Full)
+                || !downloads.Any(static item =>
+                    item.Artifact.ArtifactKind == AsterloomReleaseArtifactKind.Delta)))
+        {
+            throw new InvalidDataException(
+                "The real-package diagnostic did not receive both the selected Delta and Full fallback.");
+        }
+
+        var totalBytes = 0L;
+        foreach (var download in downloads)
+        {
+            using var destination = new MemoryStream();
+            await client.DownloadArtifactToAsync(
+                decision,
+                download.Artifact.Id,
+                destination,
+                cancellationToken: cancellationToken);
+            if (destination.Length == 0)
+            {
+                throw new InvalidDataException(
+                    $"The verified {download.Artifact.ArtifactKind} update artifact was empty.");
+            }
+
+            totalBytes += destination.Length;
+        }
+
+        return state.ReleaseHasDelta
+            ? $"Signed {decision.Manifest.ReleaseVersion} Full+Delta pair downloaded and verified ({totalBytes} bytes)."
+            : $"Signed {decision.Manifest.ReleaseVersion} Full update downloaded and verified ({totalBytes} bytes).";
     }
 
     private async Task<string> TestAnalyticsAsync(CancellationToken cancellationToken)

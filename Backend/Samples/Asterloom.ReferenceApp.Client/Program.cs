@@ -1,10 +1,13 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Asterloom.Sdk.Identity;
+using Asterloom.Sdk.Release;
 using Asterloom.Sdk.Rpc;
 using Asterloom.Sdk.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Velopack;
 
 namespace Asterloom.ReferenceApp.Client;
 
@@ -12,9 +15,19 @@ internal static class Program
 {
     private static readonly JsonSerializerOptions IndentedJsonOptions =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static string? _velopackRestartVersion;
 
     [STAThread]
-    public static async Task<int> Main(string[] args)
+    public static int Main(string[] args)
+    {
+        VelopackApp.Build()
+            .OnRestarted(version => _velopackRestartVersion = version.ToFullString())
+            .Run();
+
+        return MainAsync(args).GetAwaiter().GetResult();
+    }
+
+    private static async Task<int> MainAsync(string[] args)
     {
         var command = args.FirstOrDefault()?.Trim().ToLowerInvariant() ?? "doctor";
         if (command is "help" or "--help" or "-h")
@@ -36,6 +49,13 @@ internal static class Program
                     cancellation.Token),
                 "account-login" => await RunAccountLoginAsync(
                     settings,
+                    args,
+                    cancellation.Token),
+                "update" => await RunDesktopUpdateAsync(
+                    settings,
+                    args,
+                    cancellation.Token),
+                "update-complete" => await CompleteDesktopUpdateAsync(
                     args,
                     cancellation.Token),
                 "provision" => await RunServiceCommandAsync(
@@ -62,6 +82,191 @@ internal static class Program
             Console.Error.WriteLine($"Reference app failed: {exception.Message}");
             return 2;
         }
+    }
+
+    private static async Task<int> RunDesktopUpdateAsync(
+        ReferenceAppSettings settings,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var resultFile = Path.GetFullPath(RequireArgument(args, 1, "result file"));
+        var forceFull = args.Contains("--force-full", StringComparer.OrdinalIgnoreCase);
+        var state = await ReferenceAppState.LoadAsync(settings.StateFile, cancellationToken);
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddAsterloomIdentityClient(options =>
+        {
+            options.Issuer = settings.PassportIssuer;
+            options.ClientId = settings.ServiceClientId;
+            options.ClientSecret = settings.ServiceClientSecret;
+            options.RegistrationId = "asterloom-reference-updater";
+            options.EnableServiceCredentials = true;
+            options.AllowInsecureHttpForDevelopment = settings.AllowInsecureDevelopment;
+        });
+        using var host = builder.Build();
+        await host.StartAsync(cancellationToken);
+        try
+        {
+            var identity = host.Services.GetRequiredService<AsterloomIdentityClient>();
+            await identity.GetServiceAccessTokenAsync(cancellationToken: cancellationToken);
+            using var transport = AsterloomAuthenticatedTransport.Create(
+                settings.AsterloomBaseAddress,
+                identity.GetAccessTokenAsync,
+                allowInsecureHttpForDevelopment: settings.AllowInsecureDevelopment);
+            var scope = new AsterloomReleaseScope(
+                state.TenantId,
+                state.ApplicationId,
+                state.EnvironmentId);
+            using var releaseClient = new AsterloomReleaseClient(
+                transport.HttpClient,
+                new AsterloomReleaseClientOptions
+                {
+                    Scope = scope,
+                    TargetRuntimeId = state.ReleaseRuntimeId,
+                    PackageId = state.ReleasePackageId,
+                    TrustedPublicKeysByFingerprint = new Dictionary<string, string>
+                    {
+                        [state.ReleaseSigningKeyFingerprint] = state.ReleasePublicKeyPem,
+                    },
+                    AllowInsecureDownloadUrls = settings.AllowInsecureDevelopment,
+                });
+            var downloadedAssets = new ConcurrentQueue<VelopackAsset>();
+            var updateSource = new AsterloomVelopackUpdateSource(
+                releaseClient,
+                currentVersion => AsterloomReleaseContext.Create(
+                    scope,
+                    "reference-installed-update-client",
+                    clientVersion: currentVersion,
+                    platform: state.ReleaseRuntimeId,
+                    region: "CN"),
+                downloadedAssets.Enqueue);
+            var updateManager = new UpdateManager(
+                updateSource,
+                new UpdateOptions
+                {
+                    ExplicitChannel = state.ReleaseChannelKey,
+                    MaximumDeltasBeforeFallback = forceFull ? -1 : 10,
+                });
+            if (!updateManager.IsInstalled || updateManager.CurrentVersion is null)
+            {
+                throw new InvalidOperationException(
+                    "The update command must run from a real Velopack installation.");
+            }
+
+            var currentVersion = updateManager.CurrentVersion.ToFullString();
+            var update = await updateManager.CheckForUpdatesAsync();
+            if (update is null)
+            {
+                throw new InvalidOperationException(
+                    $"No update was offered to installed version {currentVersion}.");
+            }
+
+            await updateManager.DownloadUpdatesAsync(
+                update,
+                progress => Console.WriteLine($"Update download: {progress}%"),
+                cancellationToken);
+            var downloadedKinds = downloadedAssets
+                .Select(static asset => asset.Type.ToString())
+                .ToArray();
+            if (forceFull)
+            {
+                if (!downloadedAssets.Any(static asset => asset.Type == VelopackAssetType.Full)
+                    || downloadedAssets.Any(static asset => asset.Type == VelopackAssetType.Delta))
+                {
+                    throw new InvalidOperationException(
+                        "The forced Full path did not exclusively download the Full package.");
+                }
+            }
+            else if (state.ReleaseHasDelta)
+            {
+                if (update.DeltasToTarget.Length == 0
+                    || !downloadedAssets.Any(static asset => asset.Type == VelopackAssetType.Delta)
+                    || downloadedAssets.Any(static asset => asset.Type == VelopackAssetType.Full))
+                {
+                    throw new InvalidOperationException(
+                        "Velopack did not complete the update through the expected Delta-only download path.");
+                }
+            }
+
+            await WriteJsonAsync(
+                resultFile,
+                new
+                {
+                    completed = false,
+                    mode = forceFull ? "full" : "delta",
+                    currentVersion,
+                    targetVersion = update.TargetFullRelease.Version.ToFullString(),
+                    offeredDeltaCount = update.DeltasToTarget.Length,
+                    downloadedKinds,
+                    downloadedFiles = downloadedAssets.Select(static asset => asset.FileName).ToArray(),
+                    downloadedAt = DateTimeOffset.UtcNow,
+                },
+                cancellationToken);
+
+            Console.WriteLine(
+                $"Applying {currentVersion} -> {update.TargetFullRelease.Version.ToFullString()} "
+                + $"through the {(forceFull ? "Full" : "Delta")} path.");
+            await host.StopAsync(CancellationToken.None);
+            updateManager.ApplyUpdatesAndRestart(
+                update.TargetFullRelease,
+                ["update-complete", resultFile, update.TargetFullRelease.Version.ToFullString()]);
+            return 0;
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<int> CompleteDesktopUpdateAsync(
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var resultFile = Path.GetFullPath(RequireArgument(args, 1, "result file"));
+        var expectedVersion = RequireArgument(args, 2, "expected version");
+        using var previousDocument = JsonDocument.Parse(
+            await File.ReadAllTextAsync(resultFile, cancellationToken));
+        var actualVersion = typeof(Program).Assembly.GetName().Version?.ToString(3)
+            ?? throw new InvalidOperationException("The running application version is unavailable.");
+        if (!string.Equals(actualVersion, expectedVersion, StringComparison.Ordinal)
+            || !string.Equals(_velopackRestartVersion, expectedVersion, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Velopack restarted version '{_velopackRestartVersion ?? "unknown"}', "
+                + $"assembly '{actualVersion}', expected '{expectedVersion}'.");
+        }
+
+        await WriteJsonAsync(
+            resultFile,
+            new
+            {
+                completed = true,
+                expectedVersion,
+                actualVersion,
+                velopackRestartVersion = _velopackRestartVersion,
+                update = previousDocument.RootElement.Clone(),
+                completedAt = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+        Console.WriteLine($"Velopack update and restart completed at {actualVersion}.");
+        return 0;
+    }
+
+    private static async Task WriteJsonAsync(
+        string path,
+        object value,
+        CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        await File.WriteAllTextAsync(
+            path,
+            JsonSerializer.Serialize(value, IndentedJsonOptions),
+            cancellationToken);
     }
 
     private static async Task<int> RunServiceCommandAsync(
@@ -102,7 +307,9 @@ internal static class Program
                 allowInsecureHttpForDevelopment: settings.AllowInsecureDevelopment);
             if (provision)
             {
-                var state = await new ReferenceAppProvisioner(transport.HttpClient)
+                var state = await new ReferenceAppProvisioner(
+                        transport.HttpClient,
+                        settings.DesktopRelease)
                     .ProvisionAsync(cancellationToken);
                 await state.SaveAsync(settings.StateFile, cancellationToken);
                 if (json)
@@ -304,6 +511,8 @@ internal static class Program
         Console.WriteLine("  account-demo EMAIL NAME");
         Console.WriteLine("                      Register, confirm, login, inspect, and logout via the sample BFF.");
         Console.WriteLine("  account-login EMAIL Login through the sample BFF and inspect its server-side session.");
+        Console.WriteLine("  update RESULT_FILE [--force-full]");
+        Console.WriteLine("                      Download, apply, restart, and prove an installed Velopack update.");
         Console.WriteLine();
         Console.WriteLine("Required environment variables:");
         Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_ID");

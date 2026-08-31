@@ -9,6 +9,7 @@ internal sealed record ReferenceAppSettings(
     string ServiceClientSecret,
     string InteractiveClientId,
     string StateFile,
+    ReferenceDesktopReleaseSettings DesktopRelease,
     bool AllowInsecureDevelopment)
 {
     public static ReferenceAppSettings Load()
@@ -39,6 +40,7 @@ internal sealed record ReferenceAppSettings(
             Environment.GetEnvironmentVariable("ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID")
                 ?.Trim() ?? "asterloom-reference-native",
             Path.GetFullPath(stateFile),
+            ReferenceDesktopReleaseSettings.Load(),
             ReadBoolean("ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT")
                 || (baseAddress.IsLoopback && baseAddress.Scheme == Uri.UriSchemeHttp));
     }

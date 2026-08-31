@@ -423,7 +423,27 @@ Old clients trust only embedded keys. Rotate safely:
 
 Immediately switching to a new key strands old clients that cannot authenticate the update carrying that key.
 
-## 9. CI checklist
+## 9. Executable Reference App regression
+
+The repository pins both the C# package and `vpk` to 1.2.0. Build two real Sample App versions with:
+
+```powershell
+./Deploy/Scripts/Build-Reference-DesktopUpdate.ps1 `
+  -OutputDirectory "$env:TEMP/asterloom-reference-update"
+```
+
+The script retains the 1.0.0 installer, creates 1.0.0/1.1.0 Full packages and the direct Delta, reconstructs the
+target Full with `vpk delta patch`, and requires a byte-identical SHA-256. Configure the three generated package
+paths through `ASTERLOOM_REFERENCE_RELEASE_BASE_FULL`, `_TARGET_FULL`, and `_TARGET_DELTA`, then run Reference App
+`provision` to upload, sign, and publish both versions.
+
+Install the retained baseline Setup and run `Asterloom.ReferenceApp.Client.exe update RESULT.json`. The installed
+client records which artifact types the Asterloom source actually downloaded, applies the update, restarts, and
+records the Velopack restart version. Reinstall the baseline and add `--force-full` to prove the Full path. A test
+passes only when the normal run downloads Delta without Full, the forced run downloads Full without Delta, and
+both restart into the target assembly version. Running from `bin/` or a portable folder is intentionally rejected.
+
+## 10. CI checklist
 
 - [ ] Publish with the correct RID and Release configuration.
 - [ ] Pin `vpk` to the application Velopack version.
@@ -440,7 +460,7 @@ Immediately switching to a new key strands old clients that cannot authenticate 
 - [ ] Test both successful Delta reconstruction and forced Full fallback.
 - [ ] Prepare Telemetry/Analytics monitoring and a signed rollback target.
 
-## 10. Related implementation
+## 11. Related implementation
 
 - Release client: [AsterloomReleaseClient.cs](../../Backend/Asterloom.Sdk.Release/AsterloomReleaseClient.cs)
 - Velopack adapter: [AsterloomVelopackUpdateSource.cs](../../Backend/Asterloom.Sdk.Release/AsterloomVelopackUpdateSource.cs)
@@ -448,6 +468,7 @@ Immediately switching to a new key strands old clients that cannot authenticate 
 - Runtime protocol: [release.proto](../../Proto/Asterloom/release/v1/release.proto)
 - Admin protocol: [release_admin.proto](../../Proto/Asterloom/release/v1/release_admin.proto)
 - Executable signing/upload example: [ReferenceAppProvisioner.cs](../../Backend/Samples/Asterloom.ReferenceApp.Client/ReferenceAppProvisioner.cs)
+- Reproducible Full/Delta builder: [Build-Reference-DesktopUpdate.ps1](../../Deploy/Scripts/Build-Reference-DesktopUpdate.ps1)
 - General feature guide: [Feature-Guide.md](../Feature-Guide.md)
 - Velopack C# guide: <https://docs.velopack.io/getting-started/csharp>
 - Velopack UpdateManager: <https://docs.velopack.io/reference/cs/Velopack/UpdateManager>

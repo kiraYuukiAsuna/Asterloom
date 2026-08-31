@@ -8,10 +8,18 @@ namespace Asterloom.Sdk.Release;
 
 public sealed class AsterloomVelopackUpdateSource(
     AsterloomReleaseClient client,
-    Func<string, TargetingEvaluationContext> contextFactory) : IUpdateSource
+    Func<string, TargetingEvaluationContext> contextFactory,
+    Action<VelopackAsset>? downloadCompleted) : IUpdateSource
 {
     private readonly ConcurrentDictionary<string, DownloadState> _downloads =
         new(StringComparer.Ordinal);
+
+    public AsterloomVelopackUpdateSource(
+        AsterloomReleaseClient client,
+        Func<string, TargetingEvaluationContext> contextFactory)
+        : this(client, contextFactory, downloadCompleted: null)
+    {
+    }
 
     public async Task<VelopackAssetFeed> GetReleaseFeed(
         IVelopackLogger logger,
@@ -128,6 +136,7 @@ public sealed class AsterloomVelopackUpdateSource(
                 progress,
                 cancelToken)
             .ConfigureAwait(false);
+        downloadCompleted?.Invoke(releaseEntry);
     }
 
     private static string Key(VelopackAsset asset) =>

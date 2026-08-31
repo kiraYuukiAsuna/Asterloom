@@ -36,7 +36,7 @@ Reference Client
 
 ## 2. 命令
 
-客户端包含五个命令：
+客户端包含六个对外命令：
 
 ```bash
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
@@ -44,6 +44,8 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-login user@example.com
+# 下面的 update 必须从 Velopack 安装目录中的程序运行，不能用 dotnet run。
+Asterloom.ReferenceApp.Client.exe update update-result.json [--force-full]
 ```
 
 - `provision`：创建独立的 tenant/application/environment，以及分群、已发布 Feature Flag、已发布动态配置、存储桶、签名密钥、更新通道、签名更新包、Analytics Schema/Write Key 和 Telemetry Source；敏感状态只写入被 Git 忽略的 `reference-state.json`。
@@ -51,6 +53,8 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-lo
 - `login`：启动系统浏览器，以 OIDC Authorization Code + PKCE 登录 Passport，并验证 token/refresh token。此命令用于桌面交互验证，不在无界面的容器中执行。
 - `account-demo`：通过参考后台真实执行业务用户注册、邮箱确认、密码登录、读取服务端 Session 和退出。
 - `account-login`：使用已有全局账号登录参考业务，并验证应用绑定的 `tenant_id`、`application_id` 和全局 `sub`。
+- `update`：仅在真实 Velopack 安装态运行；经 Asterloom 检查、下载并应用更新，重启到新版本后把下载的
+  `Delta`/`Full` 类型、前后版本和 Restart Hook 结果写入指定 JSON。`--force-full` 禁用 Delta，用于验证 Full 回退。
 
 两个 `account-*` 命令从 `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` 读取密码，避免密码进入命令历史。
 `account-demo` 若没有接入真实邮件发送，需要在执行 Provision 脚本前显式设置
@@ -82,6 +86,13 @@ Client Credentials、Password、Refresh Token、可信注册和登录自动加�
 | `ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID` | 否 | public native OIDC client ID。 |
 | `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` | account 命令需要 | 业务账号演练密码，只从环境读取。 |
 | `ASTERLOOM_REFERENCE_STATE_FILE` | 否 | provision 产生的状态文件。 |
+| `ASTERLOOM_REFERENCE_RELEASE_PACKAGE_ID` | 真实更新测试 | 必须与 `vpk --packId` 相同。 |
+| `ASTERLOOM_REFERENCE_RELEASE_RUNTIME_ID` | 真实更新测试 | Artifact RID，例如 `win-x64`。 |
+| `ASTERLOOM_REFERENCE_RELEASE_BASE_VERSION` | 真实更新测试 | 已安装基线版本。 |
+| `ASTERLOOM_REFERENCE_RELEASE_TARGET_VERSION` | 真实更新测试 | 目标版本。 |
+| `ASTERLOOM_REFERENCE_RELEASE_BASE_FULL` | 真实更新测试 | 基线 Full `.nupkg` 路径。 |
+| `ASTERLOOM_REFERENCE_RELEASE_TARGET_FULL` | 真实更新测试 | 目标 Full `.nupkg` 路径。 |
+| `ASTERLOOM_REFERENCE_RELEASE_TARGET_DELTA` | 真实更新测试 | 从基线到目标的 Delta `.nupkg` 路径。 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | 否 | OTLP Collector 地址；未设置时禁用导出。 |
 
 除显式启用的 loopback 开发环境外，Passport 和平台地址必须使用 HTTPS。
@@ -96,7 +107,7 @@ Client Credentials、Password、Refresh Token、可信注册和登录自动加�
 | Feature Flag | `AsterloomFeatureProvider` | CN context 命中 segment 并返回 `on/true`。 |
 | Rollout | Feature allocation 与 Release 100% rollout | 产生稳定且可解释的命中结果。 |
 | Dynamic Config | `AsterloomConfigClient` snapshot/typed getter | CN context 返回目标值，snapshot 包含配置 key。 |
-| Desktop Update | `AsterloomReleaseClient` check/download/verify | 找到新版本，manifest 和 artifact RSA-PSS 签名及 SHA-256 全部通过。生产桌面包可直接把同一 client 包装为 `AsterloomVelopackUpdateSource` 交给 Velopack `UpdateManager` 安装。 |
+| Desktop Update | 真实 `vpk` Full/Delta、`AsterloomVelopackUpdateSource`、安装态 `UpdateManager` | Delta 下载并逐字节还原目标 Full；真实安装程序从基线更新、替换、重启到目标版本；可强制验证 Full 回退。 |
 | Analytics | `AsterloomAnalyticsClient.TrackAsync/FlushAsync` | Schema 校验通过且 accepted=1、remaining=0。 |
 | Telemetry | 自定义 Activity/Meter/Log + OTLP；读取 source/collector health | 三类信号均生成，Collector 管理 API 可访问。 |
 | RPC | 调用参考后台 `RecordHeartbeat` | 原生 HTTP/2 gRPC 成功返回 heartbeat ID。 |
@@ -105,7 +116,30 @@ Client Credentials、Password、Refresh Token、可信注册和登录自动加�
 | Persistence | 参考后台 Npgsql 查询 | 新 heartbeat 可从 PostgreSQL `reference_app.client_heartbeats` 读回。 |
 | Operations | health、API catalog、OpenAPI，以及各后台主列表 | 全部返回 2xx；用于捕获缺表、权限映射和代理错误。 |
 
-参考应用生成的诊断更新包是平台传输/签名探针；如果要测试 Velopack 的最终替换与重启，应把由 `vpk pack` 生成的真实 `.nupkg` 上传到同一 channel。平台检查、定向、签名验证和下载路径保持不变。
+未配置三个 Package 路径时，`provision` 仍创建轻量签名探针供常规 13 项 `doctor` 使用；三个路径全部配置时，
+它会依次发布基线 Full，以及包含目标 Full + Delta 的目标版本。路径只允许全部提供或全部省略，避免把半套 Release
+误判为差分更新成功。
+
+### 4.1 真实桌面更新回归
+
+仓库固定使用 Velopack 1.2.0。脚本会构建 Sample 1.0.0/1.1.0，生成真实 Full/Delta 和 1.0.0 Setup，随后用
+`vpk delta patch` 还原目标 Full 并比较 SHA-256；哈希不同会立即失败：
+
+```powershell
+./Deploy/Scripts/Build-Reference-DesktopUpdate.ps1 `
+  -OutputDirectory "$env:TEMP/asterloom-reference-update"
+```
+
+把脚本输出的三个 `.nupkg` 路径配置到上述环境变量后运行 `provision`。安装基线 Setup，再从安装目录运行：
+
+```powershell
+Asterloom.ReferenceApp.Client.exe update "$env:TEMP/delta-result.json"
+# 卸载并重新安装 1.0.0 后，单独验证 Full 路径：
+Asterloom.ReferenceApp.Client.exe update "$env:TEMP/full-result.json" --force-full
+```
+
+成功凭证必须同时满足：Delta 场景只从 Asterloom 下载 `Delta`，Full 场景只下载 `Full`，两次均触发
+`OnRestarted`，且重启后的程序集版本等于目标版本。直接从 `bin/` 或 Portable 包运行会被拒绝，因为它不能证明真实替换。
 
 ## 5. 生产部署与运行
 
