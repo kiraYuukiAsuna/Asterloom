@@ -4,9 +4,12 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repository_root"
 
-domain="${ASTERLOOM_DOMAIN:-asterloom.kirayuukiasuna.cloud}"
+# shellcheck disable=SC1091
+source Deploy/Scripts/Production-Domain.sh
+load_asterloom_production_domain true
+
+domain="$ASTERLOOM_DOMAIN"
 base_url="https://$domain"
-environment_file="${ASTERLOOM_ENV_FILE:-.env}"
 reference_directory="${ASTERLOOM_REFERENCE_DIRECTORY:-.data/reference-app}"
 reference_environment="$reference_directory/reference.env"
 reference_state_directory="$reference_directory/state"
@@ -15,16 +18,6 @@ service_client_id="${ASTERLOOM_REFERENCE_CLIENT_ID:-asterloom-reference-service}
 native_client_id="${ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID:-asterloom-reference-native}"
 business_client_id="${ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID:-asterloom-reference-business}"
 binding_id="7fc2e239-3fa1-7ef1-8c20-5c7d54b7bd77"
-
-if [[ ! -f "$environment_file" ]]; then
-  echo "Environment file not found: $environment_file" >&2
-  exit 1
-fi
-
-set -a
-# shellcheck disable=SC1090
-source "$environment_file"
-set +a
 
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL:?ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL is required}"
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD:?ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD is required}"

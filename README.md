@@ -125,8 +125,9 @@ complete before the server starts.
 
 Production combines the root Compose file with
 `Deploy/docker-compose.production.yml`, while Nginx and TLS run on the host.
-The checked-in assets currently target `asterloom.kirayuukiasuna.cloud` and
-require generated secrets, explicit migrations, persistent cryptographic keys,
-and post-deployment smoke tests. Follow the
+The public domain is configured once through `ASTERLOOM_DOMAIN` in the root
+`.env` and defaults to `asterloom.momiya.cloud`. Production also requires
+generated secrets, explicit migrations, persistent cryptographic keys, and
+post-deployment smoke tests. Follow the
 [production deployment procedure and per-file reference](Deploy/README.md)
 instead of running the production override by itself.

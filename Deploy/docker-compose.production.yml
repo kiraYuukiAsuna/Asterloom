@@ -3,22 +3,22 @@ name: asterloom-production
 services:
   migrations:
     environment:
-      Identity__Issuer: https://asterloom.kirayuukiasuna.cloud/
-      Identity__WebClient__RedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/callback
-      Identity__WebClient__PostLogoutRedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/logout/callback
+      Identity__Issuer: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/
+      Identity__WebClient__RedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/callback
+      Identity__WebClient__PostLogoutRedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/logout/callback
 
   server:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      Identity__Issuer: https://asterloom.kirayuukiasuna.cloud/
+      Identity__Issuer: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/
       Identity__Certificates__Signing__Path: /run/secrets/asterloom-signing.pfx
       Identity__Certificates__Signing__Password: ${ASTERLOOM_CERTIFICATE_PASSWORD:?ASTERLOOM_CERTIFICATE_PASSWORD is required}
       Identity__Certificates__Encryption__Path: /run/secrets/asterloom-encryption.pfx
       Identity__Certificates__Encryption__Password: ${ASTERLOOM_CERTIFICATE_PASSWORD:?ASTERLOOM_CERTIFICATE_PASSWORD is required}
-      Identity__WebClient__RedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/callback
-      Identity__WebClient__PostLogoutRedirectUri: https://asterloom.kirayuukiasuna.cloud/api/auth/logout/callback
-      Storage__PublicEndpoint: https://asterloom.kirayuukiasuna.cloud
+      Identity__WebClient__RedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/callback
+      Identity__WebClient__PostLogoutRedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/logout/callback
+      Storage__PublicEndpoint: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}
     ports: !override
       - "127.0.0.1:60001:8000"
       - "127.0.0.1:60002:8001"
@@ -32,9 +32,9 @@ services:
 
   web:
     environment:
-      ASTERLOOM_PASSPORT_PUBLIC_URL: https://asterloom.kirayuukiasuna.cloud
-      ASTERLOOM_WEB_ORIGIN: https://asterloom.kirayuukiasuna.cloud
-      ASTERLOOM_OIDC_ISSUER: https://asterloom.kirayuukiasuna.cloud
+      ASTERLOOM_PASSPORT_PUBLIC_URL: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}
+      ASTERLOOM_WEB_ORIGIN: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}
+      ASTERLOOM_OIDC_ISSUER: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}
       ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "false"
     ports: !override
       - "127.0.0.1:60000:3000"
@@ -59,8 +59,8 @@ services:
       - path: ./.data/reference-app/reference.env
         required: false
     environment:
-      ASTERLOOM_BASE_URL: https://asterloom.kirayuukiasuna.cloud/
-      ASTERLOOM_ISSUER: https://asterloom.kirayuukiasuna.cloud/
+      ASTERLOOM_BASE_URL: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/
+      ASTERLOOM_ISSUER: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/
       ASTERLOOM_REFERENCE_BACKEND_URL: http://reference-backend:5090/
       ASTERLOOM_REFERENCE_BACKEND_GRPC_URL: http://reference-backend:5091/
       ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "false"

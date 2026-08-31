@@ -191,9 +191,9 @@ Web 的多个 `An unexpected error occurred.` 并非前端统一主题问题，�
 生产回归使用独立配置，不启动本地 `webServer`，也不在仓库中保存管理员凭据：
 
 ```powershell
-$env:ASTERLOOM_E2E_WEB_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
-$env:ASTERLOOM_E2E_PASSPORT_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
-$env:ASTERLOOM_E2E_API_ORIGIN = "https://asterloom.kirayuukiasuna.cloud"
+$env:ASTERLOOM_E2E_WEB_ORIGIN = "https://asterloom.momiya.cloud"
+$env:ASTERLOOM_E2E_PASSPORT_ORIGIN = "https://asterloom.momiya.cloud"
+$env:ASTERLOOM_E2E_API_ORIGIN = "https://asterloom.momiya.cloud"
 $env:ASTERLOOM_E2E_ADMIN_EMAIL = "<production-admin-email>"
 $env:ASTERLOOM_E2E_ADMIN_PASSWORD = "<production-admin-password>"
 npm --prefix Frontend run test:e2e:production

@@ -16,7 +16,7 @@ internal sealed record ReferenceAppSettings(
     {
         var baseAddress = ReadUri(
             "ASTERLOOM_BASE_URL",
-            "https://asterloom.kirayuukiasuna.cloud/");
+            "https://asterloom.momiya.cloud/");
         var issuer = ReadUri("ASTERLOOM_ISSUER", baseAddress.AbsoluteUri);
         var referenceBackend = ReadUri(
             "ASTERLOOM_REFERENCE_BACKEND_URL",

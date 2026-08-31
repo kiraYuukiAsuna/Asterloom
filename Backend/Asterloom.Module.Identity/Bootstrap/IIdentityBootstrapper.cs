@@ -32,6 +32,12 @@ internal sealed class IdentityBootstrapper(
             new EventId(3002, nameof(LogCreatedAdmin)),
             "Created bootstrap administrator {AdminEmail}.");
 
+    private static readonly Action<ILogger, string, Exception?> LogUpdatedClient =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(3003, nameof(LogUpdatedClient)),
+            "Updated bootstrap OIDC client {ClientId} from current configuration.");
+
     public async Task BootstrapAsync(CancellationToken cancellationToken)
     {
         await EnsureRolesAsync(cancellationToken);
@@ -89,23 +95,42 @@ internal sealed class IdentityBootstrapper(
             cancellationToken);
         if (existing is not null)
         {
-            if (!await applicationManager.HasApplicationTypeAsync(
-                    existing,
-                    ApplicationTypes.Web,
-                    cancellationToken))
+            var existingDescriptor = new OpenIddictApplicationDescriptor();
+            await applicationManager.PopulateAsync(
+                existingDescriptor,
+                existing,
+                cancellationToken);
+            var expectedRedirectUris = new HashSet<Uri>
             {
-                var existingDescriptor = new OpenIddictApplicationDescriptor();
-                await applicationManager.PopulateAsync(
-                    existingDescriptor,
-                    existing,
-                    cancellationToken);
-                existingDescriptor.ApplicationType = ApplicationTypes.Web;
-                await applicationManager.UpdateAsync(
-                    existing,
-                    existingDescriptor,
-                    cancellationToken);
+                options.WebClientRedirectUri,
+            };
+            var expectedPostLogoutRedirectUris = new HashSet<Uri>();
+            if (options.WebClientPostLogoutRedirectUri is not null)
+            {
+                expectedPostLogoutRedirectUris.Add(
+                    options.WebClientPostLogoutRedirectUri);
             }
 
+            var requiresUpdate = existingDescriptor.ApplicationType != ApplicationTypes.Web
+                || !existingDescriptor.RedirectUris.SetEquals(expectedRedirectUris)
+                || !existingDescriptor.PostLogoutRedirectUris.SetEquals(
+                    expectedPostLogoutRedirectUris);
+            if (!requiresUpdate)
+            {
+                return;
+            }
+
+            existingDescriptor.ApplicationType = ApplicationTypes.Web;
+            existingDescriptor.RedirectUris.Clear();
+            existingDescriptor.RedirectUris.UnionWith(expectedRedirectUris);
+            existingDescriptor.PostLogoutRedirectUris.Clear();
+            existingDescriptor.PostLogoutRedirectUris.UnionWith(
+                expectedPostLogoutRedirectUris);
+            await applicationManager.UpdateAsync(
+                existing,
+                existingDescriptor,
+                cancellationToken);
+            LogUpdatedClient(logger, options.WebClientId, null);
             return;
         }
 

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Asterloom.Modules.Identity.Bootstrap;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.WebUtilities;
@@ -213,6 +214,39 @@ public sealed partial class IdentityProtocolTests
         Assert.False(string.IsNullOrWhiteSpace(
             payload.GetProperty(Parameters.AccessToken).GetString()));
         Assert.False(payload.TryGetProperty(Parameters.RefreshToken, out _));
+    }
+
+    [Fact]
+    public async Task BootstrapReconcilesConfiguredWebClientRedirectUris()
+    {
+        using var isolatedFactory = new IdentityWebApplicationFactory();
+        using var startupClient = isolatedFactory.CreateClient();
+        using var scope = isolatedFactory.Services.CreateScope();
+        var manager = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var bootstrapper = scope.ServiceProvider
+            .GetRequiredService<IIdentityBootstrapper>();
+        var application = await manager.FindByClientIdAsync(ClientId)
+            ?? throw new InvalidOperationException("The bootstrap Web client is missing.");
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await manager.PopulateAsync(descriptor, application);
+        descriptor.RedirectUris.Clear();
+        descriptor.RedirectUris.Add(new Uri("https://old.example.test/callback"));
+        descriptor.PostLogoutRedirectUris.Clear();
+        descriptor.PostLogoutRedirectUris.Add(
+            new Uri("https://old.example.test/signed-out"));
+        await manager.UpdateAsync(application, descriptor);
+
+        await bootstrapper.BootstrapAsync(CancellationToken.None);
+
+        application = await manager.FindByClientIdAsync(ClientId)
+            ?? throw new InvalidOperationException("The reconciled Web client is missing.");
+        Assert.Collection(
+            await manager.GetRedirectUrisAsync(application),
+            value => Assert.Equal(RedirectUri, value));
+        Assert.Collection(
+            await manager.GetPostLogoutRedirectUrisAsync(application),
+            value => Assert.Equal("http://localhost/", value));
     }
 
     private async Task<HttpResponseMessage> PostTokenAsync(

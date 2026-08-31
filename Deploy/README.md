@@ -166,8 +166,9 @@ Commit the regenerated OpenAPI document and Kiota client with the source change.
 
 ## 3. Current production topology
 
-The checked-in production assets target `asterloom.kirayuukiasuna.cloud`. They
-run Nginx on the host and the application services in containers:
+The production domain is configured by `ASTERLOOM_DOMAIN` and defaults to
+`asterloom.momiya.cloud`. The deployment runs Nginx on the host and application
+services in containers:
 
 ```text
 Internet :80/:443
@@ -239,20 +240,39 @@ The scripts do not install system packages or configure DNS or cloud firewalls.
 The operator must also be authorized to access the Docker daemon; otherwise use
 `sudo` for Docker commands according to the host policy.
 
-### 4.2 Domain customization boundary
+### 4.2 Configure the production domain
 
-The current production domain appears in:
+The root `.env` is the single persistent source for the public domain:
 
-- `docker-compose.production.yml`: issuer, OIDC callbacks, and public storage URL;
-- `Nginx/asterloom.bootstrap.conf` and `Nginx/asterloom.conf`: `server_name`
-  and TLS paths;
-- `Scripts/Prepare-ProductionHost.sh`: Nginx site name and default admin email;
-- `Scripts/Enable-ProductionTls.sh`: Certbot domain, certificate name, and default
-  contact email.
+```dotenv
+ASTERLOOM_DOMAIN=asterloom.momiya.cloud
+CERTBOT_EMAIL=admin@asterloom.momiya.cloud
+```
 
-Update all of those consistently before deploying to another domain.
-`Provision-Reference-App.sh` and `Smoke-Test-Production.sh` accept a temporary
-`ASTERLOOM_DOMAIN` override, but it does not rewrite Compose or Nginx settings.
+`ASTERLOOM_DOMAIN` must be a DNS hostname without a scheme, path, port, or
+trailing slash. It drives the OIDC issuer and callbacks, public storage URL, Web
+origin, reference client, Certbot request, smoke tests, and both Nginx templates.
+The deployment scripts validate it before making host changes. `CERTBOT_EMAIL`
+is optional and defaults to `admin@<ASTERLOOM_DOMAIN>`.
+
+The production Compose override expands the same variable directly. Nginx does
+not expand environment variables, so `Install-ProductionNginx.sh` renders the
+checked-in `__ASTERLOOM_DOMAIN__` templates into the stable host site
+`/etc/nginx/sites-available/asterloom`, validates it, and reloads Nginx. Do not
+copy either template directly into `/etc/nginx`.
+
+A process-level `ASTERLOOM_DOMAIN` or `CERTBOT_EMAIL` overrides `.env` for an
+individual script/Compose invocation. Prefer recording production values in
+`.env` so every subsequent command uses the same domain.
+
+To change an existing deployment, first point the new DNS name at the host and
+schedule a maintenance window. Update both values in `.env`, rerun
+`Prepare-ProductionHost.sh` to install the new HTTP bootstrap site, run
+`Enable-ProductionTls.sh`, and recreate the production Compose stack. The
+migration/bootstrap service reconciles the built-in Web OIDC client's callback
+and logout URIs with the new domain. Rerun `Provision-Reference-App.sh` when the
+reference application is enabled. Because the public OIDC issuer changes,
+existing users should sign in again.
 
 ### 4.3 Check out the repository and prepare secrets
 
@@ -263,6 +283,10 @@ cd /home/Dev
 git clone <repository-url> Asterloom
 cd Asterloom
 sudo bash Deploy/Scripts/Prepare-ProductionHost.sh
+# For another domain, replace the command above with the following; the values
+# are persisted in the newly generated .env:
+# sudo ASTERLOOM_DOMAIN=identity.example.com CERTBOT_EMAIL=ops@example.com \
+#   bash Deploy/Scripts/Prepare-ProductionHost.sh
 ```
 
 `Prepare-ProductionHost.sh`:
@@ -278,6 +302,8 @@ securely define at least these values:
 
 | Variable | Purpose |
 | --- | --- |
+| `ASTERLOOM_DOMAIN` | Public DNS hostname shared by Compose, Nginx, TLS, provisioning, and validation. Defaults to `asterloom.momiya.cloud`. |
+| `CERTBOT_EMAIL` | ACME contact address. Defaults to `admin@<ASTERLOOM_DOMAIN>`. |
 | `POSTGRES_PASSWORD` | PostgreSQL application account. |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | S3-compatible object storage. |
 | `REDIS_PASSWORD` | BFF session Redis. |
@@ -302,8 +328,7 @@ After DNS has propagated and `/.well-known/acme-challenge/` is reachable over
 HTTP, run:
 
 ```bash
-sudo CERTBOT_EMAIL=admin@example.com \
-  bash Deploy/Scripts/Enable-ProductionTls.sh
+sudo bash Deploy/Scripts/Enable-ProductionTls.sh
 ```
 
 The script uses Certbot's webroot mode to obtain or reuse a certificate and then
@@ -352,8 +377,10 @@ sudo tail -n 200 /var/log/nginx/asterloom.error.log
 ### 4.6 Validate the deployment
 
 ```bash
-curl --fail https://asterloom.kirayuukiasuna.cloud/health/live
-curl --fail https://asterloom.kirayuukiasuna.cloud/health/ready
+source Deploy/Scripts/Production-Domain.sh
+load_asterloom_production_domain true
+curl --fail "https://$ASTERLOOM_DOMAIN/health/live"
+curl --fail "https://$ASTERLOOM_DOMAIN/health/ready"
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
@@ -396,10 +423,7 @@ for the full behavior.
 cd /home/Dev/Asterloom
 git pull --ff-only
 
-sudo install -m 0644 \
-  Deploy/Nginx/asterloom.conf \
-  /etc/nginx/sites-available/asterloom.kirayuukiasuna.cloud
-sudo nginx -t
+sudo bash Deploy/Scripts/Install-ProductionNginx.sh production
 
 docker compose \
   -f docker-compose.yml \
@@ -409,16 +433,16 @@ docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
   up -d --no-build --remove-orphans
-sudo systemctl reload nginx
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
 Building first lets the old containers continue serving traffic during the
 build. `up` then recreates services from the new images and executes the one-shot
 migration path before the server starts. Compose does not update host Nginx, so
-port or route changes require installing, validating, and reloading
-`Deploy/Nginx/asterloom.conf`. Do not use only `docker compose restart` for image
-or environment changes: restart does not recreate containers.
+port or route changes require rerunning `Install-ProductionNginx.sh production`;
+a domain change must follow the bootstrap and certificate sequence in section
+4.2. Do not use only `docker compose restart` for image or environment changes:
+restart does not recreate containers.
 
 ### 5.2 Troubleshooting commands
 
@@ -471,7 +495,7 @@ when connecting OTLP, Prometheus, Loki, or another backend.
 | --- | --- | --- |
 | [`README.md`](README.md) | Documentation | English version of this guide. |
 | [`README.zh-CN.md`](README.zh-CN.md) | Documentation | Chinese version of this guide. |
-| [`.env.example`](.env.example) | Local Compose | Example local database, MinIO, Redis, administrator, OIDC, and session values. Copy it to the repository root as `.env`; never use it as production secrets. |
+| [`.env.example`](.env.example) | Local Compose / configuration reference | Example domain, ACME contact, local database, MinIO, Redis, administrator, OIDC, and session values. Copy it to the repository root as `.env` only for local development; never use its example secrets in production. |
 | [`docker-compose.production.yml`](docker-compose.production.yml) | Production Compose | Overrides the root Compose domain, Production environment, certificates, persistent keys, and loopback ports; removes direct PostgreSQL and Collector host ports. It cannot run alone. |
 | [`Dockerfile.server-prebuilt`](Dockerfile.server-prebuilt) | Prebuilt server artifact | Runtime-only .NET image that copies already-published Server and Migrations output and runs as a non-root user. It does not compile source. |
 | [`Dockerfile.web-prebuilt`](Dockerfile.web-prebuilt) | Prebuilt web artifact | Runtime-only Node image for Next.js Standalone output; runs as `node` and removes npm/npx from the runtime image. |
@@ -485,11 +509,12 @@ scripts below.
 
 | File | Purpose |
 | --- | --- |
-| [`Nginx/asterloom.bootstrap.conf`](Nginx/asterloom.bootstrap.conf) | HTTP-only site used before certificate issuance. It serves ACME challenges and returns 503 for everything else. |
-| [`Nginx/asterloom.conf`](Nginx/asterloom.conf) | Full production reverse proxy for HTTP-to-HTTPS, TLS, Web, OIDC/JSON, native gRPC, the reference app, and object transfer. It allows request bodies up to 2 GiB. |
+| [`Nginx/asterloom.bootstrap.conf`](Nginx/asterloom.bootstrap.conf) | HTTP-only template used before certificate issuance. It serves ACME challenges and returns 503 for everything else. |
+| [`Nginx/asterloom.conf`](Nginx/asterloom.conf) | Full production reverse-proxy template for HTTP-to-HTTPS, TLS, Web, OIDC/JSON, native gRPC, the reference app, and object transfer. It allows request bodies up to 2 GiB. |
 
-The host scripts copy these files into `/etc/nginx/sites-available/`; they are not
-mounted into a container.
+`Install-ProductionNginx.sh` renders the domain placeholder and installs the
+result as `/etc/nginx/sites-available/asterloom`. The templates are not mounted
+into a container and must not be installed without rendering.
 
 ### 6.3 OpenTelemetry
 
@@ -503,6 +528,8 @@ mounted into a container.
 | --- | --- | --- |
 | [`Scripts/Prepare-ProductionHost.sh`](Scripts/Prepare-ProductionHost.sh) | Linux/root | Generates a missing `.env` and OpenIddict PFX files, prepares Data Protection storage, and installs the bootstrap Nginx site. It does not install packages or start Compose. |
 | [`Scripts/Enable-ProductionTls.sh`](Scripts/Enable-ProductionTls.sh) | Linux/root | Obtains a certificate with Certbot webroot and switches Nginx to the full HTTPS configuration. |
+| [`Scripts/Production-Domain.sh`](Scripts/Production-Domain.sh) | Linux/sourced helper | Loads `.env`, applies process-level overrides and defaults, validates `ASTERLOOM_DOMAIN` and `CERTBOT_EMAIL`, and exports them for deployment scripts. |
+| [`Scripts/Install-ProductionNginx.sh`](Scripts/Install-ProductionNginx.sh) | Linux/root | Renders either Nginx domain template, installs the stable `asterloom` site, removes a legacy domain-named enabled symlink, validates Nginx, and reloads it. `--render` writes the result to stdout without host changes. |
 | [`Scripts/Smoke-Test-Production.sh`](Scripts/Smoke-Test-Production.sh) | Linux | End-to-end production smoke test for HTTPS, Passport, OIDC, BFF, JSON API, and logout. |
 | [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | Uses the real Web BFF management APIs to create the reference tenant/application/OIDC clients and authorization binding, then writes new secrets to `.data/reference-app/reference.env`. It rotates secrets and mutates platform data. |
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | Publishes Server and Migrations in a temporary directory, creates a portable `.tar.gz`, and prints its SHA-256 and size. |

@@ -160,8 +160,8 @@ dotnet run --project Backend/Tools/Asterloom.ApiCoverage -- --repo-root .
 
 ## 3. 当前生产拓扑
 
-当前生产资产以 `asterloom.kirayuukiasuna.cloud` 为目标域名，采用宿主机 Nginx 和容器化
-应用：
+生产域名由 `ASTERLOOM_DOMAIN` 配置，默认值为 `asterloom.momiya.cloud`。部署采用宿主机
+Nginx 和容器化应用：
 
 ```text
 Internet :80/:443
@@ -230,18 +230,33 @@ Collector 和 MinIO Console 不对宿主机或公网直接开放。公网通常�
 脚本不会安装这些系统软件，也不会配置云防火墙或 DNS。执行 Compose 的运维账号还必须
 有权访问 Docker Daemon；否则应按宿主机策略为 Docker 命令使用 `sudo`。
 
-### 4.2 域名定制边界
+### 4.2 配置生产域名
 
-当前域名写在以下生产资产中：
+根目录 `.env` 是公网域名的唯一持久配置来源：
 
-- `docker-compose.production.yml`：Issuer、OIDC 回调地址和 Storage 公网地址；
-- `Nginx/asterloom.bootstrap.conf` 与 `Nginx/asterloom.conf`：`server_name` 和 TLS 路径；
-- `Scripts/Prepare-ProductionHost.sh`：Nginx Site 文件名和默认管理员邮箱；
-- `Scripts/Enable-ProductionTls.sh`：Certbot 域名、证书名和默认联系邮箱。
+```dotenv
+ASTERLOOM_DOMAIN=asterloom.momiya.cloud
+CERTBOT_EMAIL=admin@asterloom.momiya.cloud
+```
 
-部署到其他域名时必须一致修改以上文件。`Provision-Reference-App.sh` 和
-`Smoke-Test-Production.sh` 支持临时设置 `ASTERLOOM_DOMAIN`，但该变量不会自动改写
-Compose 或 Nginx 配置。
+`ASTERLOOM_DOMAIN` 必须是纯 DNS Hostname，不能包含协议、路径、端口或末尾斜杠。它统一
+控制 OIDC Issuer/回调地址、Storage 公网地址、Web Origin、参考客户端、Certbot、Smoke
+Test 和两份 Nginx 模板；脚本会在修改宿主机前校验格式。`CERTBOT_EMAIL` 可省略，默认是
+`admin@<ASTERLOOM_DOMAIN>`。
+
+生产 Compose 会直接展开同一个变量。Nginx 本身不会展开 `.env`，因此
+`Install-ProductionNginx.sh` 会把仓库模板中的 `__ASTERLOOM_DOMAIN__` 渲染为固定宿主机
+Site `/etc/nginx/sites-available/asterloom`，再校验并 reload Nginx。不要把模板直接复制到
+`/etc/nginx`。
+
+进程级 `ASTERLOOM_DOMAIN` 或 `CERTBOT_EMAIL` 可以覆盖 `.env`，但只对当次脚本/Compose
+命令生效。生产环境应优先把值写入 `.env`，确保后续所有命令使用同一个域名。
+
+已有部署切换域名前，应先把新 DNS 指向宿主机并安排维护窗口。修改 `.env` 中的两个值，
+依次重新运行 `Prepare-ProductionHost.sh`（安装新域名的 HTTP Bootstrap Site）和
+`Enable-ProductionTls.sh`，然后重建生产 Compose Stack。Migration/Bootstrap Service 会把
+内置 Web OIDC Client 的 Callback 与 Logout URI 同步到新域名；启用了参考应用时还要重新
+运行 `Provision-Reference-App.sh`。由于 OIDC Issuer 已改变，已有用户需要重新登录。
 
 ### 4.3 拉取代码并准备 Secret
 
@@ -252,6 +267,9 @@ cd /home/Dev
 git clone <repository-url> Asterloom
 cd Asterloom
 sudo bash Deploy/Scripts/Prepare-ProductionHost.sh
+# 若不使用默认域名，把上面的命令替换为下面两行；首次生成的 .env 会保存这两个值：
+# sudo ASTERLOOM_DOMAIN=identity.example.com CERTBOT_EMAIL=ops@example.com \
+#   bash Deploy/Scripts/Prepare-ProductionHost.sh
 ```
 
 `Prepare-ProductionHost.sh` 会：
@@ -265,6 +283,8 @@ sudo bash Deploy/Scripts/Prepare-ProductionHost.sh
 
 | 变量 | 用途 |
 | --- | --- |
+| `ASTERLOOM_DOMAIN` | Compose、Nginx、TLS、Provision 和验证共用的公网 DNS Hostname；默认 `asterloom.momiya.cloud`。 |
+| `CERTBOT_EMAIL` | ACME 联系邮箱；默认 `admin@<ASTERLOOM_DOMAIN>`。 |
 | `POSTGRES_PASSWORD` | PostgreSQL 应用账号。 |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | S3 兼容对象存储。 |
 | `REDIS_PASSWORD` | BFF Session Redis。 |
@@ -286,8 +306,7 @@ Token，后者由 Certbot 生成并由宿主机 Nginx 终止 TLS。
 确认 DNS 已生效且 Nginx 的 `/.well-known/acme-challenge/` 可从公网访问，然后执行：
 
 ```bash
-sudo CERTBOT_EMAIL=admin@example.com \
-  bash Deploy/Scripts/Enable-ProductionTls.sh
+sudo bash Deploy/Scripts/Enable-ProductionTls.sh
 ```
 
 脚本使用 Certbot Webroot 模式申请/复用证书，随后把临时 Nginx Site 替换为完整 HTTPS
@@ -334,8 +353,10 @@ sudo tail -n 200 /var/log/nginx/asterloom.error.log
 ### 4.6 部署验证
 
 ```bash
-curl --fail https://asterloom.kirayuukiasuna.cloud/health/live
-curl --fail https://asterloom.kirayuukiasuna.cloud/health/ready
+source Deploy/Scripts/Production-Domain.sh
+load_asterloom_production_domain true
+curl --fail "https://$ASTERLOOM_DOMAIN/health/live"
+curl --fail "https://$ASTERLOOM_DOMAIN/health/ready"
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
@@ -375,10 +396,7 @@ Provision 脚本会创建或更新参考应用的 OIDC Client，并轮换两个 
 cd /home/Dev/Asterloom
 git pull --ff-only
 
-sudo install -m 0644 \
-  Deploy/Nginx/asterloom.conf \
-  /etc/nginx/sites-available/asterloom.kirayuukiasuna.cloud
-sudo nginx -t
+sudo bash Deploy/Scripts/Install-ProductionNginx.sh production
 
 docker compose \
   -f docker-compose.yml \
@@ -388,14 +406,14 @@ docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
   up -d --no-build --remove-orphans
-sudo systemctl reload nginx
 sudo bash Deploy/Scripts/Smoke-Test-Production.sh
 ```
 
 先构建镜像可让旧容器在构建期间继续提供服务；`up` 会使用新镜像重建服务，并再次通过
 一次性迁移服务确保数据库 Schema 已更新。宿主机 Nginx 配置不会由 Compose 自动更新，
-因此端口或路由变更必须安装、校验并 reload `Deploy/Nginx/asterloom.conf`。不要只用
-`docker compose restart` 应用镜像或环境变量变更，因为 restart 不会重建容器。
+因此端口或路由变更必须重新运行 `Install-ProductionNginx.sh production`；切换域名则必须
+遵循 4.2 节的 Bootstrap 与证书流程。不要只用 `docker compose restart` 应用镜像或环境
+变量变更，因为 restart 不会重建容器。
 
 ### 5.2 常用排障命令
 
@@ -445,7 +463,7 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 | --- | --- | --- |
 | [`README.md`](README.md) | 查阅文档 | 本指南的英文版。 |
 | [`README.zh-CN.md`](README.zh-CN.md) | 查阅文档 | 本指南的中文版。 |
-| [`.env.example`](.env.example) | 本地 Compose | 本地默认数据库、MinIO、Redis、管理员、OIDC 和 Session Key 示例。复制到仓库根目录 `.env`，不能作为生产 Secret。 |
+| [`.env.example`](.env.example) | 本地 Compose / 配置参考 | 域名、ACME 联系邮箱及本地数据库、MinIO、Redis、管理员、OIDC、Session Key 示例。只可把示例 Secret 用于本地开发，生产环境必须另行生成。 |
 | [`docker-compose.production.yml`](docker-compose.production.yml) | 生产 Compose | 覆盖根 Compose 的域名、Production 环境、证书、持久化 Key 和回环端口；关闭 PostgreSQL、Collector 等宿主机端口。不能单独运行。 |
 | [`Dockerfile.server-prebuilt`](Dockerfile.server-prebuilt) | 预构建 Server 制品 | 只包含 .NET Runtime，把已经 publish 的 Server 和 Migrations 装入非 root 镜像；不负责编译源码。 |
 | [`Dockerfile.web-prebuilt`](Dockerfile.web-prebuilt) | 预构建 Web 制品 | 只包含 Node Runtime 和 Next.js Standalone 输出，以 `node` 用户运行，并移除运行时不需要的 npm/npx。 |
@@ -457,10 +475,11 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 
 | 文件 | 作用 |
 | --- | --- |
-| [`Nginx/asterloom.bootstrap.conf`](Nginx/asterloom.bootstrap.conf) | 首次申请证书前的 HTTP 配置。仅放行 ACME Challenge，其余请求返回 503。 |
-| [`Nginx/asterloom.conf`](Nginx/asterloom.conf) | 完整生产反向代理。负责 HTTP→HTTPS、TLS、Web、OIDC/JSON、原生 gRPC、参考应用和对象传输路由，并允许最大 2 GiB 请求体。 |
+| [`Nginx/asterloom.bootstrap.conf`](Nginx/asterloom.bootstrap.conf) | 首次申请证书前的 HTTP 模板。仅放行 ACME Challenge，其余请求返回 503。 |
+| [`Nginx/asterloom.conf`](Nginx/asterloom.conf) | 完整生产反向代理模板。负责 HTTP→HTTPS、TLS、Web、OIDC/JSON、原生 gRPC、参考应用和对象传输路由，并允许最大 2 GiB 请求体。 |
 
-这两个文件由宿主机脚本复制到 `/etc/nginx/sites-available/`，不是挂载给容器的配置。
+`Install-ProductionNginx.sh` 会渲染域名占位符并把结果安装为
+`/etc/nginx/sites-available/asterloom`。模板不会挂载给容器，也不能跳过渲染直接安装。
 
 ### 6.3 OpenTelemetry
 
@@ -474,6 +493,8 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 | --- | --- | --- |
 | [`Scripts/Prepare-ProductionHost.sh`](Scripts/Prepare-ProductionHost.sh) | Linux/root | 生成缺失的 `.env` 和 OpenIddict PFX、准备 Data Protection 目录、安装临时 Nginx Site。不会安装系统包，也不会启动 Compose。 |
 | [`Scripts/Enable-ProductionTls.sh`](Scripts/Enable-ProductionTls.sh) | Linux/root | 使用 Certbot Webroot 获取证书，将 Nginx 切换到完整 HTTPS 配置。 |
+| [`Scripts/Production-Domain.sh`](Scripts/Production-Domain.sh) | Linux/被其他脚本 source | 读取 `.env`、应用进程级覆盖与默认值、校验并导出 `ASTERLOOM_DOMAIN` 和 `CERTBOT_EMAIL`。 |
+| [`Scripts/Install-ProductionNginx.sh`](Scripts/Install-ProductionNginx.sh) | Linux/root | 渲染指定 Nginx 域名模板、安装固定 `asterloom` Site、移除旧版域名命名的启用链接、校验并 reload Nginx；`--render` 只输出结果，不修改宿主机。 |
 | [`Scripts/Smoke-Test-Production.sh`](Scripts/Smoke-Test-Production.sh) | Linux | 对线上 HTTPS、Passport、OIDC、BFF、JSON API 和 Logout 做端到端冒烟测试。 |
 | [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | 通过真实 Web BFF 管理 API 创建参考 Tenant/Application/OIDC Client 和授权绑定，把新 Secret 写入 `.data/reference-app/reference.env`。会轮换 Secret 并修改平台数据。 |
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | 在临时目录 publish Server/Migrations，并打包成可传输的 `.tar.gz`；输出 SHA-256 和大小。 |
