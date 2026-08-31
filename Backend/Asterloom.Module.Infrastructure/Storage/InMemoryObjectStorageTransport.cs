@@ -61,6 +61,27 @@ internal sealed class InMemoryObjectStorageTransport(TimeProvider timeProvider)
         }
     }
 
+    public async Task<bool> TryReadAsync(
+        StorageObjectDescriptor descriptor,
+        Func<Stream, CancellationToken, Task> reader,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        byte[] content;
+        lock (_gate)
+        {
+            if (!_objects.TryGetValue(descriptor.PhysicalKey, out var item))
+            {
+                return false;
+            }
+            content = item.Content.ToArray();
+        }
+
+        await using var stream = new MemoryStream(content, writable: false);
+        await reader(stream, cancellationToken);
+        return true;
+    }
+
     public Task<StorageTransferTicket> CreateDownloadTicketAsync(
         Guid transferId,
         StorageObjectDescriptor descriptor,

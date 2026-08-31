@@ -1,6 +1,13 @@
-import { constants, generateKeyPairSync, sign } from "node:crypto";
+import {
+  constants,
+  createHash,
+  createPublicKey,
+  generateKeyPairSync,
+  sign,
+} from "node:crypto";
 
 import { expect, test, type Page } from "@playwright/test";
+import { strToU8, zipSync } from "fflate";
 
 import { signIn, webUrl } from "./support/environment";
 
@@ -78,12 +85,12 @@ test("manages every signed Release API through the Web Console", async ({ page }
   await keyRow.locator('[data-ui-action="restore-release-signing-key"]').click();
   await expect(keyRow).toContainText("active", { ignoreCase: true });
 
-  const unusedArtifact = await uploadArtifact(
+  const unusedArtifact = await quickUploadVelopackArtifact(
     page,
     "9.9.9",
-    `unused-${suffix}.bin`,
-    Buffer.from(`unused release artifact ${suffix}`, "utf8"),
+    `Asterloom.E2E.${suffix}`,
     privateKey,
+    publicKey,
   );
   await page.getByLabel("Include archived release artifacts").check();
   await unusedArtifact.locator('[data-ui-action="get-release-artifact"]').click();
@@ -187,6 +194,7 @@ async function uploadArtifact(
   buffer: Buffer,
   privateKey: string,
 ) {
+  await page.locator('[data-ui-action="select-advanced-artifact-upload"]').click();
   await page.locator('input[name="releaseArtifactFile"]').setInputFiles({
     buffer,
     mimeType: "application/octet-stream",
@@ -207,6 +215,75 @@ async function uploadArtifact(
   await page.locator('[data-ui-action="create-release-artifact-upload"]').click();
   await expect(page.getByText("Upload ticket ready")).toBeVisible();
   await page.locator('[data-ui-action="complete-release-artifact-upload"]').click();
+  const row = page.locator(
+    `[data-testid^="release-artifact-${version}-win-x64-"]`,
+  );
+  await expect(row).toContainText(fileName);
+  await expect(row).toContainText("verified", { ignoreCase: true });
+  return row;
+}
+
+async function quickUploadVelopackArtifact(
+  page: Page,
+  version: string,
+  packageId: string,
+  privateKey: string,
+  publicKey: string,
+) {
+  const fileName = `${packageId}-${version}-stable-full.nupkg`;
+  const packageBytes = Buffer.from(
+    zipSync({
+      [`${packageId}.nuspec`]: strToU8(`<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>${packageId}</id>
+    <version>${version}</version>
+    <authors>Asterloom</authors>
+    <description>Release Web E2E package</description>
+    <channel>stable</channel>
+    <rid>win-x64</rid>
+  </metadata>
+</package>`),
+    }),
+  );
+  const sha256 = createHash("sha256").update(packageBytes).digest("hex");
+  const fingerprint = createHash("sha256")
+    .update(
+      createPublicKey(publicKey).export({
+        format: "der",
+        type: "spki",
+      }),
+    )
+    .digest("hex");
+  const signingBundle = Buffer.from(
+    JSON.stringify({
+      algorithm: "RSA-PSS-SHA256",
+      artifacts: {
+        [fileName]: {
+          sha256,
+          signature: signDigest(privateKey, sha256),
+        },
+      },
+      fingerprint,
+    }),
+    "utf8",
+  );
+
+  await page.locator('input[name="velopackPackages"]').setInputFiles({
+    buffer: packageBytes,
+    mimeType: "application/octet-stream",
+    name: fileName,
+  });
+  await page.locator('input[name="velopackSigningBundle"]').setInputFiles({
+    buffer: signingBundle,
+    mimeType: "application/json",
+    name: "signing-metadata.json",
+  });
+  const packageRow = page.getByTestId(`velopack-package-${fileName}`);
+  await expect(packageRow).toContainText("Ready");
+  await page.locator('[data-ui-action="upload-velopack-packages"]').click();
+  await expect(packageRow).toContainText("Verified");
+
   const row = page.locator(
     `[data-testid^="release-artifact-${version}-win-x64-"]`,
   );

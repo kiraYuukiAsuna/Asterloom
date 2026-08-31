@@ -239,32 +239,85 @@ Velopack 打包细节：<https://docs.velopack.io/packaging/overview>
 
 ## 5. Web 发布流程
 
-### 5.1 上传 Artifact
+### 5.1 生成快速上传签名清单
 
-进入 Web `/artifacts`：
+私钥仍然只放在 CI、HSM 或离线签名环境中，**不要把私钥文件选择器放进 Web，也不要把私钥上传到
+Asterloom**。仓库提供脚本，可一次性对一个目录中的所有 Full/Delta 包签名并生成快速上传需要的
+`signing-metadata.json`：
 
-1. 选择 Velopack `.nupkg`。
-2. 填写与 `--packVersion` 相同的 Release Version。
-3. 填写 `targetRuntimeId`，例如 `win-x64`。
-4. 选择 `Full`；Delta 还必须填写精确的 `Delta From Version`。
-5. Web 计算文件 SHA-256。
-6. 在外部签名器对该 SHA-256 文本签名。
-7. 选择已登记公钥并粘贴 Base64 Signature。
-8. 创建短时 Upload Ticket，将文件上传到对象存储。
-9. Complete Upload；服务端重新检查大小、Content-Type、SHA-256 和 RSA-PSS Signature。
+```powershell
+./Deploy/Scripts/New-VelopackSigningBundle.ps1 `
+  -PackagePath .\releases\win-x64 `
+  -PrivateKeyPath C:\secure\release-private-key.pem `
+  -OutputPath .\releases\win-x64\signing-metadata.json
+```
 
-只有状态为 `Verified` 的 Artifact 才能加入 Release。`Rejected` 常见原因：
+也可向 `-PackagePath` 传入多个明确文件或通配符。脚本只接受 `*-full.nupkg` 和 `*-delta.nupkg`，使用
+RSA-PSS-SHA256 对每个包的小写 SHA-256 文本签名，并输出：
 
-- 签名的是文件原始字节或二进制 Digest，而不是小写 SHA-256 文本；
-- 使用了 RSA PKCS#1 v1.5，而不是 RSA-PSS；
-- 选错签名公钥；
-- 上传时遗漏 Signed URL 返回的 Required Header；
-- 文件、大小或 Content-Type 与创建 Upload Ticket 时声明的不一致。
+```json
+{
+  "schemaVersion": 1,
+  "algorithm": "RSA-PSS-SHA256",
+  "fingerprint": "公钥的 64 位小写 SHA-256 指纹",
+  "artifacts": {
+    "MyApp-1.4.0-stable-full.nupkg": {
+      "sha256": "更新包 SHA-256",
+      "signature": "Base64 分离式签名"
+    }
+  }
+}
+```
+
+文件中没有私钥。其 `fingerprint` 必须能匹配当前 Tenant 的 Signing trust store 中一个活动公钥；公钥只需
+登记一次，后续版本继续复用即可。
+
+### 5.2 默认方式：C# Velopack 快速上传
+
+进入 Web `/artifacts` 后默认显示 `C# Velopack 快速上传`：
+
+1. 在 `Velopack 更新包` 中一次选择一个或多个 `*-full.nupkg` / `*-delta.nupkg`。
+2. 在 `签名清单` 中选择上一步生成的 `signing-metadata.json`。
+3. 查看自动识别结果；如存在多个可用的 Delta 来源，可在该 Delta 行中选择正确的完整包版本。
+4. 点击 `全部上传并验证`。页面会按依赖顺序先上传 Full，再上传 Delta，并为每个包自动完成 Upload Ticket、
+   对象传输和 Complete。
+
+页面会自动完成以下工作，无需手填：
+
+- 从根目录 NuSpec 读取 Package ID、Semantic Version、`channel` 和 `rid`；
+- 根据文件名结尾识别 Full/Delta；
+- 计算 SHA-256，并按文件名与签名清单匹配签名；
+- 根据公钥 Fingerprint 自动选择已登记的 Signing Key；
+- 从当前批次或服务端已有的同 RID、较早 Verified Full 中推断 Delta From Version，默认选择最高版本；
+- 跳过内容完全相同且已处于 Verified 状态的 Artifact。
+
+一次快速上传批次可以包含多个版本和 RID，但必须属于同一个 Package ID 和 Channel。Delta 的精确来源并不存储在
+Velopack NuSpec 中，所以页面只能根据当前批次与服务端库存推断；推断结果不正确时必须使用行内下拉框修改。如果没有
+可用来源，应把对应的旧版 Full 一起选择，或切换到高级上传。
+
+快速模式不是只做浏览器检查。上传完成后，服务端会重新打开对象存储中的真实 `.nupkg`，检查文件名、根目录
+NuSpec、版本、RID 和 Full/Delta 类型是否与请求一致，再结合大小、Content-Type、SHA-256 与 RSA-PSS Signature
+决定 `Verified` 或 `Rejected`。因此修改页面请求不能绕过包内容验证。
+
+### 5.3 高级上传（保留的原方式）
+
+点击 `高级上传` 可回到原有逐项填写流程，适合非 Velopack 制品、特殊 Delta 来源或故障诊断：
+
+1. 选择制品文件。
+2. 填写 Release Version、`targetRuntimeId`、Full/Delta、Delta From Version 和 Content-Type。
+3. 等待 Web 计算 SHA-256。
+4. 在外部签名器对该 SHA-256 文本签名。
+5. 选择已登记公钥并粘贴 Base64 Signature。
+6. 创建短时 Upload Ticket，再执行 Upload and Verify。
+
+只有状态为 `Verified` 的 Artifact 才能加入 Release。`Rejected` 常见原因包括：签名了原始文件或二进制
+Digest 而不是小写 SHA-256 文本；使用 RSA PKCS#1 v1.5 而不是 RSA-PSS；选错公钥；上传遗漏 Required
+Header；或实际文件与 Ticket 声明不一致。
 
 Release Artifact 会使用 Storage 模块中的 Tenant 系统 Bucket `release-artifacts`，无需手工创建普通 Bucket 或绕过
 Release 页面上传。
 
-### 5.2 创建 Release Draft
+### 5.4 创建 Release Draft
 
 进入 Web `/releases`，填写：
 
@@ -288,7 +341,7 @@ Rollout Basis Points 总数为 `100000`：
 
 同一 Release 可以包含多个 Runtime，但同一 Runtime 不能出现两个 Full，也不能出现重复的 Delta 来源映射。
 
-### 5.3 Validate、签名并 Publish
+### 5.5 Validate、签名并 Publish
 
 1. 保存 Draft。
 2. 点击 `Validate release`。
@@ -300,7 +353,7 @@ Rollout Basis Points 总数为 `100000`：
 
 Draft 的任何字段变化都会改变 Manifest，必须重新 Validate 和签名。Publish 后 Manifest 不再可编辑；新变更应创建新版本。
 
-### 5.4 模拟与灰度
+### 5.6 模拟与灰度
 
 页面底部更新模拟器应至少覆盖：
 

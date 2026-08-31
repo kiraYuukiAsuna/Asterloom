@@ -757,6 +757,16 @@ public sealed partial class StorageManagementService(
         storageObject.Sha256,
         storageObject.CustomMetadata);
 
+    public Task<bool> TryReadObjectAsync(
+        StorageObject storageObject,
+        Func<Stream, CancellationToken, Task> reader,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(storageObject);
+        ArgumentNullException.ThrowIfNull(reader);
+        return transport.TryReadAsync(ToDescriptor(storageObject), reader, cancellationToken);
+    }
+
     private static Guid ParseId(string value, string field) =>
         ParseOptionalId(value, field) ?? throw Invalid(field, "A valid identifier is required.");
 

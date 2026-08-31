@@ -14,6 +14,11 @@ public interface IObjectStorageTransport
         StorageObjectDescriptor descriptor,
         CancellationToken cancellationToken);
 
+    Task<bool> TryReadAsync(
+        StorageObjectDescriptor descriptor,
+        Func<Stream, CancellationToken, Task> reader,
+        CancellationToken cancellationToken);
+
     Task<StorageTransferTicket> CreateDownloadTicketAsync(
         Guid transferId,
         StorageObjectDescriptor descriptor,

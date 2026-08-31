@@ -12,6 +12,8 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
   Upload,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useState } from "react";
@@ -63,6 +65,7 @@ import {
 } from "./release-ui";
 import { translate } from "@/lib/i18n/locale";
 import { formatNumber } from "@/lib/i18n/format";
+import { VelopackQuickUploadCard } from "./release-velopack-upload";
 
 export function ReleaseArtifactsPanel({
   csrfToken,
@@ -462,7 +465,7 @@ function ArtifactsPanel({
             )}
           </CardContent>
         </Card>
-        <ArtifactUploadCard
+        <ArtifactUploadExperience
           csrfToken={csrfToken}
           onCompleted={changed}
           scope={scope}
@@ -478,6 +481,87 @@ function ArtifactsPanel({
         />
       ) : (
         <ReleaseEmptyState message={translate("Select an artifact to inspect verification and storage metadata.")} />
+      )}
+    </div>
+  );
+}
+
+function ArtifactUploadExperience({
+  csrfToken,
+  onCompleted,
+  scope,
+}: {
+  csrfToken: string;
+  onCompleted: (artifact: ReleaseArtifactRecord) => Promise<void>;
+  scope: ReleaseScope;
+}) {
+  const [mode, setMode] = useState<"quick" | "advanced">("quick");
+  return (
+    <div className="space-y-3">
+      <div
+        aria-label={translate("Artifact upload method")}
+        className="grid gap-2 rounded-xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2"
+        role="tablist"
+      >
+        <button
+          aria-selected={mode === "quick"}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition",
+            mode === "quick"
+              ? "bg-violet-400/15 text-violet-100"
+              : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200",
+          )}
+          data-ui-action="select-velopack-quick-upload"
+          onClick={() => setMode("quick")}
+          role="tab"
+          type="button"
+        >
+          <Sparkles aria-hidden="true" className="size-4 shrink-0" />
+          <span>
+            <span className="block text-xs font-medium">
+              {translate("C# Velopack quick upload")}
+            </span>
+            <span className="mt-0.5 block text-[10px] opacity-70">
+              {translate("Recommended · automatic package inspection")}
+            </span>
+          </span>
+        </button>
+        <button
+          aria-selected={mode === "advanced"}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition",
+            mode === "advanced"
+              ? "bg-sky-400/15 text-sky-100"
+              : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200",
+          )}
+          data-ui-action="select-advanced-artifact-upload"
+          onClick={() => setMode("advanced")}
+          role="tab"
+          type="button"
+        >
+          <SlidersHorizontal aria-hidden="true" className="size-4 shrink-0" />
+          <span>
+            <span className="block text-xs font-medium">
+              {translate("Advanced upload")}
+            </span>
+            <span className="mt-0.5 block text-[10px] opacity-70">
+              {translate("Manual metadata and non-Velopack artifacts")}
+            </span>
+          </span>
+        </button>
+      </div>
+      {mode === "quick" ? (
+        <VelopackQuickUploadCard
+          csrfToken={csrfToken}
+          onCompleted={onCompleted}
+          scope={scope}
+        />
+      ) : (
+        <ArtifactUploadCard
+          csrfToken={csrfToken}
+          onCompleted={onCompleted}
+          scope={scope}
+        />
       )}
     </div>
   );

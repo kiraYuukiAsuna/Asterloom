@@ -181,6 +181,7 @@ public sealed class ReleaseAdminGrpcService(
             request.Sha256,
             request.SigningKeyId,
             request.Signature,
+            request.ValidateVelopackPackage,
             context.CancellationToken)).ToProtocol();
 
     public override async Task<ProtocolArtifact> CompleteArtifactUpload(

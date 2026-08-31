@@ -535,6 +535,7 @@ into a container and must not be installed without rendering.
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | Publishes Server and Migrations in a temporary directory, creates a portable `.tar.gz`, and prints its SHA-256 and size. |
 | [`Scripts/Build-Web-Prebuilt.sh`](Scripts/Build-Web-Prebuilt.sh) | Linux/network | Downloads and verifies the latest Node 24 Linux x64 release, runs `npm ci` and the Next build, and archives the Standalone runtime. |
 | [`Scripts/Build-Reference-DesktopUpdate.ps1`](Scripts/Build-Reference-DesktopUpdate.ps1) | PowerShell/Windows RID | Builds baseline and target reference clients, asks Velopack for Setup/Full/Delta packages, reconstructs the target Full package, and verifies SHA-256. The output directory must not exist. |
+| [`Scripts/New-VelopackSigningBundle.ps1`](Scripts/New-VelopackSigningBundle.ps1) | PowerShell/offline signer or CI | Signs the lowercase SHA-256 text for one or more Velopack Full/Delta packages with an RSA-PSS private key and writes the private-key-free `signing-metadata.json` used by Web quick upload. |
 | [`Scripts/Sync-ProtocolArtifacts.ps1`](Scripts/Sync-ProtocolArtifacts.ps1) | PowerShell | Builds and temporarily starts the Development server, downloads canonical OpenAPI, and rebuilds `Frontend/lib/api/generated` with Kiota. It changes generated files that must be committed. |
 
 ### 6.5 Prebuilt artifact workflow

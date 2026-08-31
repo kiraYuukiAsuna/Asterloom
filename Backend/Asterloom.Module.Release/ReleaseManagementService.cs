@@ -26,6 +26,7 @@ public sealed partial class ReleaseManagementService(
     private const int MaximumPageSize = 100;
     private const long ArtifactBucketQuotaBytes = 100L * 1024 * 1024 * 1024;
     private const long MaximumArtifactSizeBytes = 4L * 1024 * 1024 * 1024;
+    private const string VelopackValidationMetadataKey = "asterloom.validate-velopack-package";
 
     private static readonly IReadOnlyList<string> ArtifactContentTypes = ["*/*"];
 
@@ -284,6 +285,7 @@ public sealed partial class ReleaseManagementService(
         string sha256,
         string signingKeyId,
         string signature,
+        bool validateVelopackPackage,
         CancellationToken cancellationToken)
     {
         var scope = ParseScope(tenantId, applicationId, environmentId);
@@ -345,6 +347,7 @@ public sealed partial class ReleaseManagementService(
                 ["asterloom.releaseVersion"] = normalizedVersion,
                 ["asterloom.targetRuntimeId"] = normalizedRuntime,
                 ["asterloom.artifactKind"] = artifactKind.ToString().ToLowerInvariant(),
+                [VelopackValidationMetadataKey] = validateVelopackPackage ? "true" : "false",
             },
             cancellationToken);
         var now = timeProvider.GetUtcNow();
@@ -424,25 +427,81 @@ public sealed partial class ReleaseManagementService(
                 signingKey.PublicKeyPem,
                 storageObject.Sha256,
                 current.Signature);
+        var failureReason = signatureValid ? string.Empty : "artifact_signature_invalid";
+        if (signatureValid
+            && storageObject.CustomMetadata.TryGetValue(
+                VelopackValidationMetadataKey,
+                out var validateVelopack)
+            && string.Equals(validateVelopack, "true", StringComparison.Ordinal))
+        {
+            failureReason = await ValidateVelopackPackageAsync(
+                current,
+                storageObject,
+                cancellationToken);
+        }
+        var verified = string.IsNullOrEmpty(failureReason);
         var now = timeProvider.GetUtcNow();
         var updated = current with
         {
-            Status = signatureValid
+            Status = verified
                 ? ReleaseArtifactStatus.Verified
                 : ReleaseArtifactStatus.Rejected,
-            FailureReason = signatureValid
-                ? string.Empty
-                : "artifact_signature_invalid",
+            FailureReason = failureReason,
             StorageObjectVersion = storageObject.Version,
             Version = current.Version + 1,
             UpdatedAt = now,
-            VerifiedAt = signatureValid ? now : null,
+            VerifiedAt = verified ? now : null,
         };
         if (!await store.TryUpdateArtifactAsync(updated, current.Version, cancellationToken))
         {
             throw VersionConflict();
         }
         return updated;
+    }
+
+    private async Task<string> ValidateVelopackPackageAsync(
+        ReleaseArtifact artifact,
+        Asterloom.Modules.Storage.Model.StorageObject storageObject,
+        CancellationToken cancellationToken)
+    {
+        VelopackPackageMetadata? metadata = null;
+        try
+        {
+            var found = await storage.TryReadObjectAsync(
+                storageObject,
+                async (stream, token) =>
+                {
+                    metadata = await VelopackPackageInspector.InspectAsync(
+                        stream,
+                        artifact.FileName,
+                        token);
+                },
+                cancellationToken);
+            if (!found || metadata is null)
+            {
+                return "velopack_package_unavailable";
+            }
+        }
+        catch (VelopackPackageInspectionException exception)
+        {
+            return exception.FailureReason;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return "velopack_package_unreadable";
+        }
+
+        if (!string.Equals(metadata.Version, artifact.ReleaseVersion, StringComparison.Ordinal))
+        {
+            return "velopack_release_version_mismatch";
+        }
+        if (!string.Equals(metadata.RuntimeId, artifact.TargetRuntimeId, StringComparison.Ordinal))
+        {
+            return "velopack_runtime_mismatch";
+        }
+        return metadata.ArtifactKind == artifact.ArtifactKind
+            ? string.Empty
+            : "velopack_artifact_kind_mismatch";
     }
 
     public async Task<ReleaseArtifact> ArchiveArtifactAsync(

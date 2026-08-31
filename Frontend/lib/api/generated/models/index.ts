@@ -1156,6 +1156,10 @@ export interface CreateArtifactUploadRequest extends Parsable {
      * The tenantId property
      */
     tenantId?: string | null;
+    /**
+     * The validateVelopackPackage property
+     */
+    validateVelopackPackage?: boolean | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4361,6 +4365,7 @@ export function deserializeIntoCreateArtifactUploadRequest(createArtifactUploadR
         "sizeBytes": n => { createArtifactUploadRequest.sizeBytes = n.getNumberValue(); },
         "targetRuntimeId": n => { createArtifactUploadRequest.targetRuntimeId = n.getStringValue(); },
         "tenantId": n => { createArtifactUploadRequest.tenantId = n.getStringValue(); },
+        "validateVelopackPackage": n => { createArtifactUploadRequest.validateVelopackPackage = n.getBooleanValue(); },
     }
 }
 /**
@@ -10554,6 +10559,7 @@ export function serializeCreateArtifactUploadRequest(writer: SerializationWriter
     writer.writeNumberValue("sizeBytes", createArtifactUploadRequest.sizeBytes);
     writer.writeStringValue("targetRuntimeId", createArtifactUploadRequest.targetRuntimeId);
     writer.writeStringValue("tenantId", createArtifactUploadRequest.tenantId);
+    writer.writeBooleanValue("validateVelopackPackage", createArtifactUploadRequest.validateVelopackPackage);
 }
 /**
  * Serializes information the current object

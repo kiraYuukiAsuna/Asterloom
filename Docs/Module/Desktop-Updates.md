@@ -236,28 +236,88 @@ Velopack packaging details: <https://docs.velopack.io/packaging/overview>
 
 ## 5. Web release workflow
 
-### 5.1 Upload an artifact
+### 5.1 Generate a quick-upload signing bundle
 
-Open Web `/artifacts`:
+The private key remains in CI, an HSM, or an offline signing environment. **Never select a private key in Web or
+upload it to Asterloom.** The repository script signs every Full/Delta package in a directory and produces the
+`signing-metadata.json` consumed by quick upload:
 
-1. Select the Velopack `.nupkg`.
-2. Enter the same Release Version as `--packVersion`.
-3. Enter a runtime such as `win-x64`.
-4. Select Full; a Delta also requires the exact Delta From Version.
-5. Let Web calculate SHA-256.
-6. Sign that SHA-256 text in the external signer.
-7. Select the registered public key and paste the Base64 signature.
-8. Create the short-lived upload ticket and transfer the file.
-9. Complete the upload so the server rechecks size, media type, SHA-256, and RSA-PSS signature.
+```powershell
+./Deploy/Scripts/New-VelopackSigningBundle.ps1 `
+  -PackagePath .\releases\win-x64 `
+  -PrivateKeyPath C:\secure\release-private-key.pem `
+  -OutputPath .\releases\win-x64\signing-metadata.json
+```
 
-Only a `Verified` artifact can be attached to a release. Common rejection causes are signing raw file bytes rather
-than the lowercase digest text, using RSA PKCS#1 v1.5, selecting the wrong key, dropping required signed headers,
-or uploading content that differs from the ticket declaration.
+`-PackagePath` may also receive multiple explicit files or wildcard paths. The script accepts only
+`*-full.nupkg` and `*-delta.nupkg`, signs each package's lowercase SHA-256 text with RSA-PSS-SHA256, and writes:
+
+```json
+{
+  "schemaVersion": 1,
+  "algorithm": "RSA-PSS-SHA256",
+  "fingerprint": "64-character lowercase public-key SHA-256 fingerprint",
+  "artifacts": {
+    "MyApp-1.4.0-stable-full.nupkg": {
+      "sha256": "package SHA-256",
+      "signature": "Base64 detached signature"
+    }
+  }
+}
+```
+
+The bundle contains no private key. Its fingerprint must match an active public key in the current tenant's
+Signing trust store. Register that public key once and reuse it for subsequent releases.
+
+### 5.2 Default: C# Velopack quick upload
+
+Web `/artifacts` opens on `C# Velopack quick upload` by default:
+
+1. Select one or more `*-full.nupkg` / `*-delta.nupkg` files under `Velopack packages`.
+2. Select the generated `signing-metadata.json` under `Signing bundle`.
+3. Review the inferred values. If a Delta has several possible sources, select the correct Full version in that row.
+4. Choose `Upload and verify all`. Web uploads Full packages before dependent Delta packages and automatically
+   creates the ticket, transfers bytes, and completes every item.
+
+No manual entry is required for:
+
+- Package ID, Semantic Version, `channel`, and `rid`, read from the root NuSpec;
+- Full/Delta kind, derived from the file-name suffix;
+- SHA-256 and signature matching by exact file name;
+- registered Signing Key selection by public-key fingerprint;
+- Delta From Version, inferred from selected or server-side older Verified Full packages with the same RID (the
+  highest eligible version is selected by default);
+- exact artifacts that already exist in Verified state, which are skipped.
+
+One batch may contain several versions and RIDs, but all packages must use one Package ID and Channel. Velopack
+does not store the exact Delta source in its NuSpec, so this is the one field Web must infer from the batch and
+server inventory. Change the row selector when that inference is not the intended source. If no source is
+available, add the older Full package to the batch or switch to advanced upload.
+
+Quick mode is not merely a browser-side check. After transfer, the server opens the actual `.nupkg` in object
+storage and checks its file name, root NuSpec, version, RID, and Full/Delta kind against the request before
+combining those results with size, media type, SHA-256, and RSA-PSS signature verification. A modified browser
+request therefore cannot bypass package-content validation.
+
+### 5.3 Advanced upload (the retained original flow)
+
+Choose `Advanced upload` for non-Velopack artifacts, an unusual Delta source, or troubleshooting:
+
+1. Select the artifact file.
+2. Enter Release Version, `targetRuntimeId`, Full/Delta, Delta From Version, and media type.
+3. Wait for Web to calculate SHA-256.
+4. Sign that SHA-256 text in the external signer.
+5. Select the registered public key and paste the Base64 signature.
+6. Create the short-lived upload ticket, then upload and verify.
+
+Only a `Verified` artifact can be attached to a release. Common rejection causes include signing raw file bytes
+or the binary digest instead of the lowercase digest text, using RSA PKCS#1 v1.5 instead of RSA-PSS, selecting the
+wrong key, dropping required signed headers, or transferring content that differs from the ticket declaration.
 
 Release artifacts use the tenant system bucket `release-artifacts`; do not create a normal bucket or bypass the
 Release upload workflow for update packages.
 
-### 5.2 Create, validate, and publish a draft
+### 5.4 Create, validate, and publish a draft
 
 Open Web `/releases`, then configure Channel, Semantic Version, display name, notes, verified artifacts, minimum
 version, rollout basis points, optional Target Segment, and Mandatory.
@@ -275,7 +335,7 @@ After saving the draft:
 Any draft change alters the manifest and requires another validation and signature. A published manifest is
 immutable; create a new release for subsequent changes.
 
-### 5.3 Simulate and roll out
+### 5.5 Simulate and roll out
 
 Use the update simulator to cover current version, incompatible runtime, matching/non-matching segment, stable
 keys inside and outside rollout, and clients below Minimum Version. A typical progression is:

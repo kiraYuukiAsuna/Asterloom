@@ -152,16 +152,16 @@ export function ConsoleShell({
       </aside>
 
       <div className={cn("min-h-dvh", "lg:pl-64")}>
-        <header className="sticky top-0 z-30 flex h-17 items-center justify-between border-b border-white/8 bg-slate-950/65 px-5 backdrop-blur-xl sm:px-8">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-sky-400">
+        <header className="sticky top-0 z-30 flex h-17 items-center justify-end border-b border-white/8 bg-slate-950/65 px-5 backdrop-blur-xl sm:justify-between sm:px-8">
+          <div className="hidden min-w-0 pr-2 sm:block">
+            <p className="truncate text-xs font-medium uppercase tracking-[0.18em] text-sky-400">
               {t(headerTitle)}
             </p>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 hidden truncate text-sm text-slate-500 sm:block">
               {t(headerDescription)}
             </p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <LocaleToggle />
             <ThemeToggle />
             <CommandMenu />

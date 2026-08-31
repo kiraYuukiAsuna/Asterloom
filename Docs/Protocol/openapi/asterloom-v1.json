@@ -11759,6 +11759,9 @@
           },
           "signature": {
             "type": "string"
+          },
+          "validateVelopackPackage": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

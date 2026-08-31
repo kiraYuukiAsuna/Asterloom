@@ -249,6 +249,9 @@ message CreateArtifactUploadRequest {
   string sha256 = 11;
   string signing_key_id = 12;
   string signature = 13;
+  // Enables server-side inspection of the uploaded Velopack NuSpec before the
+  // artifact can become Verified. Advanced/generic uploads leave this false.
+  bool validate_velopack_package = 14;
 }
 message CompleteArtifactUploadRequest {
   string tenant_id = 1;

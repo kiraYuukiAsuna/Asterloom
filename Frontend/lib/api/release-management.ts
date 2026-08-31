@@ -512,6 +512,7 @@ export async function createReleaseArtifactUpload(
     signingKeyId: string;
     sizeBytes: number;
     targetRuntimeId: string;
+    validateVelopackPackage?: boolean;
   },
 ) {
   const parsed = z
@@ -526,6 +527,7 @@ export async function createReleaseArtifactUpload(
       signingKeyId: idSchema,
       sizeBytes: safeByteCountSchema.max(4 * 1024 * 1024 * 1024),
       targetRuntimeId: releaseRuntimeIdSchema,
+      validateVelopackPackage: z.boolean().default(false),
     })
     .superRefine((value, context) => {
       const isDelta =

@@ -500,6 +500,7 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | 在临时目录 publish Server/Migrations，并打包成可传输的 `.tar.gz`；输出 SHA-256 和大小。 |
 | [`Scripts/Build-Web-Prebuilt.sh`](Scripts/Build-Web-Prebuilt.sh) | Linux/联网 | 下载并校验最新 Node 24 Linux x64，执行 `npm ci`/Next build，打包 Standalone Runtime 制品。 |
 | [`Scripts/Build-Reference-DesktopUpdate.ps1`](Scripts/Build-Reference-DesktopUpdate.ps1) | PowerShell/Windows RID | 构建参考客户端基线和目标版本，调用 Velopack 生成 Setup、Full、Delta，并通过重建 Full 包及 SHA-256 验证差分包。输出目录必须不存在。 |
+| [`Scripts/New-VelopackSigningBundle.ps1`](Scripts/New-VelopackSigningBundle.ps1) | PowerShell/离线签名环境或 CI | 使用 RSA-PSS 私钥对一个或多个 Velopack Full/Delta 包的小写 SHA-256 文本签名，生成不含私钥、供 Web 快速上传使用的 `signing-metadata.json`。 |
 | [`Scripts/Sync-ProtocolArtifacts.ps1`](Scripts/Sync-ProtocolArtifacts.ps1) | PowerShell | 构建并临时启动 Development Server，下载 canonical OpenAPI，再用 Kiota 重建 `Frontend/lib/api/generated`。会修改需要提交的生成文件。 |
 
 ### 6.5 预构建制品用法

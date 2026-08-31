@@ -163,6 +163,85 @@ export const releaseStorageZhCnMessages: Readonly<Record<string, string>> = {
   "Artifact upload ticket created.": "制品上传凭票已创建。",
   "Artifact uploaded and signature verified.": "制品已上传且签名验证通过。",
   "Artifact upload completed, but signature verification was rejected.": "制品上传已完成，但签名验证未通过。",
+  "Artifact upload method": "制品上传方式",
+  "C# Velopack quick upload": "C# Velopack 快速上传",
+  "Recommended · automatic package inspection": "推荐 · 自动检查更新包",
+  "Advanced upload": "高级上传",
+  "Manual metadata and non-Velopack artifacts": "手动填写元数据或上传非 Velopack 制品",
+  "Choose Velopack packages and one signing bundle. Version, channel, runtime, package kind, hash, signature, and signing key are matched automatically.":
+    "选择 Velopack 更新包和一个签名清单；系统会自动匹配版本、渠道、运行时、包类型、哈希、签名和签名密钥。",
+  "Server-inspected NuSpec": "服务端检查 NuSpec",
+  "Velopack packages": "Velopack 更新包",
+  "Select one or more *-full.nupkg / *-delta.nupkg files.":
+    "选择一个或多个 *-full.nupkg / *-delta.nupkg 文件。",
+  "Signing bundle": "签名清单",
+  "Select signing-metadata.json. It contains signatures and a public-key fingerprint, never the private key.":
+    "选择 signing-metadata.json；其中仅包含签名与公钥指纹，绝不包含私钥。",
+  "fingerprint": "指纹",
+  "Select the generated Velopack packages to begin automatic inspection.":
+    "请选择生成的 Velopack 更新包以开始自动检查。",
+  "The browser only prepares metadata. The server still verifies size, SHA-256, RSA-PSS signature, file name, NuSpec version, RID, and Full/Delta kind.":
+    "浏览器仅负责准备元数据；服务端仍会验证大小、SHA-256、RSA-PSS 签名、文件名、NuSpec 版本、RID 以及 Full/Delta 类型。",
+  "Reset": "重置",
+  "Inspecting packages": "正在检查更新包",
+  "Uploading packages": "正在上传更新包",
+  "Upload and verify all": "全部上传并验证",
+  "All Velopack packages were uploaded and verified.": "所有 Velopack 更新包均已上传并通过验证。",
+  "{0} package(s) verified; {1} package(s) failed.": "{0} 个更新包验证通过；{1} 个更新包失败。",
+  "Waiting for package inspection": "等待更新包检查",
+  "Delta source full version": "增量来源完整包版本",
+  "Uploading": "正在上传",
+  "Verified": "已验证",
+  "Failed": "失败",
+  "Already verified": "已经验证",
+  "Needs attention": "需要处理",
+  "The selected delta source full package was not verified. Upload it first or choose another source.":
+    "所选增量来源完整包未通过验证，请先上传该完整包或选择其他来源。",
+  "The Velopack package preparation is incomplete.": "Velopack 更新包准备信息不完整。",
+  "The server rejected the Velopack package during verification.": "服务端在验证阶段拒绝了该 Velopack 更新包。",
+  "The Velopack package is empty.": "Velopack 更新包为空。",
+  "A Velopack package file name must end in -full.nupkg or -delta.nupkg.":
+    "Velopack 更新包文件名必须以 -full.nupkg 或 -delta.nupkg 结尾。",
+  "The package does not contain a root NuSpec file.": "更新包不包含根目录 NuSpec 文件。",
+  "The package is not a supported ZIP archive.": "更新包不是受支持的 ZIP 压缩包。",
+  "Encrypted Velopack packages are not supported.": "不支持加密的 Velopack 更新包。",
+  "The Velopack NuSpec must use ordinary ZIP sizes without a data descriptor.":
+    "Velopack NuSpec 必须使用普通 ZIP 大小字段，不能使用数据描述符。",
+  "The package contains an invalid ZIP entry header.": "更新包包含无效的 ZIP 条目头。",
+  "The Velopack NuSpec is too large.": "Velopack NuSpec 过大。",
+  "The Velopack NuSpec compressed data is invalid.": "Velopack NuSpec 压缩数据无效。",
+  "The Velopack NuSpec uses an unsupported ZIP compression method.":
+    "Velopack NuSpec 使用了不受支持的 ZIP 压缩方式。",
+  "The Velopack NuSpec size does not match its ZIP header.": "Velopack NuSpec 大小与 ZIP 头不一致。",
+  "The package does not expose a root NuSpec near the start of the archive.":
+    "更新包起始区域未提供根目录 NuSpec。",
+  "The package contains an invalid ZIP entry size.": "更新包包含无效的 ZIP 条目大小。",
+  "The Velopack ZIP archive ended unexpectedly.": "Velopack ZIP 压缩包意外结束。",
+  "The signing bundle must be a non-empty JSON file under 5 MiB.":
+    "签名清单必须是小于 5 MiB 的非空 JSON 文件。",
+  "The signing bundle is not valid JSON.": "签名清单不是有效的 JSON。",
+  "The signing bundle is invalid.": "签名清单无效。",
+  "The signing bundle does not contain any package signatures.": "签名清单不包含任何更新包签名。",
+  "The Velopack NuSpec XML contains a prohibited declaration.": "Velopack NuSpec XML 包含禁止的声明。",
+  "The Velopack NuSpec XML is invalid.": "Velopack NuSpec XML 无效。",
+  "The NuSpec metadata element is missing.": "NuSpec 缺少 metadata 元素。",
+  "The NuSpec package ID is invalid or does not match the NuSpec file name.":
+    "NuSpec 包 ID 无效或与 NuSpec 文件名不一致。",
+  "The NuSpec channel is invalid.": "NuSpec 渠道无效。",
+  "Package file names must be unique within one batch.": "同一批次中的更新包文件名必须唯一。",
+  "A quick-upload batch cannot contain duplicate version, runtime, and package-kind identities.":
+    "快速上传批次不能包含版本、运行时和包类型均相同的重复制品。",
+  "One quick-upload batch must use the same NuSpec package ID and channel.":
+    "一次快速上传批次必须使用相同的 NuSpec 包 ID 和渠道。",
+  "Choose the signing-metadata.json bundle.": "请选择 signing-metadata.json 签名清单。",
+  "The signing bundle has no entry for this package file name.": "签名清单中没有与该更新包文件名对应的条目。",
+  "The package SHA-256 does not match the signing bundle.": "更新包 SHA-256 与签名清单不一致。",
+  "No active server signing key matches the bundle fingerprint. Register its public key first.":
+    "服务器中没有与清单指纹匹配的活动签名密钥，请先注册其公钥。",
+  "An artifact already uses this version, runtime, kind, and delta source with different content or status. Use a new release version.":
+    "已有制品占用了相同的版本、运行时、类型和增量来源，但内容或状态不同，请使用新的发布版本。",
+  "No older verified or selected full package exists for this runtime. Add it to this batch or use advanced upload.":
+    "该运行时没有更早且已验证或已选择的完整包，请将其加入当前批次，或改用高级上传。",
   "Select an artifact to inspect verification and storage metadata.": "请选择制品以查看验证与存储元数据。",
   "Artifact ID": "制品 ID",
   "Kind": "类型",

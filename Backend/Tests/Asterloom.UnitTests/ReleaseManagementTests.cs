@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using Asterloom.Modules.Errors;
@@ -20,6 +21,91 @@ namespace Asterloom.UnitTests;
 
 public sealed class ReleaseManagementTests
 {
+    [Fact]
+    public async Task VelopackQuickUploadInspectsNuSpecBeforeVerification()
+    {
+        await using var provider = CreateProvider();
+        await using var serviceScope = provider.CreateAsyncScope();
+        var platform = serviceScope.ServiceProvider.GetRequiredService<PlatformManagementService>();
+        var releases = serviceScope.ServiceProvider.GetRequiredService<ReleaseManagementService>();
+        var transport = serviceScope.ServiceProvider.GetRequiredService<IObjectStorageTransport>();
+        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var tenant = await platform.CreateTenantAsync(
+            "velopack-" + suffix,
+            "Velopack Team",
+            CancellationToken.None);
+        var application = await platform.CreateApplicationAsync(
+            tenant.Id.ToString(),
+            "desktop-" + suffix,
+            "Desktop App",
+            CancellationToken.None);
+        var environment = await platform.CreateEnvironmentAsync(
+            tenant.Id.ToString(),
+            application.Id.ToString(),
+            "production",
+            "Production",
+            PlatformEnvironmentType.Production,
+            isProtected: false,
+            CancellationToken.None);
+        var route = new RouteScope(tenant.Id, application.Id, environment.Id);
+        using var rsa = RSA.Create(2048);
+        var signingKey = await releases.CreateSigningKeyAsync(
+            route.Tenant,
+            "velopack-test",
+            "Velopack test",
+            rsa.ExportSubjectPublicKeyInfoPem(),
+            CancellationToken.None);
+
+        var valid = await UploadVelopackArtifactAsync(
+            releases,
+            transport,
+            route,
+            signingKey,
+            rsa,
+            declaredVersion: "1.2.3",
+            packageVersion: "1.2.3",
+            packageRuntime: "win-x64");
+        Assert.Equal(ReleaseArtifactStatus.Verified, valid.Status);
+
+        var mismatched = await UploadVelopackArtifactAsync(
+            releases,
+            transport,
+            route,
+            signingKey,
+            rsa,
+            declaredVersion: "2.0.0",
+            packageVersion: "1.2.4",
+            packageRuntime: "win-x64");
+        Assert.Equal(ReleaseArtifactStatus.Rejected, mismatched.Status);
+        Assert.Equal("velopack_release_version_mismatch", mismatched.FailureReason);
+
+        var runtimeMismatch = await UploadVelopackArtifactAsync(
+            releases,
+            transport,
+            route,
+            signingKey,
+            rsa,
+            declaredVersion: "3.0.0",
+            packageVersion: "3.0.0",
+            packageRuntime: "win-arm64",
+            declaredRuntime: "win-x64");
+        Assert.Equal(ReleaseArtifactStatus.Rejected, runtimeMismatch.Status);
+        Assert.Equal("velopack_runtime_mismatch", runtimeMismatch.FailureReason);
+
+        var kindMismatch = await UploadVelopackArtifactAsync(
+            releases,
+            transport,
+            route,
+            signingKey,
+            rsa,
+            declaredVersion: "4.0.0",
+            packageVersion: "4.0.0",
+            packageRuntime: "win-x64",
+            fileKind: "delta");
+        Assert.Equal(ReleaseArtifactStatus.Rejected, kindMismatch.Status);
+        Assert.Equal("velopack_artifact_kind_mismatch", kindMismatch.FailureReason);
+    }
+
     [Fact]
     public async Task SignedArtifactPublishPausePromoteRollbackAndUpdateCheckAreComplete()
     {
@@ -395,6 +481,7 @@ public sealed class ReleaseManagementTests
             hash,
             signingKey.Id.ToString(),
             SignDigest(rsa, hash),
+            validateVelopackPackage: false,
             CancellationToken.None);
         var transferUri = new Uri("http://localhost" + upload.UploadSession.Session.Transfer.Url);
         var query = QueryHelpers.ParseQuery(transferUri.Query);
@@ -414,6 +501,86 @@ public sealed class ReleaseManagementTests
             CancellationToken.None);
         Assert.Equal(ReleaseArtifactStatus.Verified, artifact.Status);
         return artifact;
+    }
+
+    private static async Task<ReleaseArtifact> UploadVelopackArtifactAsync(
+        ReleaseManagementService releases,
+        IObjectStorageTransport transport,
+        RouteScope route,
+        ReleaseSigningKey signingKey,
+        RSA rsa,
+        string declaredVersion,
+        string packageVersion,
+        string packageRuntime,
+        string? declaredRuntime = null,
+        string fileKind = "full")
+    {
+        var content = CreateVelopackPackage(packageVersion, packageRuntime);
+        var hash = Convert.ToHexStringLower(SHA256.HashData(content));
+        var upload = await releases.CreateArtifactUploadAsync(
+            route.Tenant,
+            route.Application,
+            route.Environment,
+            declaredVersion,
+            declaredRuntime ?? packageRuntime,
+            ReleaseArtifactKind.Full,
+            deltaFromVersion: null,
+            $"Asterloom.Test-{declaredVersion}-stable-{fileKind}.nupkg",
+            "application/octet-stream",
+            content.LongLength,
+            hash,
+            signingKey.Id.ToString(),
+            SignDigest(rsa, hash),
+            validateVelopackPackage: true,
+            CancellationToken.None);
+        var transferUri = new Uri("http://localhost" + upload.UploadSession.Session.Transfer.Url);
+        var query = QueryHelpers.ParseQuery(transferUri.Query);
+        Assert.True(await transport.TryAcceptLocalUploadAsync(
+            upload.UploadSession.Session.Id,
+            query["token"].ToString(),
+            new MemoryStream(content, writable: false),
+            "application/octet-stream",
+            content.LongLength,
+            CancellationToken.None));
+        return await releases.CompleteArtifactUploadAsync(
+            route.Tenant,
+            route.Application,
+            route.Environment,
+            upload.Artifact.Id.ToString(),
+            upload.Artifact.Version,
+            CancellationToken.None);
+    }
+
+    private static byte[] CreateVelopackPackage(string version, string runtime)
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            WriteEntry(archive, "[Content_Types].xml", "<Types />");
+            WriteEntry(
+                archive,
+                "Asterloom.Test.nuspec",
+                $$"""
+                <?xml version="1.0" encoding="utf-8"?>
+                <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+                  <metadata>
+                    <id>Asterloom.Test</id>
+                    <version>{{version}}</version>
+                    <channel>stable</channel>
+                    <rid>{{runtime}}</rid>
+                  </metadata>
+                </package>
+                """);
+            WriteEntry(archive, "lib/app/Asterloom.Test.exe", "test");
+        }
+        return stream.ToArray();
+    }
+
+    private static void WriteEntry(ZipArchive archive, string name, string content)
+    {
+        var entry = archive.CreateEntry(name, CompressionLevel.SmallestSize);
+        using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        writer.Write(content);
     }
 
     private static string SignDigest(RSA rsa, string sha256) =>

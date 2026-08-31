@@ -115,6 +115,31 @@ internal sealed class S3ObjectStorageTransport : IObjectStorageTransport, IDispo
         }
     }
 
+    public async Task<bool> TryReadAsync(
+        StorageObjectDescriptor descriptor,
+        Func<Stream, CancellationToken, Task> reader,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        await EnsureBucketAsync(cancellationToken);
+        try
+        {
+            using var response = await _client.GetObjectAsync(
+                new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = descriptor.PhysicalKey,
+                },
+                cancellationToken);
+            await reader(response.ResponseStream, cancellationToken);
+            return true;
+        }
+        catch (AmazonS3Exception exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+    }
+
     public async Task<StorageTransferTicket> CreateDownloadTicketAsync(
         Guid transferId,
         StorageObjectDescriptor descriptor,
