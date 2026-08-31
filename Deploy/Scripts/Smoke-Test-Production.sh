@@ -87,7 +87,7 @@ curl --fail --silent --show-error \
   --output "$body" \
   "$base_url/passport/login"
 
-if ! grep -q "登录成功" "$body"; then
+if ! grep -Eq "登录成功|Signed in" "$body"; then
   echo "Smoke test failed: Passport rejected the bootstrap administrator." >&2
   exit 1
 fi
