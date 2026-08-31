@@ -92,7 +92,10 @@ curl --fail --silent --show-error \
   --data-urlencode "RememberMe=false" \
   --output "$body" \
   "$base_url/passport/login"
-grep -q "登录成功" "$body"
+if ! grep -Eq "登录成功|Signed in" "$body"; then
+  echo "Reference provisioning failed: Passport sign-in did not succeed." >&2
+  exit 1
+fi
 
 curl --fail --silent --show-error \
   --cookie "$cookie_jar" \
