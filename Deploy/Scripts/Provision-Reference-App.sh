@@ -35,6 +35,10 @@ trap 'rm -rf -- "$temporary_directory"' EXIT
 cookie_jar="$temporary_directory/cookies.txt"
 headers="$temporary_directory/headers.txt"
 body="$temporary_directory/body"
+mail_configuration="$temporary_directory/mail.env"
+if [[ -f "$reference_environment" ]]; then
+  grep '^Asterloom__Mail__' "$reference_environment" > "$mail_configuration" || true
+fi
 
 header_location() {
   awk '
@@ -405,6 +409,9 @@ umask 077
   printf 'Asterloom__ResourceServer__ApplicationId=%s\n' "$identity_application_id"
   printf 'Asterloom__ResourceServer__AllowInsecureHttpForDevelopment=false\n'
 } > "$reference_environment"
+if [[ -s "$mail_configuration" ]]; then
+  cat "$mail_configuration" >> "$reference_environment"
+fi
 chmod 600 "$reference_environment"
 
 echo "Reference OIDC clients, resource audience, application binding, and global authorization binding are ready."
