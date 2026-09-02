@@ -960,7 +960,7 @@ function PoliciesPanel({
                   <option value={denyEffect}>{translate("Deny")}</option>
                 </select>
               </Field>
-              <Field label={translate("Subject type")}>
+              <Field label={translate("Policy subject type")}>
                 <select
                   className={inputClassName}
                   name="policySubjectType"
@@ -975,7 +975,7 @@ function PoliciesPanel({
                 </select>
               </Field>
             </div>
-            <Field label={translate("Subject")}>
+            <Field label={translate("Policy subject")}>
               <input
                 className={inputClassName}
                 disabled={subjectType === anySubject}
