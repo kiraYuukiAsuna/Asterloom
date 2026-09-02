@@ -20,6 +20,7 @@ business_client_id="${ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID:-asterloom-referenc
 resource_scope_name="${ASTERLOOM_REFERENCE_API_SCOPE:-asterloom.reference.api}"
 resource_audience="${ASTERLOOM_REFERENCE_API_AUDIENCE:-asterloom-reference-api}"
 binding_id="7fc2e239-3fa1-7ef1-8c20-5c7d54b7bd77"
+business_binding_id="7fc2e239-3fa1-7ef1-8c20-5c7d54b7bd78"
 
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL:?ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL is required}"
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD:?ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD is required}"
@@ -328,10 +329,13 @@ fi
 require_value "reference business client secret" "$business_secret"
 
 roles_file="$temporary_directory/roles.json"
-api_get "/api/v1/authorization/roles?pageSize=100&query=super-administrator" "$roles_file"
+api_get "/api/v1/authorization/roles?pageSize=100" "$roles_file"
 super_role_id="$(jq --raw-output '.roles[]? | select(.key == "super-administrator") | .id' \
   "$roles_file" | head -n 1)"
 require_value "super-administrator role" "$super_role_id"
+developer_role_id="$(jq --raw-output '.roles[]? | select(.key == "developer") | .id' \
+  "$roles_file" | head -n 1)"
+require_value "developer role" "$developer_role_id"
 
 bindings_file="$temporary_directory/bindings.json"
 api_get "/api/v1/authorization/role-bindings?pageSize=100&actorId=$service_client_id" \
@@ -348,6 +352,24 @@ if [[ "$binding_exists" == "0" ]]; then
       '{actorId:$actor,roleId:$role,scope:{},expectedVersion:0}')" \
     "$binding_file"
 fi
+
+business_bindings_file="$temporary_directory/business-bindings.json"
+api_get "/api/v1/authorization/role-bindings?pageSize=100&includeArchived=true&actorId=$business_client_id" \
+  "$business_bindings_file"
+business_binding_version="$(jq --raw-output \
+  --arg binding "$business_binding_id" \
+  '.roleBindings[]? | select(.id == $binding) | .version' \
+  "$business_bindings_file" | head -n 1)"
+business_binding_file="$temporary_directory/business-binding-set.json"
+api_mutate PUT "/api/v1/authorization/role-bindings/$business_binding_id" \
+  "$(jq -cn \
+    --arg actor "$business_client_id" \
+    --arg role "$developer_role_id" \
+    --arg tenant "$identity_tenant_id" \
+    --arg application "$identity_application_id" \
+    --arg version "${business_binding_version:-0}" \
+    '{actorId:$actor,roleId:$role,scope:{tenantId:$tenant,applicationId:$application},expectedVersion:($version | tonumber)}')" \
+  "$business_binding_file"
 
 mkdir -p "$reference_directory"
 chmod 700 "$reference_directory"
