@@ -105,6 +105,10 @@ Token 与以下权限：
 
 Write Key 不是管理 Token，也不能查询事件。不要把同一个 Write Key 跨 Environment 复用。
 
+Web Console 和新生成的管理客户端使用 `/api/v1/.../insights/...` 管理路径，避免浏览器广告或隐私
+扩展按 `analytics` URL 关键字误拦截。原 `/api/v1/.../analytics/...` 管理路径作为兼容别名继续可用；
+SDK 运行时上报路径仍为 `/api/v1/analytics/events:batch`。
+
 ## 7. 上线检查
 
 - [ ] 事件先登记 Schema，再发布生产者。

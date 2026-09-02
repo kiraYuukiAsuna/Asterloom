@@ -18,6 +18,10 @@ import { ConfigSnapshotRequestBuilderRequestsMetadata, type ConfigSnapshotReques
 // @ts-ignore
 import { FlagsRequestBuilderNavigationMetadata, FlagsRequestBuilderRequestsMetadata, type FlagsRequestBuilder } from './flags/index.js';
 // @ts-ignore
+import { InsightsRequestBuilderNavigationMetadata, type InsightsRequestBuilder } from './insights/index.js';
+// @ts-ignore
+import { InsightsQueryRequestBuilderRequestsMetadata, type InsightsQueryRequestBuilder } from './insightsQuery/index.js';
+// @ts-ignore
 import { ReleaseRequestBuilderNavigationMetadata, type ReleaseRequestBuilder } from './release/index.js';
 // @ts-ignore
 import { ReleaseCheckRequestBuilderRequestsMetadata, type ReleaseCheckRequestBuilder } from './releaseCheck/index.js';
@@ -68,6 +72,14 @@ export interface WithEnvironmentItemRequestBuilder extends BaseRequestBuilder<Wi
      * The flags property
      */
     get flags(): FlagsRequestBuilder;
+    /**
+     * The insights property
+     */
+    get insights(): InsightsRequestBuilder;
+    /**
+     * The insightsQuery property
+     */
+    get insightsQuery(): InsightsQueryRequestBuilder;
     /**
      * The release property
      */
@@ -157,6 +169,12 @@ export const WithEnvironmentItemRequestBuilderNavigationMetadata: Record<Exclude
     flags: {
         requestsMetadata: FlagsRequestBuilderRequestsMetadata,
         navigationMetadata: FlagsRequestBuilderNavigationMetadata,
+    },
+    insights: {
+        navigationMetadata: InsightsRequestBuilderNavigationMetadata,
+    },
+    insightsQuery: {
+        requestsMetadata: InsightsQueryRequestBuilderRequestsMetadata,
     },
     release: {
         navigationMetadata: ReleaseRequestBuilderNavigationMetadata,

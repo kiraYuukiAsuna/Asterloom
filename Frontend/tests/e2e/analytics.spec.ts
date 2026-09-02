@@ -5,6 +5,13 @@ import { apiUrl, signIn, webUrl } from "./support/environment";
 test("manages every Analytics API through the Web Console", async ({ page, request }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(25_000);
+  const analyticsManagementRequests: string[] = [];
+  page.on("request", (browserRequest) => {
+    const path = new URL(browserRequest.url()).pathname;
+    if (path.startsWith("/api/asterloom/api/v1/tenants/") && /\/(?:analytics|insights)(?:\/|:)/.test(path)) {
+      analyticsManagementRequests.push(path);
+    }
+  });
 
   const suffix = Date.now().toString(36).slice(-8);
   const tenantSlug = `analytics-tenant-${suffix}`;
@@ -118,6 +125,9 @@ test("manages every Analytics API through the Web Console", async ({ page, reque
   await page.getByRole("link", { name: "Schemas & keys", exact: true }).click();
   await writeKeyRow.locator('[data-ui-action="revoke-analytics-write-key"]').click();
   await expect(writeKeyRow).toContainText("revoked", { ignoreCase: true });
+
+  expect(analyticsManagementRequests.some((path) => path.includes("/insights/events"))).toBeTruthy();
+  expect(analyticsManagementRequests.filter((path) => /\/analytics(?:\/|:)/.test(path))).toEqual([]);
 });
 
 async function selectScope(

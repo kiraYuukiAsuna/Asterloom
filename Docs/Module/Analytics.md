@@ -109,6 +109,11 @@ tokens and these permissions:
 
 A Write Key cannot administer or query events. Never reuse one across Environments.
 
+The Web Console and newly generated management clients use the `/api/v1/.../insights/...` administration
+namespace so browser privacy or ad-blocking filters do not mistake management requests for tracking traffic. The
+former `/api/v1/.../analytics/...` administration paths remain available as compatibility aliases. SDK runtime
+ingestion remains at `/api/v1/analytics/events:batch`.
+
 ## 7. Production checklist
 
 - [ ] Register the schema before deploying a producer.

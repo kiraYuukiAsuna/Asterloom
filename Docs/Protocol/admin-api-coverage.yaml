@@ -1189,7 +1189,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: ListEventSchemas
     category: admin
-    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas
     permission: analytics.schema.read
     uiRoute: /analytics/schemas
     uiAction: list-analytics-schemas
@@ -1197,7 +1197,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: GetEventSchema
     category: admin
-    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas/{event_schema_id}
     permission: analytics.schema.read
     uiRoute: /analytics/schemas
     uiAction: get-analytics-schema
@@ -1205,7 +1205,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: CreateEventSchema
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas
     permission: analytics.schema.create
     uiRoute: /analytics/schemas
     uiAction: create-analytics-schema
@@ -1213,7 +1213,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: UpdateEventSchema
     category: admin
-    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas/{event_schema_id}
     permission: analytics.schema.update
     uiRoute: /analytics/schemas
     uiAction: update-analytics-schema
@@ -1221,7 +1221,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: ArchiveEventSchema
     category: admin
-    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas/{event_schema_id}
     permission: analytics.schema.archive
     uiRoute: /analytics/schemas
     uiAction: archive-analytics-schema
@@ -1229,7 +1229,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: RestoreEventSchema
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}:restore
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas/{event_schema_id}:restore
     permission: analytics.schema.restore
     uiRoute: /analytics/schemas
     uiAction: restore-analytics-schema
@@ -1237,7 +1237,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: ListWriteKeys
     category: admin
-    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/write-keys
     permission: analytics.write-key.read
     uiRoute: /analytics/schemas
     uiAction: list-analytics-write-keys
@@ -1245,7 +1245,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: CreateWriteKey
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/write-keys
     permission: analytics.write-key.create
     uiRoute: /analytics/schemas
     uiAction: create-analytics-write-key
@@ -1253,7 +1253,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: RotateWriteKey
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:rotate
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/write-keys/{write_key_id}:rotate
     permission: analytics.write-key.rotate
     uiRoute: /analytics/schemas
     uiAction: rotate-analytics-write-key
@@ -1261,7 +1261,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: RevokeWriteKey
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/write-keys/{write_key_id}:revoke
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/write-keys/{write_key_id}:revoke
     permission: analytics.write-key.revoke
     uiRoute: /analytics/schemas
     uiAction: revoke-analytics-write-key
@@ -1269,7 +1269,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: ListEvents
     category: admin
-    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/events
     permission: analytics.event.read
     uiRoute: /analytics/explorer
     uiAction: list-analytics-events
@@ -1277,7 +1277,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: GetEvent
     category: admin
-    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events/{analytics_event_id}
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/events/{analytics_event_id}
     permission: analytics.event.read
     uiRoute: /analytics/explorer
     uiAction: get-analytics-event
@@ -1285,7 +1285,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: QueryAnalytics
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics:query
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights:query
     permission: analytics.query.execute
     uiRoute: /analytics/explorer
     uiAction: query-analytics-aggregation
@@ -1293,7 +1293,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: UpdateRetention
     category: admin
-    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/schemas/{event_schema_id}/retention
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/schemas/{event_schema_id}/retention
     permission: analytics.retention.update
     uiRoute: /analytics/schemas
     uiAction: update-analytics-retention
@@ -1301,7 +1301,7 @@ apis:
   - service: asterloom.analytics.admin.v1.AnalyticsAdminService
     rpc: ExportEvents
     category: admin
-    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/analytics/events:export
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/insights/events:export
     permission: analytics.event.export
     uiRoute: /analytics/explorer
     uiAction: export-analytics-events

@@ -29,9 +29,11 @@ public sealed class AnalyticsContractTests : IClassFixture<WebApplicationFactory
     {
         using var client = await CreateAuthorizedClientAsync();
         var scope = await CreateScopeAsync(client);
-        var analyticsPath = ScopePath(scope) + "/analytics";
+        var scopePath = ScopePath(scope);
+        var insightsPath = scopePath + "/insights";
+        var legacyAnalyticsPath = scopePath + "/analytics";
         var schema = await SendAsync<EventSchemaJson>(client.PostAsJsonAsync(
-            analyticsPath + "/schemas",
+            insightsPath + "/schemas",
             new
             {
                 key = "checkout.completed",
@@ -53,14 +55,17 @@ public sealed class AnalyticsContractTests : IClassFixture<WebApplicationFactory
                 retentionDays = 90,
             }));
         var schemas = await client.GetFromJsonAsync<EventSchemaListJson>(
-            analyticsPath + "/schemas?pageSize=20");
+            insightsPath + "/schemas?pageSize=20");
         Assert.Contains(schemas!.EventSchemas, item => item.Id == schema.Id);
+        var legacySchemas = await client.GetFromJsonAsync<EventSchemaListJson>(
+            legacyAnalyticsPath + "/schemas?pageSize=20");
+        Assert.Contains(legacySchemas!.EventSchemas, item => item.Id == schema.Id);
         var fetchedSchema = await client.GetFromJsonAsync<EventSchemaJson>(
-            analyticsPath + $"/schemas/{schema.Id}");
+            insightsPath + $"/schemas/{schema.Id}");
         Assert.Equal(schema.Id, fetchedSchema!.Id);
 
         schema = await SendAsync<EventSchemaJson>(client.PatchAsJsonAsync(
-            analyticsPath + $"/schemas/{schema.Id}",
+            insightsPath + $"/schemas/{schema.Id}",
             new
             {
                 displayName = "Checkout completed v2",
@@ -69,26 +74,26 @@ public sealed class AnalyticsContractTests : IClassFixture<WebApplicationFactory
                 expectedVersion = schema.Version,
             }));
         schema = await SendAsync<EventSchemaJson>(client.PatchAsJsonAsync(
-            analyticsPath + $"/schemas/{schema.Id}/retention",
+            insightsPath + $"/schemas/{schema.Id}/retention",
             new { retentionDays = 120, expectedVersion = schema.Version }));
         Assert.Equal(120, schema.RetentionDays);
         schema = await SendAsync<EventSchemaJson>(client.DeleteAsync(
-            analyticsPath + $"/schemas/{schema.Id}?expectedVersion={schema.Version}"));
+            insightsPath + $"/schemas/{schema.Id}?expectedVersion={schema.Version}"));
         Assert.Equal("ANALYTICS_RESOURCE_STATUS_ARCHIVED", schema.Status);
         schema = await SendAsync<EventSchemaJson>(client.PostAsJsonAsync(
-            analyticsPath + $"/schemas/{schema.Id}:restore",
+            insightsPath + $"/schemas/{schema.Id}:restore",
             new { expectedVersion = schema.Version }));
         Assert.Equal("ANALYTICS_RESOURCE_STATUS_ACTIVE", schema.Status);
 
         var credential = await SendAsync<WriteKeyCredentialJson>(client.PostAsJsonAsync(
-            analyticsPath + "/write-keys",
+            insightsPath + "/write-keys",
             new { name = "Contract SDK" }));
         Assert.StartsWith("ast_an_", credential.Secret, StringComparison.Ordinal);
         var writeKeys = await client.GetFromJsonAsync<WriteKeyListJson>(
-            analyticsPath + "/write-keys");
+            insightsPath + "/write-keys");
         Assert.Contains(writeKeys!.WriteKeys, item => item.Id == credential.WriteKey.Id);
         credential = await SendAsync<WriteKeyCredentialJson>(client.PostAsJsonAsync(
-            analyticsPath + $"/write-keys/{credential.WriteKey.Id}:rotate",
+            insightsPath + $"/write-keys/{credential.WriteKey.Id}:rotate",
             new { expectedVersion = credential.WriteKey.Version }));
 
         await using (var sdk = new AsterloomAnalyticsClient(
@@ -152,15 +157,15 @@ public sealed class AnalyticsContractTests : IClassFixture<WebApplicationFactory
         }
 
         var events = await client.GetFromJsonAsync<EventListJson>(
-            analyticsPath + "/events?pageSize=20&eventName=checkout.completed");
+            insightsPath + "/events?pageSize=20&eventName=checkout.completed");
         Assert.True(events!.Events.Count >= 2);
         Assert.All(events.Events, item => Assert.Contains("[REDACTED]", item.PropertiesJson));
         var analyticsEvent = await client.GetFromJsonAsync<EventJson>(
-            analyticsPath + $"/events/{events.Events[0].Id}");
+            insightsPath + $"/events/{events.Events[0].Id}");
         Assert.Equal(events.Events[0].Id, analyticsEvent!.Id);
 
         var query = await SendAsync<QueryJson>(client.PostAsJsonAsync(
-            analyticsPath + ":query",
+            insightsPath + ":query",
             new
             {
                 eventNames = CheckoutEventNames,
@@ -170,13 +175,13 @@ public sealed class AnalyticsContractTests : IClassFixture<WebApplicationFactory
             }));
         Assert.Equal(2, query.Buckets.Sum(static bucket => bucket.EventCount));
         var export = await SendAsync<ExportJson>(client.PostAsJsonAsync(
-            analyticsPath + "/events:export",
+            insightsPath + "/events:export",
             new { eventName = "checkout.completed", maximumRows = 100 }));
         Assert.Equal(2, export.ExportedRows);
         Assert.Contains("checkout.completed", Encoding.UTF8.GetString(export.Content));
 
         var revoked = await SendAsync<WriteKeyJson>(client.PostAsJsonAsync(
-            analyticsPath + $"/write-keys/{credential.WriteKey.Id}:revoke",
+            insightsPath + $"/write-keys/{credential.WriteKey.Id}:revoke",
             new { expectedVersion = credential.WriteKey.Version }));
         Assert.Equal("ANALYTICS_WRITE_KEY_STATUS_REVOKED", revoked.Status);
     }

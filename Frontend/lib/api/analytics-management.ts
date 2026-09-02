@@ -134,7 +134,7 @@ export async function listAnalyticsSchemas(
   scope: AnalyticsScope,
   options: { includeArchived?: boolean; pageSize?: number; pageToken?: string; query?: string },
 ) {
-  const response = await analyticsBuilder(analyticsScopeSchema.parse(scope)).schemas.get({
+  const response = await insightsBuilder(analyticsScopeSchema.parse(scope)).schemas.get({
     queryParameters: {
       includeArchived: z.boolean().default(false).parse(options.includeArchived),
       pageSize: z.number().int().min(1).max(100).default(50).parse(options.pageSize),
@@ -146,7 +146,7 @@ export async function listAnalyticsSchemas(
 }
 
 export async function getAnalyticsSchema(scope: AnalyticsScope, schemaId: string) {
-  const response = await analyticsBuilder(analyticsScopeSchema.parse(scope))
+  const response = await insightsBuilder(analyticsScopeSchema.parse(scope))
     .schemas.byEventSchemaId(idSchema.parse(schemaId))
     .get();
   return eventSchemaRecordSchema.parse(requireResponse(response));
@@ -172,7 +172,7 @@ export async function createAnalyticsSchema(
       schemaJson: analyticsSchemaJsonSchema,
     })
     .parse(input);
-  const response = await analyticsBuilder(scope, csrfToken).schemas.post(parsed);
+  const response = await insightsBuilder(scope, csrfToken).schemas.post(parsed);
   return eventSchemaRecordSchema.parse(requireResponse(response));
 }
 
@@ -189,7 +189,7 @@ export async function updateAnalyticsSchema(
       schemaJson: analyticsSchemaJsonSchema,
     })
     .parse(input);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .schemas.byEventSchemaId(current.id)
     .patch({ ...parsed, expectedVersion: current.version });
   return eventSchemaRecordSchema.parse(requireResponse(response));
@@ -200,7 +200,7 @@ export async function archiveAnalyticsSchema(
   schema: AnalyticsEventSchemaRecord,
 ) {
   const current = eventSchemaRecordSchema.parse(schema);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .schemas.byEventSchemaId(current.id)
     .delete({ queryParameters: { expectedVersion: current.version } });
   return eventSchemaRecordSchema.parse(requireResponse(response));
@@ -211,7 +211,7 @@ export async function restoreAnalyticsSchema(
   schema: AnalyticsEventSchemaRecord,
 ) {
   const current = eventSchemaRecordSchema.parse(schema);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .schemas.withEventSchemaIdRestore(current.id)
     .post({ expectedVersion: current.version });
   return eventSchemaRecordSchema.parse(requireResponse(response));
@@ -223,7 +223,7 @@ export async function updateAnalyticsRetention(
   retentionDays: number,
 ) {
   const current = eventSchemaRecordSchema.parse(schema);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .schemas.byEventSchemaId(current.id)
     .retention.patch({
       expectedVersion: current.version,
@@ -236,7 +236,7 @@ export async function listAnalyticsWriteKeys(
   scope: AnalyticsScope,
   includeRevoked = false,
 ) {
-  const response = await analyticsBuilder(analyticsScopeSchema.parse(scope)).writeKeys.get({
+  const response = await insightsBuilder(analyticsScopeSchema.parse(scope)).writeKeys.get({
     queryParameters: { includeRevoked },
   });
   return writeKeyPageSchema.parse(requireResponse(response));
@@ -247,7 +247,7 @@ export async function createAnalyticsWriteKey(
   scope: AnalyticsScope,
   name: string,
 ) {
-  const response = await analyticsBuilder(scope, csrfToken).writeKeys.post({
+  const response = await insightsBuilder(scope, csrfToken).writeKeys.post({
     name: analyticsDisplayNameSchema.parse(name),
   });
   return writeKeyCredentialSchema.parse(requireResponse(response));
@@ -258,7 +258,7 @@ export async function rotateAnalyticsWriteKey(
   writeKey: AnalyticsWriteKeyRecord,
 ) {
   const current = writeKeyRecordSchema.parse(writeKey);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .writeKeys.withWriteKeyIdRotate(current.id)
     .post({ expectedVersion: current.version });
   return writeKeyCredentialSchema.parse(requireResponse(response));
@@ -269,7 +269,7 @@ export async function revokeAnalyticsWriteKey(
   writeKey: AnalyticsWriteKeyRecord,
 ) {
   const current = writeKeyRecordSchema.parse(writeKey);
-  const response = await analyticsBuilder(current.scope, csrfToken)
+  const response = await insightsBuilder(current.scope, csrfToken)
     .writeKeys.withWriteKeyIdRevoke(current.id)
     .post({ expectedVersion: current.version });
   return writeKeyRecordSchema.parse(requireResponse(response));
@@ -287,7 +287,7 @@ export async function listAnalyticsEvents(
     toAt?: string;
   },
 ) {
-  const response = await analyticsBuilder(analyticsScopeSchema.parse(scope)).events.get({
+  const response = await insightsBuilder(analyticsScopeSchema.parse(scope)).events.get({
     queryParameters: {
       actorId: z.string().trim().max(200).default("").parse(options.actorId),
       eventId: z.string().trim().max(128).default("").parse(options.eventId),
@@ -302,7 +302,7 @@ export async function listAnalyticsEvents(
 }
 
 export async function getAnalyticsEvent(scope: AnalyticsScope, eventId: string) {
-  const response = await analyticsBuilder(analyticsScopeSchema.parse(scope))
+  const response = await insightsBuilder(analyticsScopeSchema.parse(scope))
     .events.byAnalyticsEventId(idSchema.parse(eventId))
     .get();
   return analyticsEventRecordSchema.parse(requireResponse(response));
@@ -321,7 +321,7 @@ export async function queryAnalytics(
       toAt: z.string().datetime(),
     })
     .parse(input);
-  const response = await environmentBuilder(scope, csrfToken).analyticsQuery.post(parsed);
+  const response = await environmentBuilder(scope, csrfToken).insightsQuery.post(parsed);
   return queryResponseSchema.parse(requireResponse(response));
 }
 
@@ -345,7 +345,7 @@ export async function exportAnalyticsEvents(
       toAt: z.string().datetime().optional(),
     })
     .parse(input);
-  const response = await analyticsBuilder(scope, csrfToken).eventsExport.post(parsed);
+  const response = await insightsBuilder(scope, csrfToken).eventsExport.post(parsed);
   return exportResponseSchema.parse(requireResponse(response));
 }
 
@@ -369,8 +369,8 @@ function environmentBuilder(scope: AnalyticsScope, csrfToken?: string) {
     .environments.byEnvironmentId(parsed.environmentId);
 }
 
-function analyticsBuilder(scope: AnalyticsScope, csrfToken?: string) {
-  return environmentBuilder(scope, csrfToken).analytics;
+function insightsBuilder(scope: AnalyticsScope, csrfToken?: string) {
+  return environmentBuilder(scope, csrfToken).insights;
 }
 
 function requireResponse<T>(response: T | undefined): T {
