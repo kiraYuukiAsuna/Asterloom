@@ -20,6 +20,11 @@ Application + Write Key
 
 路由：`/analytics/schemas`、`/analytics/explorer`
 
+> **路径命名说明：** 浏览器地址栏中的 Web 页面路由仍使用 `/analytics/...`；页面在后台发出的
+> 管理 API 请求使用 `/api/v1/.../insights/...`。这是有意设计的不一致，用于避免广告或隐私扩展
+> 将事件查询管理请求误判为追踪流量。原 `/api/v1/.../analytics/...` 管理 API 作为兼容别名保留，
+> SDK 运行时上报路径仍为 `/api/v1/analytics/events:batch`。
+
 ### Event Schema
 
 1. 为稳定 Event Name 创建 JSON Schema。
@@ -104,10 +109,6 @@ Token 与以下权限：
 - `analytics.event.read`、`analytics.query.execute`、`analytics.event.export`
 
 Write Key 不是管理 Token，也不能查询事件。不要把同一个 Write Key 跨 Environment 复用。
-
-Web Console 和新生成的管理客户端使用 `/api/v1/.../insights/...` 管理路径，避免浏览器广告或隐私
-扩展按 `analytics` URL 关键字误拦截。原 `/api/v1/.../analytics/...` 管理路径作为兼容别名继续可用；
-SDK 运行时上报路径仍为 `/api/v1/analytics/events:batch`。
 
 ## 7. 上线检查
 

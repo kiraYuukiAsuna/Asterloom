@@ -21,6 +21,12 @@ Application + Write Key
 
 Routes: `/analytics/schemas`, `/analytics/explorer`
 
+> **Path naming note:** Web page routes shown in the browser address bar remain under `/analytics/...`, while
+> management API requests made in the background use `/api/v1/.../insights/...`. This intentional mismatch keeps
+> browser privacy and ad-blocking filters from mistaking event-management queries for tracking traffic. The former
+> `/api/v1/.../analytics/...` management API remains as a compatibility alias, and SDK runtime ingestion remains at
+> `/api/v1/analytics/events:batch`.
+
 ### Event schemas
 
 1. Create a JSON Schema for a stable event name.
@@ -108,11 +114,6 @@ tokens and these permissions:
 - `analytics.event.read`, `analytics.query.execute`, `analytics.event.export`
 
 A Write Key cannot administer or query events. Never reuse one across Environments.
-
-The Web Console and newly generated management clients use the `/api/v1/.../insights/...` administration
-namespace so browser privacy or ad-blocking filters do not mistake management requests for tracking traffic. The
-former `/api/v1/.../analytics/...` administration paths remain available as compatibility aliases. SDK runtime
-ingestion remains at `/api/v1/analytics/events:batch`.
 
 ## 7. Production checklist
 
