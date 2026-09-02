@@ -2,67 +2,114 @@
 
 [English](Identity-Business-Integration.md) | [简体中文](Identity-Business-Integration.zh-CN.md) | [Identity](Identity.md)
 
-This guide explains how products such as Business A and Business B use Asterloom as a unified Passport. Each product owns its end-user registration, sign-in, and recovery UI. Passwords, client secrets, and OIDC tokens travel only between the trusted business backend and Asterloom.
+This is the standard Asterloom business integration. A desktop, mobile, or other browser-capable native application signs in with a Public Client using Authorization Code + PKCE. It then sends the resulting user Access Token directly to its business API. The business backend validates the token signature and its own audience locally; it neither stores the user token nor exchanges a token with its Client Secret on every request.
 
-## 1. Account model
+A Confidential Client is still required for trusted backend operations such as account registration, email confirmation, service jobs, and administration. It must never be shipped in a client application.
 
-```text
-Global Passport account (one user ID / sub)
-  ├─ Application membership: Business A (active/removed)
-  │    └─ Authorization bindings and policies for Business A
-  └─ Application membership: Business B (active/removed)
-       └─ Authorization bindings and policies for Business B
-```
-
-- A Passport account is global. One email has one account and one stable `sub`.
-- Membership is application-specific. A user may join A but not B, or be removed only from A.
-- Authorization role bindings and policies remain isolated by Tenant/Application/Environment scope.
-- Administrators and business users are not stored in separate account systems. Administrators have trusted Passport roles; normal business users usually have an empty `roles` collection.
-- Asterloom Web is the management control plane, not the end-user registration or sign-in UI for each product.
-
-After registering in A, the user can reuse the same account in B. B can either enable `allow_membership_auto_join` so a successful first login joins B, or call the registration API from B's trusted backend. For an existing email, the correct password is required and only B's membership is added.
-
-## 2. Resources required by each application
-
-Use the Web console to:
-
-1. Create or select a Tenant and Application under `/tenants`.
-2. Create a Confidential Web Client in `/identity/users` under **OIDC clients**.
-3. Bind the client to the exact `tenantId` and `applicationId`.
-4. Enable `client_credentials` and `password`; add `refresh_token` for renewable sessions.
-5. Enable `allow_user_registration` when this backend may register users.
-6. Decide whether `allow_membership_auto_join` matches the product policy.
-7. Save the one-time client secret and inject it from a secret manager.
-8. Configure application-scoped role bindings or policies under `/authorization/roles`.
-
-An OIDC client binds to exactly one Platform Application. Give A and B separate clients and secrets.
-
-## 3. Registration flow
+## 1. Account and application model
 
 ```text
-Browser registration form
-  → Business backend
-      → client_credentials token
-      → IdentityAccess.RegisterAccount
-          → create/reuse global account
-          → create/reactivate this application's membership
-          → return one-time email confirmation token
-      → Business email provider
-Browser confirmation page
-  → Business backend
-      → IdentityAccess.ConfirmEmail
+Global Passport account (one stable sub)
+  ├─ Membership: Business A
+  │    ├─ Public Client A → end-user PKCE login
+  │    ├─ Confidential Client A → registration/service operations
+  │    └─ API Scope A → Audience business-a-api
+  └─ Membership: Business B
+       ├─ Public Client B
+       ├─ Confidential Client B
+       └─ API Scope B → Audience business-b-api
 ```
 
-Headless JSON Transcoding endpoints:
+- Passport accounts are global; A and B receive the same `sub` for the same person.
+- Membership, the token's `application_id`, and authorization scope are application-specific.
+- Administrators and business users share the same account store. Administrators simply have trusted Passport roles.
+- Asterloom Web is the control plane. Products own their end-user UI; Passport authenticates the user during the Public Client redirect.
 
-| Operation | HTTP | Scope source |
-| --- | --- | --- |
-| Register or join this application | `POST /api/v1/identity/accounts:register` | Caller client binding |
-| Confirm email | `POST /api/v1/identity/accounts:confirm-email` | Caller client binding |
-| Read an account in this application | `GET /api/v1/identity/accounts/{userId}` | Caller client binding |
-| Remove membership from this application | `DELETE /api/v1/identity/accounts/{userId}/membership?expectedVersion=...` | Caller client binding |
+## 2. Resources for one business
 
-Requests cannot select a Tenant or Application, so a business backend cannot operate on another application's membership. Deliver the returned confirmation token through the product's email provider and confirmation page; never log or analyze it.
+Create or select a Tenant/Application in the Web console, then create:
+
+1. An API scope such as `business-a.api` whose resource is the unique business API audience `business-a-api`.
+2. A Public Native Client bound to that Tenant/Application. Enable `authorization_code`, `refresh_token`, and PKCE; grant `openid profile email roles offline_access asterloom.api business-a.api`; register exact redirect URIs. A Public Client has no secret.
+3. A Confidential Web Client bound to the same application. Enable `client_credentials` and `allow_user_registration` when the backend registers users. If a browser BFF signs users in, create a separate Web Client with `authorization_code` and `refresh_token`.
+
+`allow_membership_auto_join` determines whether an existing global account joins this application after its first successful login. A and B must not share client IDs, secrets, or API audiences.
+
+## 3. Public Client sign-in and API call
+
+`Asterloom.Sdk.Identity` opens the system browser, hosts a loopback callback, and applies PKCE:
+
+```csharp
+builder.Services.AddAsterloomIdentityClient(options =>
+{
+    options.Issuer = new Uri("https://asterloom.example/");
+    options.ClientId = "business-a-desktop";
+    options.EnableInteractiveAuthentication = true;
+    options.RequestRefreshTokens = true;
+    options.Scopes.Add("business-a.api");
+});
+
+var identity = services.GetRequiredService<AsterloomIdentityClient>();
+var tokens = await identity.SignInAsync(cancellationToken: cancellationToken);
+
+using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.business-a.example/me");
+request.Headers.Authorization =
+    new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+using var response = await httpClient.SendAsync(request, cancellationToken);
+response.EnsureSuccessStatusCode();
+```
+
+Only the Access Token is an API bearer credential. The ID Token describes the sign-in result; the Refresh Token is presented only to Passport. Neither is accepted by a business API.
+
+Native apps store tokens in operating-system secure storage and refresh through the SDK. Never place them in configuration files, command lines, logs, Telemetry, or Analytics. A native Public Client cannot protect a secret and must not be assigned one.
+
+## 4. ASP.NET Core resource server
+
+Reference `Asterloom.Sdk.Identity.AspNetCore` from the business backend:
+
+```csharp
+builder.Services.AddAsterloomResourceServer(options =>
+{
+    options.Issuer = new Uri("https://asterloom.example/");
+    options.Audience = "business-a-api";
+    options.TenantId = Guid.Parse(configuration["Asterloom:TenantId"]!);
+    options.ApplicationId = Guid.Parse(configuration["Asterloom:ApplicationId"]!);
+});
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/me", (ClaimsPrincipal user) => new
+{
+    subject = user.FindFirstValue("sub"),
+    applicationId = user.FindFirstValue("application_id"),
+}).RequireAuthorization();
+```
+
+Using standard OIDC discovery and JWKS, the SDK validates RS256, `typ=at+jwt`, issuer, audience, expiry, a stable `sub`, `asterloom_actor_type=user`, and the configured tenant/application binding. Ordinary API calls therefore need neither a business Client Secret nor an Asterloom round trip. Signing metadata refreshes through the standard middleware.
+
+Production endpoints require HTTPS. Plain HTTP is restricted to an explicitly enabled loopback development issuer.
+
+### Real-time Asterloom permission checks
+
+An endpoint that relies on Asterloom roles or policies can add a remote permission policy:
+
+```csharp
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("platform-read", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAsterloomPermission("platform.info.read"));
+
+app.MapGet("/platform", Handle)
+    .RequireAuthorization("platform-read");
+```
+
+The handler forwards the current request's same user Access Token to Asterloom `CheckPermission`. Asterloom takes `sub` and application scope from the token and checks membership and current role/policy state. The backend still does not persist the token. A failed or unavailable permission service fails closed.
+
+## 5. Trusted backend account registration
+
+Registration belongs to the business backend, not its Public Client. The backend gets a Service Token with its Confidential Client and invokes the account API:
 
 ```csharp
 builder.Services.AddAsterloomIdentityClient(options =>
@@ -71,8 +118,6 @@ builder.Services.AddAsterloomIdentityClient(options =>
     options.ClientId = configuration["Asterloom:Identity:ClientId"]!;
     options.ClientSecret = configuration["Asterloom:Identity:ClientSecret"]!;
     options.EnableServiceCredentials = true;
-    options.EnablePasswordAuthentication = true;
-    options.RequestRefreshTokens = true;
 });
 
 var identity = services.GetRequiredService<AsterloomIdentityClient>();
@@ -84,94 +129,45 @@ var accounts = new AsterloomIdentityAccessClient(transport.CallInvoker);
 
 var registration = await accounts.RegisterAccountAsync(
     email, displayName, password, cancellationToken);
-
-// Deliver registration.EmailVerificationToken through the product's email service.
 await accounts.ConfirmEmailAsync(email, confirmationToken, cancellationToken);
 ```
 
-`RegisterAccountAsync` behaves as follows:
+The transport URI is the Asterloom API address, not a second client identity setting. `Issuer` drives OIDC and tokens; the transport address is where gRPC/HTTP API requests are sent. They are normally the same in a single-domain deployment.
 
-- New email: creates a Pending global account and this application's membership.
-- Existing email with the correct password: reuses the account and creates or restores only this membership.
-- Wrong password, or a Suspended/Archived account: rejects the request to prevent account takeover.
-- Confirmation changes a Pending account to Active. An already confirmed global account does not confirm again when joining another application.
+The API is locked to the Confidential Client's application binding. A new email creates a global account. An existing email plus the correct password reuses its `sub` and adds or restores only this application's membership.
 
-## 4. Sign-in and BFF sessions
+## 6. Web/BFF and token ownership
 
-The browser submits credentials only to its same-origin business backend. That backend uses its Confidential Client for the controlled Password Grant:
+For a browser product, prefer Authorization Code + PKCE through its BFF. The BFF completes the callback, encrypts user tokens in a server-side session store, and gives the browser only a random `HttpOnly`, `Secure` session cookie. Here the BFF stores and refreshes one user token set per browser session.
 
-```csharp
-var tokens = await identity.AuthenticateWithPasswordAsync(
-    email, password, cancellationToken);
-```
+The native Public Client flow differs: the client securely stores and refreshes tokens; the business backend only validates each Access Token. A Confidential Client Service Token is a third identity and cannot replace a user token on an endpoint that needs user context.
 
-The token contains the stable global `sub` plus the bound `tenant_id`, `application_id`, and `asterloom_actor_type=user`. A and B receive the same `sub` but different `application_id` values.
+Password Grant is disabled. Neither native clients nor browser BFFs may collect Passport passwords and exchange them directly at the Token Endpoint.
 
-The business backend must:
+## 7. Invalidation boundaries
 
-1. Encrypt Access/Refresh Tokens in a server-side session store (Redis or a database in production).
-2. Give the browser only a random opaque `HttpOnly`, `Secure`, appropriately `SameSite` session cookie.
-3. Store tokens per browser session; never put user tokens in a singleton `IAsterloomTokenStore`.
-4. Call `RefreshUserTokensAsync(currentTokens)` near expiration and atomically replace the session.
-5. Clear the session and require sign-in after refresh or API authentication failure.
+- Access Tokens live for 10 minutes by default. A resource server using only local `.RequireAuthorization()` does not learn about membership, account, or policy changes until the token expires.
+- Passport rechecks the account and membership during refresh, so refresh fails immediately after membership removal.
+- `RequireAsterloomPermission` checks membership and permissions on every request and therefore applies changes immediately.
+- Use remote permission policies on high-risk operations; use the short local-token window where appropriate for lower-risk calls.
+- Different audiences and application bindings prevent an A token from being accepted by B.
 
-Never expose Password Grant directly to a browser. Never place the client secret, Access Token, or Refresh Token in JavaScript, Local Storage, plaintext cookies, logs, Telemetry, or Analytics.
+## 8. Runnable reference and tests
 
-## 5. Membership and permission invalidation
+`Provision-Reference-App.sh` creates `asterloom.reference.api` → `asterloom-reference-api`, an application-bound `asterloom-reference-native` Public Client, Confidential registration/service clients, and Reference Backend resource-server configuration.
 
-Access requires both conditions:
+`Asterloom.ReferenceApp.Client login` completes PKCE sign-in and calls `/api/reference/me` with the resulting Access Token. See:
 
-```text
-active application membership
-  AND Authorization decision allows permission
-  → request allowed
-```
+- [ReferenceProtectedEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceProtectedEndpoints.cs)
+- [Reference resource-server setup](../../Backend/Samples/Asterloom.ReferenceApp.Backend/Program.cs)
+- [Reference Public Client](../../Backend/Samples/Asterloom.ReferenceApp.Client/Program.cs)
+- [ASP.NET Core resource-server SDK](../../Backend/Asterloom.Sdk.Identity.AspNetCore/AsterloomResourceServerServiceCollectionExtensions.cs)
 
-- Removing a membership immediately blocks protected API calls made with that application's bound user token and also blocks refresh.
-- If the client enables `allow_membership_auto_join`, the next successful password sign-in reactivates membership. Disable auto-join, globally suspend the account, or add an Authorization Deny when removal must remain enforced.
-- Other applications' memberships, sign-in, and permissions continue to work.
-- Suspending or archiving the global account blocks sign-in and refresh for every application.
-- Removing a role binding or adding a Deny policy changes permission without deleting membership.
-- Restoring membership does not recreate a previously removed role binding.
+Integration tests verify that the Access Token is a public three-part `at+jwt`, its signing key exists in JWKS, a resource server accepts it, an ID Token is rejected, and the same user token can drive a remote permission decision.
 
-## 6. Management console responsibility
+## 9. Related contracts
 
-`/identity/users` covers the complete management API:
-
-- Global account create/invite, profile, Passport roles, password reset, suspend, archive, and restore.
-- OIDC session listing and revocation.
-- Application membership list/filter, add/restore, and remove.
-- OIDC client application bindings, grants, registration/auto-join switches, redirects, scopes, secret rotation, and deletion.
-- OIDC scope management.
-
-The console does not impersonate a business client to invoke Headless APIs because that would require retaining each product's client secret. Its administrative account and membership actions provide the corresponding manual operations.
-
-## 7. Runnable reference
-
-The reference backend demonstrates the BFF boundary:
-
-- [ReferenceIdentityEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentityEndpoints.cs)
-- [ReferenceIdentityGateway.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentityGateway.cs)
-- [ReferenceIdentitySessionStore.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentitySessionStore.cs)
-
-After configuring and starting it:
-
-```powershell
-$env:ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD = "Use-A-Strong-Test-Password!2026"
-dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- \
-  account-demo user@example.com "Example User"
-dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- \
-  account-login user@example.com
-```
-
-`account-demo` performs real registration, email confirmation, sign-in, server-side session inspection, and sign-out. Its in-memory session store is illustrative only; production requires a shared, encrypted, expiring, revocable store.
-For a local demo without email delivery, explicitly enable `ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN=true`.
-This returns the confirmation token to the test client, is disabled by default, and must not be enabled on a public production endpoint.
-
-## 8. Related contracts
-
-- Business access protocol: [identity_access.proto](../../Proto/Asterloom/identity/v1/identity_access.proto)
-- Management protocol: [identity_admin.proto](../../Proto/Asterloom/identity/v1/identity_admin.proto)
-- C# business account SDK: [AsterloomIdentityAccessClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityAccessClient.cs)
-- Sign-in SDK: [AsterloomIdentityClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityClient.cs)
-- Authorization integration: [Authorization.md](Authorization.md)
+- [identity_access.proto](../../Proto/Asterloom/identity/v1/identity_access.proto)
+- [identity_admin.proto](../../Proto/Asterloom/identity/v1/identity_admin.proto)
+- [authorization.proto](../../Proto/Asterloom/authorization/v1/authorization.proto)
+- [Authorization guide](Authorization.md)

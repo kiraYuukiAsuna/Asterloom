@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAuthConfig, safeReturnTo } from "@/lib/auth/config";
+import { sessionCookieOptions } from "@/lib/auth/cookies";
 import {
   randomOpaqueValue,
   safeEqual,
@@ -8,8 +9,13 @@ import {
   unseal,
 } from "@/lib/auth/crypto";
 import { isMutation } from "@/lib/auth/request-security";
+import {
+  createSession,
+  persistentSessionCookieMaxAge,
+} from "@/lib/auth/session";
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
 
@@ -32,6 +38,36 @@ describe("BFF authentication security", () => {
     expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(second).not.toBe(first);
     expect(first).not.toContain(".");
+  });
+
+  it("uses a browser session by default and a 30-day session when remembered", () => {
+    const now = Date.UTC(2026, 8, 3, 0, 0, 0);
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const tokens = {
+      accessExpiresAt: now + 10 * 60 * 1000,
+      accessToken: "access-token",
+      actor: {
+        name: "Asterloom Admin",
+        roles: ["SuperAdministrator"],
+        subject: "admin-user",
+      },
+      refreshToken: "refresh-token",
+    };
+
+    const browserSession = createSession(tokens);
+    const persistentSession = createSession(tokens, true);
+
+    expect(browserSession.record.absoluteExpiresAt).toBe(
+      now + 8 * 60 * 60 * 1000,
+    );
+    expect(persistentSession.record.absoluteExpiresAt).toBe(
+      now + 30 * 24 * 60 * 60 * 1000,
+    );
+    expect(sessionCookieOptions(false).maxAge).toBeUndefined();
+    expect(sessionCookieOptions(true).maxAge).toBe(
+      persistentSessionCookieMaxAge,
+    );
+    expect(persistentSessionCookieMaxAge).toBe(30 * 24 * 60 * 60);
   });
 
   it("authenticates encrypted server-side session envelopes", () => {

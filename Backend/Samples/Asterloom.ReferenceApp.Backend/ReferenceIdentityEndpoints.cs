@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Asterloom.Sdk.Identity;
 
 namespace Asterloom.ReferenceApp.Backend;
@@ -11,9 +10,6 @@ internal static class ReferenceIdentityEndpoints
         var group = endpoints.MapGroup("/api/reference/account");
         group.MapPost("/register", RegisterAsync);
         group.MapPost("/confirm-email", ConfirmEmailAsync);
-        group.MapPost("/login", LoginAsync);
-        group.MapGet("/me", GetCurrentAsync);
-        group.MapPost("/logout", Logout);
         return endpoints;
     }
 
@@ -21,6 +17,7 @@ internal static class ReferenceIdentityEndpoints
         RegisterRequest request,
         ReferenceIdentityGateway gateway,
         ReferenceIdentityOptions options,
+        IServiceProvider services,
         CancellationToken cancellationToken)
     {
         var result = await gateway.Accounts.RegisterAccountAsync(
@@ -28,14 +25,26 @@ internal static class ReferenceIdentityEndpoints
             request.DisplayName,
             request.Password,
             cancellationToken);
+        var mail = services.GetService<ReferenceMailGateway>();
+        if (mail is not null && result.VerificationRequired)
+        {
+            await mail.SendAsync(
+                request.Email,
+                "Confirm your Reference App email",
+                $"Your Reference App verification token is: {result.EmailVerificationToken}",
+                $"<p>Your Reference App verification token is:</p><p><strong>{System.Net.WebUtility.HtmlEncode(result.EmailVerificationToken)}</strong></p>",
+                $"registration:{result.User.Id:D}",
+                cancellationToken);
+        }
+
         return Results.Ok(new
         {
             user = ToResponse(result.User),
             membership = result.Membership,
             result.AccountCreated,
             result.VerificationRequired,
-            // A real business backend sends this through its own email provider.
-            // The reference app exposes it only behind an explicit development flag.
+            // When Asterloom:Mail is enabled, the business backend submits this
+            // content to Asterloom Mail. Development can still expose the token.
             emailVerificationToken = options.ExposeEmailVerificationToken
                 ? result.EmailVerificationToken
                 : null,
@@ -54,67 +63,6 @@ internal static class ReferenceIdentityEndpoints
         return Results.Ok(ToResponse(user));
     }
 
-    private static async Task<IResult> LoginAsync(
-        LoginRequest request,
-        HttpContext context,
-        ReferenceIdentityGateway gateway,
-        ReferenceIdentitySessionStore sessions,
-        CancellationToken cancellationToken)
-    {
-        var tokens = await gateway.AuthenticateAsync(
-            request.Email,
-            request.Password,
-            cancellationToken);
-        var sessionId = sessions.Create(tokens);
-        context.Response.Cookies.Append(
-            ReferenceIdentitySessionStore.CookieName,
-            sessionId,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                IsEssential = true,
-                MaxAge = TimeSpan.FromHours(8),
-                Path = "/",
-                SameSite = SameSiteMode.Lax,
-                Secure = context.Request.IsHttps,
-            });
-        return Results.Ok(ToSessionResponse(tokens));
-    }
-
-    private static async Task<IResult> GetCurrentAsync(
-        HttpContext context,
-        ReferenceIdentitySessionStore sessions,
-        CancellationToken cancellationToken)
-    {
-        var tokens = await sessions.GetAsync(
-            context.Request.Cookies[ReferenceIdentitySessionStore.CookieName],
-            cancellationToken);
-        return tokens is null
-            ? Results.Unauthorized()
-            : Results.Ok(ToSessionResponse(tokens));
-    }
-
-    private static IResult Logout(
-        HttpContext context,
-        ReferenceIdentitySessionStore sessions)
-    {
-        sessions.Remove(context.Request.Cookies[ReferenceIdentitySessionStore.CookieName]);
-        context.Response.Cookies.Delete(
-            ReferenceIdentitySessionStore.CookieName,
-            new CookieOptions { Path = "/" });
-        return Results.NoContent();
-    }
-
-    private static object ToSessionResponse(AsterloomTokenSet tokens) => new
-    {
-        subject = tokens.Principal.FindFirstValue("sub"),
-        email = tokens.Principal.FindFirstValue("email"),
-        name = tokens.Principal.FindFirstValue("name"),
-        tenantId = tokens.Principal.FindFirstValue("tenant_id"),
-        applicationId = tokens.Principal.FindFirstValue("application_id"),
-        tokens.AccessTokenExpiresAt,
-    };
-
     private static object ToResponse(AsterloomIdentityUser user) => new
     {
         user.Id,
@@ -127,6 +75,4 @@ internal static class ReferenceIdentityEndpoints
     private sealed record RegisterRequest(string Email, string DisplayName, string Password);
 
     private sealed record ConfirmEmailRequest(string Email, string Token);
-
-    private sealed record LoginRequest(string Email, string Password);
 }

@@ -10,6 +10,7 @@ import {
   Flag,
   HardDrive,
   LayoutDashboard,
+  Mail,
   PackageOpen,
   Search,
   ScrollText,
@@ -56,6 +57,7 @@ const destinations = [
     available: true,
   },
   { label: "Operations", href: "/operations/apis", icon: Braces, available: true },
+  { label: "Mail", href: "/mail/accounts", icon: Mail, available: true },
   { label: "Storage", href: "/storage/objects", icon: HardDrive, available: true },
 ];
 

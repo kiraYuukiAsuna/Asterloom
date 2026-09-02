@@ -1699,6 +1699,15 @@ export function createCreateSigningKeyRequestFromDiscriminatorValue(parseNode: P
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateSmtpAccountRequest}
+ */
+// @ts-ignore
+export function createCreateSmtpAccountRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateSmtpAccountRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CreateSourceRequest}
  */
 // @ts-ignore
@@ -2270,6 +2279,15 @@ export function createListFlagsResponseFromDiscriminatorValue(parseNode: ParseNo
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ListMailDeliveriesResponse}
+ */
+// @ts-ignore
+export function createListMailDeliveriesResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoListMailDeliveriesResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ListObjectsResponse}
  */
 // @ts-ignore
@@ -2369,6 +2387,15 @@ export function createListSigningKeysResponseFromDiscriminatorValue(parseNode: P
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ListSmtpAccountsResponse}
+ */
+// @ts-ignore
+export function createListSmtpAccountsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoListSmtpAccountsResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ListSourcesResponse}
  */
 // @ts-ignore
@@ -2428,6 +2455,24 @@ export function createListUsersResponseFromDiscriminatorValue(parseNode: ParseNo
 // @ts-ignore
 export function createListWriteKeysResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoListWriteKeysResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {MailDelivery}
+ */
+// @ts-ignore
+export function createMailDeliveryFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoMailDelivery;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {MailScope}
+ */
+// @ts-ignore
+export function createMailScopeFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoMailScope;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2868,6 +2913,15 @@ export function createRestoreSigningKeyRequestFromDiscriminatorValue(parseNode: 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RestoreSmtpAccountRequest}
+ */
+// @ts-ignore
+export function createRestoreSmtpAccountRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRestoreSmtpAccountRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RestoreSourceRequest}
  */
 // @ts-ignore
@@ -3051,6 +3105,15 @@ export interface CreateSegmentRequest extends Parsable {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SendEmailRequest}
+ */
+// @ts-ignore
+export function createSendEmailRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoSendEmailRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {SetApplicationMembershipRequest}
  */
 // @ts-ignore
@@ -3137,6 +3200,57 @@ export function createSimulateTargetingRequestFromDiscriminatorValue(parseNode: 
 // @ts-ignore
 export function createSimulateUpdateRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoSimulateUpdateRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SmtpAccount}
+ */
+// @ts-ignore
+export function createSmtpAccountFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoSmtpAccount;
+}
+export interface CreateSmtpAccountRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The fromAddress property
+     */
+    fromAddress?: string | null;
+    /**
+     * The fromName property
+     */
+    fromName?: string | null;
+    /**
+     * The host property
+     */
+    host?: string | null;
+    /**
+     * The name property
+     */
+    name?: string | null;
+    /**
+     * The port property
+     */
+    port?: number | null;
+    /**
+     * The security property
+     */
+    security?: SmtpSecurity | null;
+    /**
+     * The smtpPassword property
+     */
+    smtpPassword?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+    /**
+     * The username property
+     */
+    username?: string | null;
 }
 export interface CreateSourceRequest extends Parsable {
     /**
@@ -3374,6 +3488,15 @@ export interface CreateTenantRequest extends Parsable {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {TestSmtpAccountRequest}
+ */
+// @ts-ignore
+export function createTestSmtpAccountRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoTestSmtpAccountRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateApplicationRequest}
  */
 // @ts-ignore
@@ -3523,6 +3646,15 @@ export function createUpdateScopeRequestFromDiscriminatorValue(parseNode: ParseN
 // @ts-ignore
 export function createUpdateSegmentRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdateSegmentRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdateSmtpAccountRequest}
+ */
+// @ts-ignore
+export function createUpdateSmtpAccountRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoUpdateSmtpAccountRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4608,6 +4740,26 @@ export function deserializeIntoCreateSigningKeyRequest(createSigningKeyRequest: 
 }
 /**
  * The deserialization information for the current model
+ * @param CreateSmtpAccountRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateSmtpAccountRequest(createSmtpAccountRequest: Partial<CreateSmtpAccountRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { createSmtpAccountRequest.applicationId = n.getStringValue(); },
+        "fromAddress": n => { createSmtpAccountRequest.fromAddress = n.getStringValue(); },
+        "fromName": n => { createSmtpAccountRequest.fromName = n.getStringValue(); },
+        "host": n => { createSmtpAccountRequest.host = n.getStringValue(); },
+        "name": n => { createSmtpAccountRequest.name = n.getStringValue(); },
+        "port": n => { createSmtpAccountRequest.port = n.getNumberValue(); },
+        "security": n => { createSmtpAccountRequest.security = n.getEnumValue<SmtpSecurity>(SmtpSecurityObject); },
+        "smtpPassword": n => { createSmtpAccountRequest.smtpPassword = n.getStringValue(); },
+        "tenantId": n => { createSmtpAccountRequest.tenantId = n.getStringValue(); },
+        "username": n => { createSmtpAccountRequest.username = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CreateSourceRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5376,6 +5528,18 @@ export function deserializeIntoListFlagsResponse(listFlagsResponse: Partial<List
 }
 /**
  * The deserialization information for the current model
+ * @param ListMailDeliveriesResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoListMailDeliveriesResponse(listMailDeliveriesResponse: Partial<ListMailDeliveriesResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "deliveries": n => { listMailDeliveriesResponse.deliveries = n.getCollectionOfObjectValues<MailDelivery>(createMailDeliveryFromDiscriminatorValue); },
+        "nextPageToken": n => { listMailDeliveriesResponse.nextPageToken = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ListObjectsResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5508,6 +5672,18 @@ export function deserializeIntoListSigningKeysResponse(listSigningKeysResponse: 
 }
 /**
  * The deserialization information for the current model
+ * @param ListSmtpAccountsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoListSmtpAccountsResponse(listSmtpAccountsResponse: Partial<ListSmtpAccountsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "accounts": n => { listSmtpAccountsResponse.accounts = n.getCollectionOfObjectValues<SmtpAccount>(createSmtpAccountFromDiscriminatorValue); },
+        "nextPageToken": n => { listSmtpAccountsResponse.nextPageToken = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ListSourcesResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5595,6 +5771,43 @@ export function deserializeIntoListWriteKeysResponse(listWriteKeysResponse: Part
 }
 /**
  * The deserialization information for the current model
+ * @param MailDelivery The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoMailDelivery(mailDelivery: Partial<MailDelivery> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "bcc": n => { mailDelivery.bcc = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "cc": n => { mailDelivery.cc = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "clientMessageId": n => { mailDelivery.clientMessageId = n.getStringValue(); },
+        "completedAt": n => { mailDelivery.completedAt = n.getStringValue(); },
+        "createdAt": n => { mailDelivery.createdAt = n.getStringValue(); },
+        "errorCode": n => { mailDelivery.errorCode = n.getStringValue(); },
+        "errorMessage": n => { mailDelivery.errorMessage = n.getStringValue(); },
+        "id": n => { mailDelivery.id = n.getStringValue(); },
+        "providerMessageId": n => { mailDelivery.providerMessageId = n.getStringValue(); },
+        "replyTo": n => { mailDelivery.replyTo = n.getStringValue(); },
+        "scope": n => { mailDelivery.scope = n.getObjectValue<MailScope>(createMailScopeFromDiscriminatorValue); },
+        "smtpAccountId": n => { mailDelivery.smtpAccountId = n.getStringValue(); },
+        "status": n => { mailDelivery.status = n.getEnumValue<MailDeliveryStatus>(MailDeliveryStatusObject); },
+        "subject": n => { mailDelivery.subject = n.getStringValue(); },
+        "to": n => { mailDelivery.to = n.getCollectionOfPrimitiveValues<string>("string"); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param MailScope The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoMailScope(mailScope: Partial<MailScope> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { mailScope.applicationId = n.getStringValue(); },
+        "tenantId": n => { mailScope.tenantId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param OidcClient The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5610,6 +5823,8 @@ export function deserializeIntoOidcClient(oidcClient: Partial<OidcClient> | unde
         "displayName": n => { oidcClient.displayName = n.getStringValue(); },
         "grantTypes": n => { oidcClient.grantTypes = n.getCollectionOfEnumValues<OidcGrantType>(OidcGrantTypeObject); },
         "id": n => { oidcClient.id = n.getStringValue(); },
+        "isMutable": n => { oidcClient.isMutable = n.getBooleanValue(); },
+        "isSystem": n => { oidcClient.isSystem = n.getBooleanValue(); },
         "postLogoutRedirectUris": n => { oidcClient.postLogoutRedirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "redirectUris": n => { oidcClient.redirectUris = n.getCollectionOfPrimitiveValues<string>("string"); },
         "scopes": n => { oidcClient.scopes = n.getCollectionOfPrimitiveValues<string>("string"); },
@@ -5640,6 +5855,8 @@ export function deserializeIntoOidcScope(oidcScope: Partial<OidcScope> | undefin
         "description": n => { oidcScope.description = n.getStringValue(); },
         "displayName": n => { oidcScope.displayName = n.getStringValue(); },
         "id": n => { oidcScope.id = n.getStringValue(); },
+        "isMutable": n => { oidcScope.isMutable = n.getBooleanValue(); },
+        "isSystem": n => { oidcScope.isSystem = n.getBooleanValue(); },
         "name": n => { oidcScope.name = n.getStringValue(); },
         "resources": n => { oidcScope.resources = n.getCollectionOfPrimitiveValues<string>("string"); },
         "version": n => { oidcScope.version = n.getStringValue(); },
@@ -6237,6 +6454,20 @@ export function deserializeIntoRestoreSigningKeyRequest(restoreSigningKeyRequest
 }
 /**
  * The deserialization information for the current model
+ * @param RestoreSmtpAccountRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRestoreSmtpAccountRequest(restoreSmtpAccountRequest: Partial<RestoreSmtpAccountRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { restoreSmtpAccountRequest.applicationId = n.getStringValue(); },
+        "expectedVersion": n => { restoreSmtpAccountRequest.expectedVersion = n.getNumberValue(); },
+        "smtpAccountId": n => { restoreSmtpAccountRequest.smtpAccountId = n.getStringValue(); },
+        "tenantId": n => { restoreSmtpAccountRequest.tenantId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param RestoreSourceRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6442,6 +6673,27 @@ export function deserializeIntoSegment(segment: Partial<Segment> | undefined = {
 }
 /**
  * The deserialization information for the current model
+ * @param SendEmailRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSendEmailRequest(sendEmailRequest: Partial<SendEmailRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { sendEmailRequest.applicationId = n.getStringValue(); },
+        "bcc": n => { sendEmailRequest.bcc = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "cc": n => { sendEmailRequest.cc = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "clientMessageId": n => { sendEmailRequest.clientMessageId = n.getStringValue(); },
+        "htmlBody": n => { sendEmailRequest.htmlBody = n.getStringValue(); },
+        "replyTo": n => { sendEmailRequest.replyTo = n.getStringValue(); },
+        "smtpAccountId": n => { sendEmailRequest.smtpAccountId = n.getStringValue(); },
+        "subject": n => { sendEmailRequest.subject = n.getStringValue(); },
+        "tenantId": n => { sendEmailRequest.tenantId = n.getStringValue(); },
+        "textBody": n => { sendEmailRequest.textBody = n.getStringValue(); },
+        "to": n => { sendEmailRequest.to = n.getCollectionOfPrimitiveValues<string>("string"); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param SetApplicationMembershipRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6553,6 +6805,30 @@ export function deserializeIntoSimulateUpdateRequest(simulateUpdateRequest: Part
         "environmentId": n => { simulateUpdateRequest.environmentId = n.getStringValue(); },
         "targetRuntimeId": n => { simulateUpdateRequest.targetRuntimeId = n.getStringValue(); },
         "tenantId": n => { simulateUpdateRequest.tenantId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param SmtpAccount The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSmtpAccount(smtpAccount: Partial<SmtpAccount> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "archivedAt": n => { smtpAccount.archivedAt = n.getStringValue(); },
+        "createdAt": n => { smtpAccount.createdAt = n.getStringValue(); },
+        "fromAddress": n => { smtpAccount.fromAddress = n.getStringValue(); },
+        "fromName": n => { smtpAccount.fromName = n.getStringValue(); },
+        "host": n => { smtpAccount.host = n.getStringValue(); },
+        "id": n => { smtpAccount.id = n.getStringValue(); },
+        "name": n => { smtpAccount.name = n.getStringValue(); },
+        "port": n => { smtpAccount.port = n.getNumberValue(); },
+        "scope": n => { smtpAccount.scope = n.getObjectValue<MailScope>(createMailScopeFromDiscriminatorValue); },
+        "security": n => { smtpAccount.security = n.getEnumValue<SmtpSecurity>(SmtpSecurityObject); },
+        "status": n => { smtpAccount.status = n.getEnumValue<MailAccountStatus>(MailAccountStatusObject); },
+        "updatedAt": n => { smtpAccount.updatedAt = n.getStringValue(); },
+        "username": n => { smtpAccount.username = n.getStringValue(); },
+        "version": n => { smtpAccount.version = n.getNumberValue(); },
     }
 }
 /**
@@ -6904,6 +7180,20 @@ export function deserializeIntoTenantMembership(tenantMembership: Partial<Tenant
 }
 /**
  * The deserialization information for the current model
+ * @param TestSmtpAccountRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoTestSmtpAccountRequest(testSmtpAccountRequest: Partial<TestSmtpAccountRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { testSmtpAccountRequest.applicationId = n.getStringValue(); },
+        "recipient": n => { testSmtpAccountRequest.recipient = n.getStringValue(); },
+        "smtpAccountId": n => { testSmtpAccountRequest.smtpAccountId = n.getStringValue(); },
+        "tenantId": n => { testSmtpAccountRequest.tenantId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateApplicationRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7196,6 +7486,28 @@ export function deserializeIntoUpdateSegmentRequest(updateSegmentRequest: Partia
         "rule": n => { updateSegmentRequest.rule = n.getObjectValue<TargetingRule>(createTargetingRuleFromDiscriminatorValue); },
         "segmentId": n => { updateSegmentRequest.segmentId = n.getStringValue(); },
         "tenantId": n => { updateSegmentRequest.tenantId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param UpdateSmtpAccountRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdateSmtpAccountRequest(updateSmtpAccountRequest: Partial<UpdateSmtpAccountRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "applicationId": n => { updateSmtpAccountRequest.applicationId = n.getStringValue(); },
+        "expectedVersion": n => { updateSmtpAccountRequest.expectedVersion = n.getNumberValue(); },
+        "fromAddress": n => { updateSmtpAccountRequest.fromAddress = n.getStringValue(); },
+        "fromName": n => { updateSmtpAccountRequest.fromName = n.getStringValue(); },
+        "host": n => { updateSmtpAccountRequest.host = n.getStringValue(); },
+        "name": n => { updateSmtpAccountRequest.name = n.getStringValue(); },
+        "port": n => { updateSmtpAccountRequest.port = n.getNumberValue(); },
+        "security": n => { updateSmtpAccountRequest.security = n.getEnumValue<SmtpSecurity>(SmtpSecurityObject); },
+        "smtpAccountId": n => { updateSmtpAccountRequest.smtpAccountId = n.getStringValue(); },
+        "smtpPassword": n => { updateSmtpAccountRequest.smtpPassword = n.getStringValue(); },
+        "tenantId": n => { updateSmtpAccountRequest.tenantId = n.getStringValue(); },
+        "username": n => { updateSmtpAccountRequest.username = n.getStringValue(); },
     }
 }
 /**
@@ -8323,6 +8635,16 @@ export interface ListFlagsResponse extends Parsable {
      */
     nextPageToken?: string | null;
 }
+export interface ListMailDeliveriesResponse extends Parsable {
+    /**
+     * The deliveries property
+     */
+    deliveries?: MailDelivery[] | null;
+    /**
+     * The nextPageToken property
+     */
+    nextPageToken?: string | null;
+}
 export interface ListObjectsResponse extends Parsable {
     /**
      * The nextPageToken property
@@ -8433,6 +8755,16 @@ export interface ListSigningKeysResponse extends Parsable {
      */
     signingKeys?: ReleaseSigningKey[] | null;
 }
+export interface ListSmtpAccountsResponse extends Parsable {
+    /**
+     * The accounts property
+     */
+    accounts?: SmtpAccount[] | null;
+    /**
+     * The nextPageToken property
+     */
+    nextPageToken?: string | null;
+}
 export interface ListSourcesResponse extends Parsable {
     /**
      * The nextPageToken property
@@ -8515,6 +8847,80 @@ export interface ListWriteKeysResponse extends Parsable {
      */
     writeKeys?: AnalyticsWriteKey[] | null;
 }
+export type MailAccountStatus = (typeof MailAccountStatusObject)[keyof typeof MailAccountStatusObject];
+export interface MailDelivery extends Parsable {
+    /**
+     * The bcc property
+     */
+    bcc?: string[] | null;
+    /**
+     * The cc property
+     */
+    cc?: string[] | null;
+    /**
+     * The clientMessageId property
+     */
+    clientMessageId?: string | null;
+    /**
+     * The completedAt property
+     */
+    completedAt?: string | null;
+    /**
+     * The createdAt property
+     */
+    createdAt?: string | null;
+    /**
+     * The errorCode property
+     */
+    errorCode?: string | null;
+    /**
+     * The errorMessage property
+     */
+    errorMessage?: string | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The providerMessageId property
+     */
+    providerMessageId?: string | null;
+    /**
+     * The replyTo property
+     */
+    replyTo?: string | null;
+    /**
+     * The scope property
+     */
+    scope?: MailScope | null;
+    /**
+     * The smtpAccountId property
+     */
+    smtpAccountId?: string | null;
+    /**
+     * The status property
+     */
+    status?: MailDeliveryStatus | null;
+    /**
+     * The subject property
+     */
+    subject?: string | null;
+    /**
+     * The to property
+     */
+    to?: string[] | null;
+}
+export type MailDeliveryStatus = (typeof MailDeliveryStatusObject)[keyof typeof MailDeliveryStatusObject];
+export interface MailScope extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+}
 export type MembershipStatus = (typeof MembershipStatusObject)[keyof typeof MembershipStatusObject];
 export type OidcApplicationType = (typeof OidcApplicationTypeObject)[keyof typeof OidcApplicationTypeObject];
 export interface OidcClient extends Parsable {
@@ -8554,6 +8960,14 @@ export interface OidcClient extends Parsable {
      * The id property
      */
     id?: string | null;
+    /**
+     * The isMutable property
+     */
+    isMutable?: boolean | null;
+    /**
+     * The isSystem property
+     */
+    isSystem?: boolean | null;
     /**
      * The postLogoutRedirectUris property
      */
@@ -8600,6 +9014,14 @@ export interface OidcScope extends Parsable {
      * The id property
      */
     id?: string | null;
+    /**
+     * The isMutable property
+     */
+    isMutable?: boolean | null;
+    /**
+     * The isSystem property
+     */
+    isSystem?: boolean | null;
     /**
      * The name property
      */
@@ -9577,6 +9999,24 @@ export interface RestoreSigningKeyRequest extends Parsable {
      */
     tenantId?: string | null;
 }
+export interface RestoreSmtpAccountRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The smtpAccountId property
+     */
+    smtpAccountId?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+}
 export interface RestoreSourceRequest extends Parsable {
     /**
      * The applicationId property
@@ -9902,6 +10342,52 @@ export interface Segment extends Parsable {
      * The version property
      */
     version?: number | null;
+}
+export interface SendEmailRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The bcc property
+     */
+    bcc?: string[] | null;
+    /**
+     * The cc property
+     */
+    cc?: string[] | null;
+    /**
+     * The clientMessageId property
+     */
+    clientMessageId?: string | null;
+    /**
+     * The htmlBody property
+     */
+    htmlBody?: string | null;
+    /**
+     * The replyTo property
+     */
+    replyTo?: string | null;
+    /**
+     * The smtpAccountId property
+     */
+    smtpAccountId?: string | null;
+    /**
+     * The subject property
+     */
+    subject?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+    /**
+     * The textBody property
+     */
+    textBody?: string | null;
+    /**
+     * The to property
+     */
+    to?: string[] | null;
 }
 /**
  * Serializes information the current object
@@ -10802,6 +11288,26 @@ export function serializeCreateSigningKeyRequest(writer: SerializationWriter, cr
 }
 /**
  * Serializes information the current object
+ * @param CreateSmtpAccountRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateSmtpAccountRequest(writer: SerializationWriter, createSmtpAccountRequest: Partial<CreateSmtpAccountRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createSmtpAccountRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", createSmtpAccountRequest.applicationId);
+    writer.writeStringValue("fromAddress", createSmtpAccountRequest.fromAddress);
+    writer.writeStringValue("fromName", createSmtpAccountRequest.fromName);
+    writer.writeStringValue("host", createSmtpAccountRequest.host);
+    writer.writeStringValue("name", createSmtpAccountRequest.name);
+    writer.writeNumberValue("port", createSmtpAccountRequest.port);
+    writer.writeEnumValue<SmtpSecurity>("security", createSmtpAccountRequest.security);
+    writer.writeStringValue("smtpPassword", createSmtpAccountRequest.smtpPassword);
+    writer.writeStringValue("tenantId", createSmtpAccountRequest.tenantId);
+    writer.writeStringValue("username", createSmtpAccountRequest.username);
+}
+/**
+ * Serializes information the current object
  * @param CreateSourceRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11572,6 +12078,18 @@ export function serializeListFlagsResponse(writer: SerializationWriter, listFlag
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ListMailDeliveriesResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeListMailDeliveriesResponse(writer: SerializationWriter, listMailDeliveriesResponse: Partial<ListMailDeliveriesResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!listMailDeliveriesResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<MailDelivery>("deliveries", listMailDeliveriesResponse.deliveries, serializeMailDelivery);
+    writer.writeStringValue("nextPageToken", listMailDeliveriesResponse.nextPageToken);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ListObjectsResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11704,6 +12222,18 @@ export function serializeListSigningKeysResponse(writer: SerializationWriter, li
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ListSmtpAccountsResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeListSmtpAccountsResponse(writer: SerializationWriter, listSmtpAccountsResponse: Partial<ListSmtpAccountsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!listSmtpAccountsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<SmtpAccount>("accounts", listSmtpAccountsResponse.accounts, serializeSmtpAccount);
+    writer.writeStringValue("nextPageToken", listSmtpAccountsResponse.nextPageToken);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ListSourcesResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11791,6 +12321,43 @@ export function serializeListWriteKeysResponse(writer: SerializationWriter, list
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param MailDelivery The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeMailDelivery(writer: SerializationWriter, mailDelivery: Partial<MailDelivery> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!mailDelivery || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfPrimitiveValues<string>("bcc", mailDelivery.bcc);
+    writer.writeCollectionOfPrimitiveValues<string>("cc", mailDelivery.cc);
+    writer.writeStringValue("clientMessageId", mailDelivery.clientMessageId);
+    writer.writeStringValue("completedAt", mailDelivery.completedAt);
+    writer.writeStringValue("createdAt", mailDelivery.createdAt);
+    writer.writeStringValue("errorCode", mailDelivery.errorCode);
+    writer.writeStringValue("errorMessage", mailDelivery.errorMessage);
+    writer.writeStringValue("id", mailDelivery.id);
+    writer.writeStringValue("providerMessageId", mailDelivery.providerMessageId);
+    writer.writeStringValue("replyTo", mailDelivery.replyTo);
+    writer.writeObjectValue<MailScope>("scope", mailDelivery.scope, serializeMailScope);
+    writer.writeStringValue("smtpAccountId", mailDelivery.smtpAccountId);
+    writer.writeEnumValue<MailDeliveryStatus>("status", mailDelivery.status);
+    writer.writeStringValue("subject", mailDelivery.subject);
+    writer.writeCollectionOfPrimitiveValues<string>("to", mailDelivery.to);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param MailScope The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeMailScope(writer: SerializationWriter, mailScope: Partial<MailScope> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!mailScope || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", mailScope.applicationId);
+    writer.writeStringValue("tenantId", mailScope.tenantId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param OidcClient The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11807,6 +12374,8 @@ export function serializeOidcClient(writer: SerializationWriter, oidcClient: Par
     if(oidcClient.grantTypes)
     writer.writeCollectionOfEnumValues<OidcGrantType>("grantTypes", oidcClient.grantTypes);
     writer.writeStringValue("id", oidcClient.id);
+    writer.writeBooleanValue("isMutable", oidcClient.isMutable);
+    writer.writeBooleanValue("isSystem", oidcClient.isSystem);
     writer.writeCollectionOfPrimitiveValues<string>("postLogoutRedirectUris", oidcClient.postLogoutRedirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("redirectUris", oidcClient.redirectUris);
     writer.writeCollectionOfPrimitiveValues<string>("scopes", oidcClient.scopes);
@@ -11837,6 +12406,8 @@ export function serializeOidcScope(writer: SerializationWriter, oidcScope: Parti
     writer.writeStringValue("description", oidcScope.description);
     writer.writeStringValue("displayName", oidcScope.displayName);
     writer.writeStringValue("id", oidcScope.id);
+    writer.writeBooleanValue("isMutable", oidcScope.isMutable);
+    writer.writeBooleanValue("isSystem", oidcScope.isSystem);
     writer.writeStringValue("name", oidcScope.name);
     writer.writeCollectionOfPrimitiveValues<string>("resources", oidcScope.resources);
     writer.writeStringValue("version", oidcScope.version);
@@ -12434,6 +13005,20 @@ export function serializeRestoreSigningKeyRequest(writer: SerializationWriter, r
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RestoreSmtpAccountRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRestoreSmtpAccountRequest(writer: SerializationWriter, restoreSmtpAccountRequest: Partial<RestoreSmtpAccountRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!restoreSmtpAccountRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", restoreSmtpAccountRequest.applicationId);
+    writer.writeNumberValue("expectedVersion", restoreSmtpAccountRequest.expectedVersion);
+    writer.writeStringValue("smtpAccountId", restoreSmtpAccountRequest.smtpAccountId);
+    writer.writeStringValue("tenantId", restoreSmtpAccountRequest.tenantId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RestoreSourceRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12639,6 +13224,27 @@ export function serializeSegment(writer: SerializationWriter, segment: Partial<S
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SendEmailRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSendEmailRequest(writer: SerializationWriter, sendEmailRequest: Partial<SendEmailRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!sendEmailRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", sendEmailRequest.applicationId);
+    writer.writeCollectionOfPrimitiveValues<string>("bcc", sendEmailRequest.bcc);
+    writer.writeCollectionOfPrimitiveValues<string>("cc", sendEmailRequest.cc);
+    writer.writeStringValue("clientMessageId", sendEmailRequest.clientMessageId);
+    writer.writeStringValue("htmlBody", sendEmailRequest.htmlBody);
+    writer.writeStringValue("replyTo", sendEmailRequest.replyTo);
+    writer.writeStringValue("smtpAccountId", sendEmailRequest.smtpAccountId);
+    writer.writeStringValue("subject", sendEmailRequest.subject);
+    writer.writeStringValue("tenantId", sendEmailRequest.tenantId);
+    writer.writeStringValue("textBody", sendEmailRequest.textBody);
+    writer.writeCollectionOfPrimitiveValues<string>("to", sendEmailRequest.to);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param SetApplicationMembershipRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12750,6 +13356,30 @@ export function serializeSimulateUpdateRequest(writer: SerializationWriter, simu
     writer.writeStringValue("environmentId", simulateUpdateRequest.environmentId);
     writer.writeStringValue("targetRuntimeId", simulateUpdateRequest.targetRuntimeId);
     writer.writeStringValue("tenantId", simulateUpdateRequest.tenantId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SmtpAccount The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSmtpAccount(writer: SerializationWriter, smtpAccount: Partial<SmtpAccount> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!smtpAccount || isSerializingDerivedType) { return; }
+    writer.writeStringValue("archivedAt", smtpAccount.archivedAt);
+    writer.writeStringValue("createdAt", smtpAccount.createdAt);
+    writer.writeStringValue("fromAddress", smtpAccount.fromAddress);
+    writer.writeStringValue("fromName", smtpAccount.fromName);
+    writer.writeStringValue("host", smtpAccount.host);
+    writer.writeStringValue("id", smtpAccount.id);
+    writer.writeStringValue("name", smtpAccount.name);
+    writer.writeNumberValue("port", smtpAccount.port);
+    writer.writeObjectValue<MailScope>("scope", smtpAccount.scope, serializeMailScope);
+    writer.writeEnumValue<SmtpSecurity>("security", smtpAccount.security);
+    writer.writeEnumValue<MailAccountStatus>("status", smtpAccount.status);
+    writer.writeStringValue("updatedAt", smtpAccount.updatedAt);
+    writer.writeStringValue("username", smtpAccount.username);
+    writer.writeNumberValue("version", smtpAccount.version);
 }
 /**
  * Serializes information the current object
@@ -13104,6 +13734,20 @@ export function serializeTenantMembership(writer: SerializationWriter, tenantMem
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param TestSmtpAccountRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeTestSmtpAccountRequest(writer: SerializationWriter, testSmtpAccountRequest: Partial<TestSmtpAccountRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!testSmtpAccountRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", testSmtpAccountRequest.applicationId);
+    writer.writeStringValue("recipient", testSmtpAccountRequest.recipient);
+    writer.writeStringValue("smtpAccountId", testSmtpAccountRequest.smtpAccountId);
+    writer.writeStringValue("tenantId", testSmtpAccountRequest.tenantId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateApplicationRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13402,6 +14046,28 @@ export function serializeUpdateSegmentRequest(writer: SerializationWriter, updat
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdateSmtpAccountRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdateSmtpAccountRequest(writer: SerializationWriter, updateSmtpAccountRequest: Partial<UpdateSmtpAccountRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!updateSmtpAccountRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("applicationId", updateSmtpAccountRequest.applicationId);
+    writer.writeNumberValue("expectedVersion", updateSmtpAccountRequest.expectedVersion);
+    writer.writeStringValue("fromAddress", updateSmtpAccountRequest.fromAddress);
+    writer.writeStringValue("fromName", updateSmtpAccountRequest.fromName);
+    writer.writeStringValue("host", updateSmtpAccountRequest.host);
+    writer.writeStringValue("name", updateSmtpAccountRequest.name);
+    writer.writeNumberValue("port", updateSmtpAccountRequest.port);
+    writer.writeEnumValue<SmtpSecurity>("security", updateSmtpAccountRequest.security);
+    writer.writeStringValue("smtpAccountId", updateSmtpAccountRequest.smtpAccountId);
+    writer.writeStringValue("smtpPassword", updateSmtpAccountRequest.smtpPassword);
+    writer.writeStringValue("tenantId", updateSmtpAccountRequest.tenantId);
+    writer.writeStringValue("username", updateSmtpAccountRequest.username);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateSourceRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13688,6 +14354,65 @@ export interface SimulateUpdateRequest extends Parsable {
      */
     tenantId?: string | null;
 }
+export interface SmtpAccount extends Parsable {
+    /**
+     * The archivedAt property
+     */
+    archivedAt?: string | null;
+    /**
+     * The createdAt property
+     */
+    createdAt?: string | null;
+    /**
+     * The fromAddress property
+     */
+    fromAddress?: string | null;
+    /**
+     * The fromName property
+     */
+    fromName?: string | null;
+    /**
+     * The host property
+     */
+    host?: string | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The name property
+     */
+    name?: string | null;
+    /**
+     * The port property
+     */
+    port?: number | null;
+    /**
+     * The scope property
+     */
+    scope?: MailScope | null;
+    /**
+     * The security property
+     */
+    security?: SmtpSecurity | null;
+    /**
+     * The status property
+     */
+    status?: MailAccountStatus | null;
+    /**
+     * The updatedAt property
+     */
+    updatedAt?: string | null;
+    /**
+     * The username property
+     */
+    username?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
+}
+export type SmtpSecurity = (typeof SmtpSecurityObject)[keyof typeof SmtpSecurityObject];
 export interface Status extends ApiError, Parsable {
     /**
      * The code property
@@ -14288,6 +15013,24 @@ export interface TenantMembership extends Parsable {
      */
     version?: number | null;
 }
+export interface TestSmtpAccountRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The recipient property
+     */
+    recipient?: string | null;
+    /**
+     * The smtpAccountId property
+     */
+    smtpAccountId?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+}
 export interface UpdateApplicationRequest extends Parsable {
     /**
      * The applicationId property
@@ -14827,6 +15570,56 @@ export interface UpdateSegmentRequest extends Parsable {
      */
     tenantId?: string | null;
 }
+export interface UpdateSmtpAccountRequest extends Parsable {
+    /**
+     * The applicationId property
+     */
+    applicationId?: string | null;
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The fromAddress property
+     */
+    fromAddress?: string | null;
+    /**
+     * The fromName property
+     */
+    fromName?: string | null;
+    /**
+     * The host property
+     */
+    host?: string | null;
+    /**
+     * The name property
+     */
+    name?: string | null;
+    /**
+     * The port property
+     */
+    port?: number | null;
+    /**
+     * The security property
+     */
+    security?: SmtpSecurity | null;
+    /**
+     * The smtpAccountId property
+     */
+    smtpAccountId?: string | null;
+    /**
+     * The smtpPassword property
+     */
+    smtpPassword?: string | null;
+    /**
+     * The tenantId property
+     */
+    tenantId?: string | null;
+    /**
+     * The username property
+     */
+    username?: string | null;
+}
 export interface UpdateSourceRequest extends Parsable {
     /**
      * The applicationId property
@@ -15139,6 +15932,17 @@ export const IdentityUserStatusObject = {
     IDENTITY_USER_STATUS_SUSPENDED: "IDENTITY_USER_STATUS_SUSPENDED",
     IDENTITY_USER_STATUS_ARCHIVED: "IDENTITY_USER_STATUS_ARCHIVED",
 } as const;
+export const MailAccountStatusObject = {
+    MAIL_ACCOUNT_STATUS_UNSPECIFIED: "MAIL_ACCOUNT_STATUS_UNSPECIFIED",
+    MAIL_ACCOUNT_STATUS_ACTIVE: "MAIL_ACCOUNT_STATUS_ACTIVE",
+    MAIL_ACCOUNT_STATUS_ARCHIVED: "MAIL_ACCOUNT_STATUS_ARCHIVED",
+} as const;
+export const MailDeliveryStatusObject = {
+    MAIL_DELIVERY_STATUS_UNSPECIFIED: "MAIL_DELIVERY_STATUS_UNSPECIFIED",
+    MAIL_DELIVERY_STATUS_PENDING: "MAIL_DELIVERY_STATUS_PENDING",
+    MAIL_DELIVERY_STATUS_SENT: "MAIL_DELIVERY_STATUS_SENT",
+    MAIL_DELIVERY_STATUS_FAILED: "MAIL_DELIVERY_STATUS_FAILED",
+} as const;
 export const MembershipStatusObject = {
     MEMBERSHIP_STATUS_UNSPECIFIED: "MEMBERSHIP_STATUS_UNSPECIFIED",
     MEMBERSHIP_STATUS_ACTIVE: "MEMBERSHIP_STATUS_ACTIVE",
@@ -15159,7 +15963,6 @@ export const OidcGrantTypeObject = {
     OIDC_GRANT_TYPE_AUTHORIZATION_CODE: "OIDC_GRANT_TYPE_AUTHORIZATION_CODE",
     OIDC_GRANT_TYPE_CLIENT_CREDENTIALS: "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
     OIDC_GRANT_TYPE_REFRESH_TOKEN: "OIDC_GRANT_TYPE_REFRESH_TOKEN",
-    OIDC_GRANT_TYPE_PASSWORD: "OIDC_GRANT_TYPE_PASSWORD",
 } as const;
 export const OtlpProtocolObject = {
     OTLP_PROTOCOL_UNSPECIFIED: "OTLP_PROTOCOL_UNSPECIFIED",
@@ -15212,6 +16015,11 @@ export const ResourceStatusObject = {
     RESOURCE_STATUS_UNSPECIFIED: "RESOURCE_STATUS_UNSPECIFIED",
     RESOURCE_STATUS_ACTIVE: "RESOURCE_STATUS_ACTIVE",
     RESOURCE_STATUS_ARCHIVED: "RESOURCE_STATUS_ARCHIVED",
+} as const;
+export const SmtpSecurityObject = {
+    SMTP_SECURITY_UNSPECIFIED: "SMTP_SECURITY_UNSPECIFIED",
+    SMTP_SECURITY_START_TLS: "SMTP_SECURITY_START_TLS",
+    SMTP_SECURITY_SSL_ON_CONNECT: "SMTP_SECURITY_SSL_ON_CONNECT",
 } as const;
 export const StorageAccessPolicyObject = {
     STORAGE_ACCESS_POLICY_UNSPECIFIED: "STORAGE_ACCESS_POLICY_UNSPECIFIED",

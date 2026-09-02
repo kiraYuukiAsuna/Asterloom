@@ -32,12 +32,16 @@ Web 使用 OIDC Authorization Code + PKCE：
 
 1. `/api/auth/login` 生成 `state`、`nonce`、Code Verifier/Challenge，并保存 10 分钟 Login Transaction。
 2. 浏览器跳转 Passport `/connect/authorize`。
-3. `/api/auth/callback` 校验 State/Nonce，用 Code 换 Token，并建立最长 8 小时 BFF Session。
-4. 浏览器只获得随机的 HttpOnly、SameSite=Lax、Secure（HTTPS 时）Session Cookie。
-5. Access Token 临近过期 30 秒时，BFF 使用 Refresh Token 刷新；并发刷新由分布式锁串行化。
-6. Logout 删除服务端 Session，清 Cookie，再跳转 Passport End Session。
+3. `/api/auth/callback` 校验 State/Nonce，用 Code 换 Token，并根据 Passport 登录选择建立 BFF Session。
+4. 未勾选“在此设备保持登录”时，浏览器获得无 `Max-Age` 的会话 Cookie，关闭浏览器后失效，服务端 Session
+   最长保留 8 小时；勾选时，Cookie 与服务端 Session 都保持 30 天。
+5. 浏览器只获得随机的 HttpOnly、SameSite=Lax、Secure（HTTPS 时）Session Cookie。
+6. Access Token 临近过期 30 秒时，BFF 使用 Refresh Token 刷新；并发刷新由分布式锁串行化。
+7. Logout 删除服务端 Session，清 Cookie，再跳转 Passport End Session；无论是否勾选都会立即退出。
 
 Access Token、Refresh Token 与 ID Token 永远不写入 Local Storage，也不下发给浏览器 JavaScript。
+“保持登录”选择由 Passport 作为受签名的 ID Token Claim 传给 BFF，浏览器不能自行把普通会话升级为持久会话。
+持久会话对应的滚动 Refresh Token 生命周期也为 30 天；普通登录仍使用默认短期 Token 策略。
 
 ## 3. Redis 为什么存在
 

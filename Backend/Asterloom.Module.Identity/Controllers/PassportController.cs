@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Encodings.Web;
 using Asterloom.Modules.Identity.Model;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -15,6 +16,9 @@ public sealed class PassportController(
     SignInManager<AsterloomUser> signInManager,
     UserManager<AsterloomUser> userManager) : Controller
 {
+    private static readonly TimeSpan BrowserSessionLifetime = TimeSpan.FromHours(8);
+    private static readonly TimeSpan PersistentSessionLifetime = TimeSpan.FromDays(30);
+
     [HttpGet("/passport/login")]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
@@ -67,7 +71,18 @@ public sealed class PassportController(
                 input.Email);
         }
 
-        await signInManager.SignInAsync(user, input.RememberMe);
+        await signInManager.SignInAsync(
+            user,
+            new AuthenticationProperties
+            {
+                AllowRefresh = true,
+                ExpiresUtc = TimeProvider.System.GetUtcNow().Add(
+                    input.RememberMe
+                        ? PersistentSessionLifetime
+                        : BrowserSessionLifetime),
+                IsPersistent = input.RememberMe,
+            },
+            authenticationMethod: null);
         return LoginCompletedPage(SafeReturnUrl(input.ReturnUrl));
     }
 

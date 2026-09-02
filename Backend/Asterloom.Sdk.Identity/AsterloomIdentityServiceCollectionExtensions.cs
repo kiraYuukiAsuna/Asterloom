@@ -71,17 +71,6 @@ public static class AsterloomIdentityServiceCollectionExtensions
                 options.DisableTokenStorage();
             }
 
-            if (configuration.EnablePasswordAuthentication)
-            {
-                options.AllowPasswordFlow();
-                if (configuration.RequestRefreshTokens)
-                {
-                    options.AllowRefreshTokenFlow();
-                }
-
-                options.DisableTokenStorage();
-            }
-
             options.UseSystemNetHttp()
                 .SetProductInformation(typeof(AsterloomIdentityClient).Assembly);
 
@@ -111,18 +100,6 @@ public static class AsterloomIdentityServiceCollectionExtensions
                     registration.Scopes.Add(Scopes.OfflineAccess);
                 }
             }
-            else if (configuration.EnablePasswordAuthentication)
-            {
-                registration.Scopes.Add(Scopes.OpenId);
-                registration.Scopes.Add(Scopes.Profile);
-                registration.Scopes.Add(Scopes.Email);
-                registration.Scopes.Add(Scopes.Roles);
-                if (configuration.RequestRefreshTokens)
-                {
-                    registration.Scopes.Add(Scopes.OfflineAccess);
-                }
-            }
-
             options.AddRegistration(registration);
         });
 
@@ -140,16 +117,15 @@ public static class AsterloomIdentityServiceCollectionExtensions
         RequireText(options.ClientId, nameof(options.ClientId), 100);
         RequireText(options.RegistrationId, nameof(options.RegistrationId), 100);
         if (!options.EnableInteractiveAuthentication
-            && !options.EnableServiceCredentials
-            && !options.EnablePasswordAuthentication)
+            && !options.EnableServiceCredentials)
         {
             throw new ArgumentException(
-                "Enable interactive, service-credential, or password authentication.",
+                "Enable interactive or service-credential authentication.",
                 nameof(options));
         }
 
         if (options.EnableInteractiveAuthentication
-            && (options.EnableServiceCredentials || options.EnablePasswordAuthentication))
+            && options.EnableServiceCredentials)
         {
             throw new ArgumentException(
                 "Use separate public and confidential registrations for interactive and service authentication.",
@@ -172,11 +148,6 @@ public static class AsterloomIdentityServiceCollectionExtensions
         }
 
         if (options.EnableServiceCredentials)
-        {
-            RequireText(options.ClientSecret, nameof(options.ClientSecret), 2_048);
-        }
-
-        if (options.EnablePasswordAuthentication)
         {
             RequireText(options.ClientSecret, nameof(options.ClientSecret), 2_048);
         }

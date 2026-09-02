@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package asterloom.mail.admin.v1;
+
+import "Asterloom/mail/v1/mail_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Mail.Admin.V1";
+
+// Manages SMTP accounts and delivery history for an application.
+service MailAdminService {
+  rpc ListSmtpAccounts(ListSmtpAccountsRequest) returns (ListSmtpAccountsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts"};
+  }
+
+  rpc GetSmtpAccount(GetSmtpAccountRequest) returns (asterloom.mail.v1.SmtpAccount) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}"};
+  }
+
+  rpc CreateSmtpAccount(CreateSmtpAccountRequest) returns (asterloom.mail.v1.SmtpAccount) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts"
+      body: "*"
+    };
+  }
+
+  rpc UpdateSmtpAccount(UpdateSmtpAccountRequest) returns (asterloom.mail.v1.SmtpAccount) {
+    option (google.api.http) = {
+      patch: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}"
+      body: "*"
+    };
+  }
+
+  rpc ArchiveSmtpAccount(ArchiveSmtpAccountRequest) returns (asterloom.mail.v1.SmtpAccount) {
+    option (google.api.http) = {delete: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}"};
+  }
+
+  rpc RestoreSmtpAccount(RestoreSmtpAccountRequest) returns (asterloom.mail.v1.SmtpAccount) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}:restore"
+      body: "*"
+    };
+  }
+
+  rpc TestSmtpAccount(TestSmtpAccountRequest) returns (asterloom.mail.v1.MailDelivery) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}:test"
+      body: "*"
+    };
+  }
+
+  rpc ListMailDeliveries(ListMailDeliveriesRequest) returns (ListMailDeliveriesResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/deliveries"};
+  }
+
+  rpc GetMailDelivery(GetMailDeliveryRequest) returns (asterloom.mail.v1.MailDelivery) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail/deliveries/{delivery_id}"};
+  }
+}
+
+message ListSmtpAccountsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  string query = 5;
+  bool include_archived = 6;
+}
+
+message ListSmtpAccountsResponse {
+  repeated asterloom.mail.v1.SmtpAccount accounts = 1;
+  string next_page_token = 2;
+}
+
+message GetSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+}
+
+message CreateSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string name = 3;
+  string host = 4;
+  int32 port = 5;
+  asterloom.mail.v1.SmtpSecurity security = 6;
+  string username = 7;
+  string smtp_password = 8;
+  string from_address = 9;
+  string from_name = 10;
+}
+
+message UpdateSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+  string name = 4;
+  string host = 5;
+  int32 port = 6;
+  asterloom.mail.v1.SmtpSecurity security = 7;
+  string username = 8;
+  string smtp_password = 9;
+  string from_address = 10;
+  string from_name = 11;
+  int64 expected_version = 12;
+}
+
+message ArchiveSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+  int64 expected_version = 4;
+}
+
+message RestoreSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+  int64 expected_version = 4;
+}
+
+message TestSmtpAccountRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+  string recipient = 4;
+}
+
+message ListMailDeliveriesRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  asterloom.mail.v1.MailDeliveryStatus status = 5;
+}
+
+message ListMailDeliveriesResponse {
+  repeated asterloom.mail.v1.MailDelivery deliveries = 1;
+  string next_page_token = 2;
+}
+
+message GetMailDeliveryRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string delivery_id = 3;
+}

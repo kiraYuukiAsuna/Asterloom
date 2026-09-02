@@ -159,6 +159,18 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await expect(membershipRow).toContainText("Active");
 
   await page.getByTestId("identity-tab-clients").click();
+  const systemClientRow = page
+    .locator('[data-ui-action="get-client"]')
+    .filter({ hasText: "asterloom-web-e2e" });
+  await systemClientRow.click();
+  const systemClientEditor = page.locator('[data-ui-action="update-client"]');
+  await expect(systemClientEditor).toContainText("System resource");
+  await expect(systemClientEditor.getByTestId("identity-system-resource-notice")).toBeVisible();
+  await expect(systemClientEditor.getByLabel("Display name")).toBeDisabled();
+  await expect(systemClientEditor.locator('[data-ui-action="rotate-client-secret"]')).toHaveCount(0);
+  await expect(systemClientEditor.locator('[data-ui-action="delete-client"]')).toHaveCount(0);
+  await expect(systemClientEditor.getByRole("button", { name: "Save client" })).toHaveCount(0);
+
   const createClient = page.locator('[data-ui-action="create-client"]');
   await createClient.getByLabel("Client ID").fill(clientId);
   await createClient.getByLabel("Display name").fill("Identity E2E Client");
@@ -166,7 +178,7 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await createClient.getByLabel("Authorization code + PKCE").uncheck();
   await createClient.getByLabel("Refresh token").uncheck();
   await createClient.getByLabel("Client credentials").check();
-  await createClient.getByLabel("Trusted backend password").check();
+  await expect(createClient.getByLabel("Trusted backend password")).toHaveCount(0);
   await createClient.getByLabel("Tenant UUID (optional)").fill(tenant.id);
   await createClient.getByLabel("Application UUID (optional)").fill(application.id);
   await createClient.getByLabel("Allow trusted backend registration").check();
@@ -198,6 +210,17 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await expect(clientRow).toHaveCount(0);
 
   await page.getByTestId("identity-tab-scopes").click();
+  const systemScopeRow = page
+    .locator('[data-ui-action="get-scope"]')
+    .filter({ hasText: "asterloom.api" });
+  await systemScopeRow.click();
+  const systemScopeEditor = page.locator('[data-ui-action="update-scope"]');
+  await expect(systemScopeEditor).toContainText("System resource");
+  await expect(systemScopeEditor.getByTestId("identity-system-resource-notice")).toBeVisible();
+  await expect(systemScopeEditor.getByLabel("Display name")).toBeDisabled();
+  await expect(systemScopeEditor.locator('[data-ui-action="delete-scope"]')).toHaveCount(0);
+  await expect(systemScopeEditor.getByRole("button", { name: "Save scope" })).toHaveCount(0);
+
   const createScope = page.locator('[data-ui-action="create-scope"]');
   await createScope.getByLabel("Scope name").fill(scopeName);
   await createScope.getByLabel("Display name").fill("Identity E2E Scope");

@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\Asterloom.Module.Identity\Asterloom.Module.Identity.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Identity.AspNetCore\Asterloom.Sdk.Identity.AspNetCore.csproj" />
     <ProjectReference Include="..\..\Asterloom.Server\Asterloom.Server.csproj" />
   </ItemGroup>
 

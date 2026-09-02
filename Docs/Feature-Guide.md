@@ -113,8 +113,8 @@ Route: `/identity/users`
 - **OIDC scopes:** create, update, and delete scopes exposed by Passport.
 
 Use Authorization Code + S256 PKCE for interactive desktop/management Web clients and Client Credentials for
-backend services. A controlled Password Flow is permitted only for a confidential, application-bound business
-backend implementing its own end-user login page; browser JavaScript must never call it. Do not use Implicit Flow.
+backend services. Password Flow and Implicit Flow are disabled; business applications must not collect Passport
+passwords to exchange them directly for tokens.
 See [business application identity integration](Module/Identity-Business-Integration.md). Copy a newly issued client
 secret immediately and store it in a secret manager.
 
@@ -600,7 +600,7 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-de
   and Rollout, Config, Release, Analytics, Telemetry, native gRPC, JSON
   Transcoding, Storage, PostgreSQL persistence, and Operations/OpenAPI.
 - `login` verifies interactive Passport Authorization Code + PKCE.
-- `account-demo` verifies global account registration, confirmation, application membership, business BFF sign-in, and sign-out.
+- `account-demo` verifies global account registration, confirmation, and application membership; `login` completes interactive sign-in and validates the business API bearer token.
 
 See [Reference-Application.md](Reference-Application.md) for environment
 variables, production Compose commands, and the diagnostic contract.

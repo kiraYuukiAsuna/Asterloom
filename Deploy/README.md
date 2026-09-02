@@ -318,6 +318,11 @@ Do not use the local `.env.example` as production secrets. The root `.env`,
 permissions and secure secret/backup handling. Save the generated administrator
 password from `.env` securely; the application does not display it again.
 
+Compose configures the built-in Web OIDC client ID (`asterloom-web`) consistently for the migration/bootstrap,
+server, and Web containers. Bootstrap persists a configuration-managed marker on this client. The Identity API and
+Web Console therefore expose it as an immutable system resource; callback URLs and its secret are changed only via
+deployment configuration followed by a migration/bootstrap run.
+
 The token signing/encryption PFX files are separate from the HTTPS certificate.
 The server uses the PFX files inside its container for tokens; Certbot creates
 the HTTPS certificate used by host Nginx for TLS termination.
@@ -487,6 +492,12 @@ and logs to Collector output and is not a durable observability backend. Update
 `OpenTelemetry/otel-collector.yaml` and provide the required network and secrets
 when connecting OTLP, Prometheus, Loki, or another backend.
 
+The Mail module opens outbound connections directly from the Server container
+to SMTP hosts configured in the console; it adds no inbound or host-mapped
+port. Production firewalls must allow the provider's outbound SMTP port
+(commonly 465 or 587). SMTP authorization codes are protected by Data
+Protection, so losing `.data/dataprotection-keys/` requires entering them again.
+
 ## 6. Files under `Deploy/`
 
 ### 6.1 Top-level files
@@ -531,7 +542,7 @@ into a container and must not be installed without rendering.
 | [`Scripts/Production-Domain.sh`](Scripts/Production-Domain.sh) | Linux/sourced helper | Loads `.env`, applies process-level overrides and defaults, validates `ASTERLOOM_DOMAIN` and `CERTBOT_EMAIL`, and exports them for deployment scripts. |
 | [`Scripts/Install-ProductionNginx.sh`](Scripts/Install-ProductionNginx.sh) | Linux/root | Renders either Nginx domain template, installs the stable `asterloom` site, removes a legacy domain-named enabled symlink, validates Nginx, and reloads it. `--render` writes the result to stdout without host changes. |
 | [`Scripts/Smoke-Test-Production.sh`](Scripts/Smoke-Test-Production.sh) | Linux | End-to-end production smoke test for HTTPS, Passport, OIDC, BFF, JSON API, and logout. |
-| [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | Uses the real Web BFF management APIs to create the reference tenant/application/OIDC clients and authorization binding, then writes new secrets to `.data/reference-app/reference.env`. It rotates secrets and mutates platform data. |
+| [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | Uses the real Web BFF management APIs to create the reference tenant/application, business API scope/audience, bound Public Native Client, Confidential Clients, and authorization binding. It writes secrets and Reference Resource Server settings to `.data/reference-app/reference.env`, rotates secrets, and mutates platform data. |
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | Publishes Server and Migrations in a temporary directory, creates a portable `.tar.gz`, and prints its SHA-256 and size. |
 | [`Scripts/Build-Web-Prebuilt.sh`](Scripts/Build-Web-Prebuilt.sh) | Linux/network | Downloads and verifies the latest Node 24 Linux x64 release, runs `npm ci` and the Next build, and archives the Standalone runtime. |
 | [`Scripts/Build-Reference-DesktopUpdate.ps1`](Scripts/Build-Reference-DesktopUpdate.ps1) | PowerShell/Windows RID | Builds baseline and target reference clients, asks Velopack for Setup/Full/Delta packages, reconstructs the target Full package, and verifies SHA-256. The output directory must not exist. |
@@ -581,7 +592,7 @@ the [desktop update guide](../Docs/Module/Desktop-Updates.md).
 | `Secrets/asterloom-signing.pfx` | `Prepare-ProductionHost.sh` | OpenIddict token signing certificate. |
 | `Secrets/asterloom-encryption.pfx` | `Prepare-ProductionHost.sh` | OpenIddict token encryption certificate. |
 | `../.data/dataprotection-keys/` | `Prepare-ProductionHost.sh` / Server | Persistent ASP.NET Core Data Protection keys. |
-| `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | Reference service, native client, and business BFF credentials. |
+| `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | Reference service/BFF credentials, Public Client ID/API scope, and Reference Backend issuer/audience/tenant/application validation settings. |
 | `../.data/reference-app/state/` | Reference client | Writable reference provisioning and diagnostic state. |
 
 These paths contain secrets or runtime state. They are excluded by `.gitignore`

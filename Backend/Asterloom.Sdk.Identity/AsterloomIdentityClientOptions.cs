@@ -14,8 +14,6 @@ public sealed class AsterloomIdentityClientOptions
 
     public bool EnableServiceCredentials { get; set; }
 
-    public bool EnablePasswordAuthentication { get; set; }
-
     public bool RequestRefreshTokens { get; set; } = true;
 
     public Uri RedirectUri { get; set; } = new("http://localhost/", UriKind.Absolute);

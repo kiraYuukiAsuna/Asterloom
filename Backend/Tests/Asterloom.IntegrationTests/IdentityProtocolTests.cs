@@ -1,15 +1,25 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Asterloom.Modules.Identity;
 using Asterloom.Modules.Identity.Bootstrap;
+using Asterloom.Sdk.Identity.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -59,13 +69,140 @@ public sealed partial class IdentityProtocolTests
         Assert.Contains(GrantTypes.AuthorizationCode, grants);
         Assert.Contains(GrantTypes.RefreshToken, grants);
         Assert.Contains(GrantTypes.ClientCredentials, grants);
-        Assert.Contains(GrantTypes.Password, grants);
+        Assert.DoesNotContain(GrantTypes.Password, grants);
         Assert.DoesNotContain(GrantTypes.Implicit, grants);
-        Assert.Contains(
-            CodeChallengeMethods.Sha256,
+        Assert.Equal(
+            [CodeChallengeMethods.Sha256],
             document.GetProperty("code_challenge_methods_supported")
                 .EnumerateArray()
                 .Select(static item => item.GetString()));
+    }
+
+    [Fact]
+    public async Task AuthorizationEndpointRejectsPlainPkce()
+    {
+        var authorizePath = QueryHelpers.AddQueryString(
+            "/connect/authorize",
+            new Dictionary<string, string?>
+            {
+                [Parameters.ClientId] = ClientId,
+                [Parameters.RedirectUri] = RedirectUri,
+                [Parameters.ResponseType] = ResponseTypes.Code,
+                [Parameters.Scope] = "openid asterloom.api",
+                [Parameters.CodeChallenge] =
+                    "asterloom-plain-verifier-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                [Parameters.CodeChallengeMethod] = CodeChallengeMethods.Plain,
+            });
+
+        using var response = await _client.GetAsync(authorizePath);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            $"{Parameters.Error}:{Errors.InvalidRequest}",
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TokenEndpointRejectsPasswordGrant()
+    {
+        using var response = await PostTokenAsync(
+            new Dictionary<string, string>
+            {
+                [Parameters.GrantType] = GrantTypes.Password,
+                [Parameters.ClientId] = ClientId,
+                [Parameters.Username] = AdminEmail,
+                [Parameters.Password] = AdminPassword,
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            Errors.UnsupportedGrantType,
+            document.GetProperty(Parameters.Error).GetString());
+    }
+
+    [Fact]
+    public async Task BootstrapRemovesLegacyPasswordGrantPermissions()
+    {
+        var clientId = "legacy-password-" + Guid.NewGuid().ToString("N");
+        using var scope = _factory.Services.CreateScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        await applications.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientSecret = "legacy-test-secret",
+            ClientType = ClientTypes.Confidential,
+            DisplayName = "Legacy password client",
+            Permissions =
+            {
+                Permissions.Endpoints.Token,
+                Permissions.GrantTypes.Password,
+            },
+        });
+
+        await scope.ServiceProvider.GetRequiredService<IIdentityBootstrapper>()
+            .BootstrapAsync(CancellationToken.None);
+
+        var application = await applications.FindByClientIdAsync(clientId)
+            ?? throw new InvalidOperationException("The legacy test client was not found.");
+        Assert.DoesNotContain(
+            Permissions.GrantTypes.Password,
+            await applications.GetPermissionsAsync(application));
+    }
+
+    [Fact]
+    public async Task PassportRememberMeControlsCookiePersistence()
+    {
+        foreach (var rememberMe in new[] { false, true })
+        {
+            using var client = _factory.CreateClient(
+                new WebApplicationFactoryClientOptions
+                {
+                    AllowAutoRedirect = false,
+                    HandleCookies = true,
+                });
+            using var loginPage = await client.GetAsync("/passport/login?returnUrl=%2F");
+            loginPage.EnsureSuccessStatusCode();
+            var loginHtml = await loginPage.Content.ReadAsStringAsync();
+            var antiforgeryToken = WebUtility.HtmlDecode(
+                AntiforgeryTokenPattern().Match(loginHtml).Groups[1].Value);
+
+            using var loginContent = new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["Email"] = AdminEmail,
+                    ["Password"] = AdminPassword,
+                    ["RememberMe"] = rememberMe.ToString(),
+                    ["ReturnUrl"] = "/",
+                    ["__RequestVerificationToken"] = antiforgeryToken,
+                });
+            using var loginResponse = await client.PostAsync(
+                "/passport/login",
+                loginContent);
+            loginResponse.EnsureSuccessStatusCode();
+            var passportCookie = Assert.Single(
+                loginResponse.Headers.GetValues("Set-Cookie"),
+                static value => value.StartsWith(
+                        "Asterloom.Passport.Development=",
+                        StringComparison.Ordinal));
+
+            Assert.Equal(
+                rememberMe,
+                passportCookie.Contains("expires=", StringComparison.OrdinalIgnoreCase));
+            if (rememberMe)
+            {
+                var expiresAt = DateTimeOffset.Parse(
+                    CookieExpiresPattern().Match(passportCookie).Groups[1].Value,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal);
+                Assert.InRange(
+                    expiresAt - DateTimeOffset.UtcNow,
+                    TimeSpan.FromDays(29),
+                    TimeSpan.FromDays(31));
+            }
+        }
     }
 
     [Fact]
@@ -114,7 +251,7 @@ public sealed partial class IdentityProtocolTests
             {
                 ["Email"] = AdminEmail,
                 ["Password"] = AdminPassword,
-                ["RememberMe"] = "false",
+                ["RememberMe"] = "true",
                 ["ReturnUrl"] = returnUrl,
                 ["__RequestVerificationToken"] = antiforgeryToken,
             });
@@ -149,8 +286,39 @@ public sealed partial class IdentityProtocolTests
         var refreshToken = tokens.GetProperty(Parameters.RefreshToken).GetString();
         Assert.False(string.IsNullOrWhiteSpace(accessToken));
         Assert.False(string.IsNullOrWhiteSpace(refreshToken));
-        Assert.False(string.IsNullOrWhiteSpace(
-            tokens.GetProperty(Parameters.IdToken).GetString()));
+        Assert.Equal(3, accessToken!.Split('.').Length);
+        using var accessTokenHeader = JsonDocument.Parse(
+            WebEncoders.Base64UrlDecode(accessToken.Split('.')[0]));
+        Assert.Equal("at+jwt", accessTokenHeader.RootElement.GetProperty("typ").GetString());
+        var accessTokenKeyId = accessTokenHeader.RootElement.GetProperty("kid").GetString();
+        using var discoveryResponse = await _client.GetAsync(
+            "/.well-known/openid-configuration");
+        discoveryResponse.EnsureSuccessStatusCode();
+        var discovery = await discoveryResponse.Content.ReadFromJsonAsync<JsonElement>();
+        using var signingKeysResponse = await _client.GetAsync(
+            new Uri(discovery.GetProperty("jwks_uri").GetString()!).PathAndQuery);
+        signingKeysResponse.EnsureSuccessStatusCode();
+        var signingKeys = await signingKeysResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            signingKeys.GetProperty("keys").EnumerateArray(),
+            key => string.Equals(
+                key.GetProperty("kid").GetString(),
+                accessTokenKeyId,
+                StringComparison.Ordinal));
+        using var accessTokenPayload = JsonDocument.Parse(
+            WebEncoders.Base64UrlDecode(accessToken.Split('.')[1]));
+        Assert.Contains(
+            "asterloom-api",
+            ReadStringOrArray(accessTokenPayload.RootElement.GetProperty("aud")));
+        var idToken = tokens.GetProperty(Parameters.IdToken).GetString();
+        Assert.False(string.IsNullOrWhiteSpace(idToken));
+        using var idTokenPayload = JsonDocument.Parse(
+            WebEncoders.Base64UrlDecode(idToken!.Split('.')[1]));
+        Assert.Equal(
+            bool.TrueString,
+            idTokenPayload.RootElement
+                .GetProperty(IdentityClaimTypes.PersistentSession)
+                .GetString());
 
         using var userInfoRequest = new HttpRequestMessage(
             HttpMethod.Get,
@@ -169,6 +337,8 @@ public sealed partial class IdentityProtocolTests
             userInfo.GetProperty(Claims.Role)
                 .EnumerateArray()
                 .Select(static item => item.GetString()));
+
+        await VerifyExternalResourceServerAsync(accessToken, idToken!);
 
         using var refreshResponse = await PostTokenAsync(
             new Dictionary<string, string>
@@ -241,6 +411,8 @@ public sealed partial class IdentityProtocolTests
 
         application = await manager.FindByClientIdAsync(ClientId)
             ?? throw new InvalidOperationException("The reconciled Web client is missing.");
+        var properties = await manager.GetPropertiesAsync(application);
+        Assert.True(properties["asterloom:configuration_managed"].GetBoolean());
         Assert.Collection(
             await manager.GetRedirectUrisAsync(application),
             value => Assert.Equal(RedirectUri, value));
@@ -255,6 +427,84 @@ public sealed partial class IdentityProtocolTests
         using var content = new FormUrlEncodedContent(parameters);
         return await _client.PostAsync("/connect/token", content);
     }
+
+    private async Task VerifyExternalResourceServerAsync(
+        string accessToken,
+        string identityToken)
+    {
+        var webKeys = new JsonWebKeySet(
+            await _client.GetStringAsync("/.well-known/jwks"));
+        var metadata = new OpenIdConnectConfiguration
+        {
+            Issuer = "http://localhost/",
+        };
+        foreach (var signingKey in webKeys.GetSigningKeys())
+        {
+            metadata.SigningKeys.Add(signingKey);
+        }
+
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddAsterloomResourceServer(options =>
+        {
+            options.Issuer = new Uri("http://localhost/");
+            options.Audience = "asterloom-api";
+            options.AllowInsecureHttpForDevelopment = true;
+        });
+        builder.Services.PostConfigure<JwtBearerOptions>(
+            AsterloomResourceServerDefaults.AuthenticationScheme,
+            options =>
+            {
+                options.Configuration = metadata;
+                options.ConfigurationManager =
+                    new StaticConfigurationManager<OpenIdConnectConfiguration>(metadata);
+                options.BackchannelHttpHandler = _factory.Server.CreateHandler();
+                options.Backchannel = new HttpClient(options.BackchannelHttpHandler);
+            });
+        builder.Services
+            .AddHttpClient(AsterloomResourceServerDefaults.AuthorizationHttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(_factory.Server.CreateHandler);
+        builder.Services.AddAuthorizationBuilder()
+            .AddPolicy(
+                "platform-read",
+                policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireAsterloomPermission("platform.info.read"));
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapGet(
+                "/protected",
+                (ClaimsPrincipal principal) => principal.FindFirstValue(Claims.Subject))
+            .RequireAuthorization();
+        app.MapGet("/permission", () => "allowed")
+            .RequireAuthorization("platform-read");
+        await app.StartAsync();
+
+        using var resourceClient = app.GetTestClient();
+        resourceClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+        using var protectedResponse = await resourceClient.GetAsync("/protected");
+        Assert.True(
+            protectedResponse.IsSuccessStatusCode,
+            $"Resource server returned {(int)protectedResponse.StatusCode}: "
+            + string.Join(", ", protectedResponse.Headers.WwwAuthenticate));
+        Assert.False(string.IsNullOrWhiteSpace(
+            await protectedResponse.Content.ReadAsStringAsync()));
+        using var permissionResponse = await resourceClient.GetAsync("/permission");
+        permissionResponse.EnsureSuccessStatusCode();
+
+        resourceClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", identityToken);
+        using var identityTokenResponse = await resourceClient.GetAsync("/protected");
+        Assert.Equal(HttpStatusCode.Unauthorized, identityTokenResponse.StatusCode);
+    }
+
+    private static IEnumerable<string> ReadStringOrArray(JsonElement value) =>
+        value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray().Select(static item => item.GetString() ?? string.Empty)
+            : [value.GetString() ?? string.Empty];
 
     private async Task EnsureServiceClientAsync()
     {
@@ -292,6 +542,9 @@ public sealed partial class IdentityProtocolTests
 
     [GeneratedRegex("name=\"ReturnUrl\" value=\"([^\"]+)\"")]
     private static partial Regex ReturnUrlPattern();
+
+    [GeneratedRegex("expires=([^;]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex CookieExpiresPattern();
 
     public sealed class IdentityWebApplicationFactory : WebApplicationFactory<Program>
     {

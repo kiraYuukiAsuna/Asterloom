@@ -1,6 +1,7 @@
 import { analyticsTelemetryZhCnMessages } from "@/lib/i18n/messages/zh-cn/analytics-telemetry";
 import { featureTargetingConfigZhCnMessages } from "@/lib/i18n/messages/zh-cn/feature-targeting-config";
 import { identityAuthorizationZhCnMessages } from "@/lib/i18n/messages/zh-cn/identity-authorization";
+import { mailZhCnMessages } from "@/lib/i18n/messages/zh-cn/mail";
 import { platformZhCnMessages } from "@/lib/i18n/messages/zh-cn/platform";
 import { releaseStorageZhCnMessages } from "@/lib/i18n/messages/zh-cn/release-storage";
 
@@ -10,6 +11,7 @@ export const zhCnMessages: Readonly<Record<string, string>> = {
   ...featureTargetingConfigZhCnMessages,
   ...releaseStorageZhCnMessages,
   ...analyticsTelemetryZhCnMessages,
+  ...mailZhCnMessages,
 
   "Asterloom Console": "Asterloom 控制台",
   "Unified control plane for Asterloom platform capabilities.":
@@ -66,6 +68,7 @@ export const zhCnMessages: Readonly<Record<string, string>> = {
   "Analytics": "产品分析",
   "Telemetry": "可观测性",
   "Operations": "运维",
+  "Mail": "邮件",
   "Storage": "文件存储",
   "Planned": "规划中",
   "Implemented": "已实现",

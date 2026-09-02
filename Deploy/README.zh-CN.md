@@ -298,6 +298,11 @@ sudo bash Deploy/Scripts/Prepare-ProductionHost.sh
 都已被 Git 忽略，仍应设置严格权限并纳入安全的 Secret/备份方案。准备完成后请从 `.env`
 安全保存生成的管理员密码；应用不会再次显示它。
 
+Compose 会为 Migration/Bootstrap、Server 和 Web 容器统一配置内置 Web OIDC Client ID
+（`asterloom-web`）。Bootstrap 还会为该 Client 持久化“配置托管”标记，因此 Identity API 与 Web 管理后台
+会将它作为不可修改的系统资源；回调地址和 Secret 只能通过部署配置修改，并在之后重新运行
+Migration/Bootstrap Service。
+
 Token 签名/加密 PFX 与 HTTPS 证书不是同一类证书：前者由 Server 在容器内签发和保护
 Token，后者由 Certbot 生成并由宿主机 Nginx 终止 TLS。
 
@@ -455,6 +460,10 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 并不是持久化可观测性后端。正式接入 OTLP、Prometheus、Loki 或其他后端时，应修改
 `OpenTelemetry/otel-collector.yaml` 并配置对应凭据和网络。
 
+Mail 模块由 Server 容器直接向控制台配置的 SMTP 主机发起出站连接，不新增任何入站或
+宿主机映射端口。生产防火墙需按所用服务商放行出站 SMTP（常见为 465 或 587）；SMTP
+授权码使用 Data Protection 加密，因此 `.data/dataprotection-keys/` 丢失后必须重新录入授权码。
+
 ## 6. `Deploy/` 文件说明
 
 ### 6.1 顶层文件
@@ -496,7 +505,7 @@ Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性�
 | [`Scripts/Production-Domain.sh`](Scripts/Production-Domain.sh) | Linux/被其他脚本 source | 读取 `.env`、应用进程级覆盖与默认值、校验并导出 `ASTERLOOM_DOMAIN` 和 `CERTBOT_EMAIL`。 |
 | [`Scripts/Install-ProductionNginx.sh`](Scripts/Install-ProductionNginx.sh) | Linux/root | 渲染指定 Nginx 域名模板、安装固定 `asterloom` Site、移除旧版域名命名的启用链接、校验并 reload Nginx；`--render` 只输出结果，不修改宿主机。 |
 | [`Scripts/Smoke-Test-Production.sh`](Scripts/Smoke-Test-Production.sh) | Linux | 对线上 HTTPS、Passport、OIDC、BFF、JSON API 和 Logout 做端到端冒烟测试。 |
-| [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | 通过真实 Web BFF 管理 API 创建参考 Tenant/Application/OIDC Client 和授权绑定，把新 Secret 写入 `.data/reference-app/reference.env`。会轮换 Secret 并修改平台数据。 |
+| [`Scripts/Provision-Reference-App.sh`](Scripts/Provision-Reference-App.sh) | Linux | 通过真实 Web BFF 管理 API创建参考 Tenant/Application、业务 API Scope/Audience、绑定的 Public Native Client、Confidential Client 和授权绑定，并把 Secret 与 Reference Resource Server 配置写入 `.data/reference-app/reference.env`。会轮换 Secret 并修改平台数据。 |
 | [`Scripts/Build-Server-Prebuilt.sh`](Scripts/Build-Server-Prebuilt.sh) | Linux | 在临时目录 publish Server/Migrations，并打包成可传输的 `.tar.gz`；输出 SHA-256 和大小。 |
 | [`Scripts/Build-Web-Prebuilt.sh`](Scripts/Build-Web-Prebuilt.sh) | Linux/联网 | 下载并校验最新 Node 24 Linux x64，执行 `npm ci`/Next build，打包 Standalone Runtime 制品。 |
 | [`Scripts/Build-Reference-DesktopUpdate.ps1`](Scripts/Build-Reference-DesktopUpdate.ps1) | PowerShell/Windows RID | 构建参考客户端基线和目标版本，调用 Velopack 生成 Setup、Full、Delta，并通过重建 Full 包及 SHA-256 验证差分包。输出目录必须不存在。 |
@@ -543,7 +552,7 @@ Web 制品使用相同方式，并选择 `Deploy/Dockerfile.web-prebuilt`。默�
 | `Secrets/asterloom-signing.pfx` | `Prepare-ProductionHost.sh` | OpenIddict Token 签名证书。 |
 | `Secrets/asterloom-encryption.pfx` | `Prepare-ProductionHost.sh` | OpenIddict Token 加密证书。 |
 | `../.data/dataprotection-keys/` | `Prepare-ProductionHost.sh` / Server | 持久化 ASP.NET Core Data Protection Key。 |
-| `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | 参考服务、原生客户端和业务 BFF 凭据。 |
+| `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | 参考服务/业务 BFF 凭据、Public Client ID/API Scope，以及 Reference Backend 的 Issuer/Audience/Tenant/Application 验证配置。 |
 | `../.data/reference-app/state/` | 参考客户端 | 参考应用可写诊断和 Provision 状态。 |
 
 这些路径都包含 Secret 或运行状态，已在 `.gitignore` 中排除，禁止提交到仓库。

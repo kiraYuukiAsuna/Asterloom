@@ -24,7 +24,8 @@ import {
   type LoginTransaction,
 } from "@/lib/auth/types";
 
-const sessionLifetimeMs = 8 * 60 * 60 * 1000;
+const browserSessionLifetimeMs = 8 * 60 * 60 * 1000;
+const persistentSessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const loginTransactionTtlSeconds = 10 * 60;
 const refreshBeforeExpiryMs = 30_000;
 
@@ -43,11 +44,14 @@ export function createSession(
     idToken?: string;
     refreshToken?: string;
   },
+  persistent = false,
 ): { id: string; record: BffSession } {
   return {
     id: randomOpaqueValue(),
     record: {
-      absoluteExpiresAt: Date.now() + sessionLifetimeMs,
+      absoluteExpiresAt:
+        Date.now() +
+        (persistent ? persistentSessionLifetimeMs : browserSessionLifetimeMs),
       accessExpiresAt: tokens.accessExpiresAt,
       accessToken: tokens.accessToken,
       actor: tokens.actor,
@@ -203,5 +207,6 @@ export async function takeLoginTransaction(
   }
 }
 
-export const sessionCookieMaxAge = sessionLifetimeMs / 1000;
+export const persistentSessionCookieMaxAge =
+  persistentSessionLifetimeMs / 1000;
 export const oidcCookieMaxAge = loginTransactionTtlSeconds;

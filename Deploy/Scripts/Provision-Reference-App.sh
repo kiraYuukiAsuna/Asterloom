@@ -17,6 +17,8 @@ reference_app_uid="${ASTERLOOM_REFERENCE_APP_UID:-1654}"
 service_client_id="${ASTERLOOM_REFERENCE_CLIENT_ID:-asterloom-reference-service}"
 native_client_id="${ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID:-asterloom-reference-native}"
 business_client_id="${ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID:-asterloom-reference-business}"
+resource_scope_name="${ASTERLOOM_REFERENCE_API_SCOPE:-asterloom.reference.api}"
+resource_audience="${ASTERLOOM_REFERENCE_API_AUDIENCE:-asterloom-reference-api}"
 binding_id="7fc2e239-3fa1-7ef1-8c20-5c7d54b7bd77"
 
 : "${ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL:?ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL is required}"
@@ -176,6 +178,30 @@ if [[ -z "$identity_application_id" ]]; then
 fi
 require_value "reference Identity application" "$identity_application_id"
 
+scopes_file="$temporary_directory/scopes.json"
+api_get "/api/v1/identity/scopes?pageSize=100&query=$resource_scope_name" "$scopes_file"
+resource_scope_id="$(jq --raw-output --arg name "$resource_scope_name" \
+  '.scopes[]? | select(.name == $name) | .id' "$scopes_file" | head -n 1)"
+resource_scope_version="$(jq --raw-output --arg name "$resource_scope_name" \
+  '.scopes[]? | select(.name == $name) | .version' "$scopes_file" | head -n 1)"
+if [[ -n "$resource_scope_id" ]]; then
+  resource_scope_file="$temporary_directory/resource-scope-update.json"
+  api_mutate PATCH "/api/v1/identity/scopes/$resource_scope_id" \
+    "$(jq -cn \
+      --arg audience "$resource_audience" \
+      --arg version "$resource_scope_version" \
+      '{displayName:"Asterloom reference business API",description:"Allows native reference clients to call the reference business API.",resources:[$audience],expectedVersion:$version}')" \
+    "$resource_scope_file"
+else
+  resource_scope_file="$temporary_directory/resource-scope-create.json"
+  api_mutate POST "/api/v1/identity/scopes" \
+    "$(jq -cn \
+      --arg name "$resource_scope_name" \
+      --arg audience "$resource_audience" \
+      '{name:$name,displayName:"Asterloom reference business API",description:"Allows native reference clients to call the reference business API.",resources:[$audience]}')" \
+    "$resource_scope_file"
+fi
+
 clients_file="$temporary_directory/clients.json"
 api_get "/api/v1/identity/clients?pageSize=100&query=$service_client_id" "$clients_file"
 service_version="$(jq --raw-output --arg id "$service_client_id" \
@@ -204,20 +230,35 @@ fi
 require_value "reference service client secret" "$service_secret"
 
 api_get "/api/v1/identity/clients?pageSize=100&query=$native_client_id" "$clients_file"
-native_exists="$(jq --arg id "$native_client_id" '[.clients[]? | select(.clientId == $id)] | length' "$clients_file")"
-if [[ "$native_exists" == "0" ]]; then
+native_version="$(jq --raw-output --arg id "$native_client_id" \
+  '.clients[]? | select(.clientId == $id) | .version' "$clients_file" | head -n 1)"
+native_payload="$(jq -cn \
+  --arg scope "$resource_scope_name" \
+  --arg tenant "$identity_tenant_id" \
+  --arg application "$identity_application_id" \
+  '{
+    displayName:"Asterloom reference native client",
+    grantTypes:["OIDC_GRANT_TYPE_AUTHORIZATION_CODE","OIDC_GRANT_TYPE_REFRESH_TOKEN"],
+    redirectUris:["http://localhost/"],
+    postLogoutRedirectUris:["http://localhost/"],
+    scopes:["asterloom.api",$scope,"openid","profile","email","roles","offline_access"],
+    tenantId:$tenant,
+    applicationId:$application,
+    allowUserRegistration:false,
+    allowMembershipAutoJoin:true
+  }')"
+if [[ -n "$native_version" ]]; then
+  native_file="$temporary_directory/native-update.json"
+  api_mutate PATCH "/api/v1/identity/clients/$native_client_id" \
+    "$(jq --arg version "$native_version" '. + {expectedVersion:$version}' \
+      <<<"$native_payload")" \
+    "$native_file"
+else
   native_file="$temporary_directory/native-create.json"
   api_mutate POST "/api/v1/identity/clients" \
-    "$(jq -cn --arg id "$native_client_id" '{
-      clientId:$id,
-      displayName:"Asterloom reference native client",
-      applicationType:"OIDC_APPLICATION_TYPE_NATIVE",
-      clientType:"OIDC_CLIENT_TYPE_PUBLIC",
-      grantTypes:["OIDC_GRANT_TYPE_AUTHORIZATION_CODE","OIDC_GRANT_TYPE_REFRESH_TOKEN"],
-      redirectUris:["http://localhost/"],
-      postLogoutRedirectUris:["http://localhost/"],
-      scopes:["asterloom.api"]
-    }')" \
+    "$(jq --arg id "$native_client_id" \
+      '. + {clientId:$id,applicationType:"OIDC_APPLICATION_TYPE_NATIVE",clientType:"OIDC_CLIENT_TYPE_PUBLIC"}' \
+      <<<"$native_payload")" \
     "$native_file"
 fi
 
@@ -230,18 +271,14 @@ business_payload="$(jq -cn \
   --arg application "$identity_application_id" \
   '{
     displayName:"Asterloom reference business backend",
-    grantTypes:[
-      "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
-      "OIDC_GRANT_TYPE_PASSWORD",
-      "OIDC_GRANT_TYPE_REFRESH_TOKEN"
-    ],
+    grantTypes:["OIDC_GRANT_TYPE_CLIENT_CREDENTIALS"],
     redirectUris:[],
     postLogoutRedirectUris:[],
-    scopes:["asterloom.api","openid","profile","email","roles","offline_access"],
+    scopes:["asterloom.api"],
     tenantId:$tenant,
     applicationId:$application,
     allowUserRegistration:true,
-    allowMembershipAutoJoin:true
+    allowMembershipAutoJoin:false
   }')"
 if [[ -n "$business_version" ]]; then
   business_update_file="$temporary_directory/business-update.json"
@@ -302,6 +339,8 @@ umask 077
   printf 'ASTERLOOM_REFERENCE_CLIENT_ID=%s\n' "$service_client_id"
   printf 'ASTERLOOM_REFERENCE_CLIENT_SECRET=%s\n' "$service_secret"
   printf 'ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID=%s\n' "$native_client_id"
+  printf 'ASTERLOOM_REFERENCE_API_SCOPE=%s\n' "$resource_scope_name"
+  printf 'ASTERLOOM_REFERENCE_API_AUDIENCE=%s\n' "$resource_audience"
   printf 'ASTERLOOM_REFERENCE_IDENTITY_CLIENT_ID=%s\n' "$business_client_id"
   printf 'ASTERLOOM_REFERENCE_IDENTITY_CLIENT_SECRET=%s\n' "$business_secret"
   printf 'Asterloom__Identity__Enabled=true\n'
@@ -312,9 +351,16 @@ umask 077
   printf 'Asterloom__Identity__AllowInsecureHttpForDevelopment=false\n'
   printf 'Asterloom__Identity__ExposeEmailVerificationToken=%s\n' \
     "$expose_confirmation_token"
+  printf 'Asterloom__ResourceServer__Enabled=true\n'
+  printf 'Asterloom__ResourceServer__Issuer=%s\n' "$base_url/"
+  printf 'Asterloom__ResourceServer__AuthorizationServer=%s\n' "$base_url/"
+  printf 'Asterloom__ResourceServer__Audience=%s\n' "$resource_audience"
+  printf 'Asterloom__ResourceServer__TenantId=%s\n' "$identity_tenant_id"
+  printf 'Asterloom__ResourceServer__ApplicationId=%s\n' "$identity_application_id"
+  printf 'Asterloom__ResourceServer__AllowInsecureHttpForDevelopment=false\n'
 } > "$reference_environment"
 chmod 600 "$reference_environment"
 
-echo "Reference OIDC clients, business application binding, and global authorization binding are ready."
+echo "Reference OIDC clients, resource audience, application binding, and global authorization binding are ready."
 echo "Credentials were written to $reference_environment with mode 0600."
 echo "Recreate reference-backend after provisioning so it reloads the rotated business client secret."

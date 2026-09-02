@@ -99,6 +99,8 @@ internal static class IdentityProtocolMapper
             ApplicationId = client.ApplicationId?.ToString("D") ?? string.Empty,
             AllowUserRegistration = client.AllowUserRegistration,
             AllowMembershipAutoJoin = client.AllowMembershipAutoJoin,
+            IsSystem = client.IsSystem,
+            IsMutable = client.IsMutable,
         };
         result.GrantTypes.AddRange(client.GrantTypes.Select(ToProtocol));
         result.RedirectUris.AddRange(client.RedirectUris);
@@ -124,6 +126,8 @@ internal static class IdentityProtocolMapper
             DisplayName = scope.DisplayName,
             Description = scope.Description,
             Version = scope.Version,
+            IsSystem = scope.IsSystem,
+            IsMutable = scope.IsMutable,
         };
         result.Resources.AddRange(scope.Resources);
         return result;
@@ -168,7 +172,6 @@ internal static class IdentityProtocolMapper
         ProtocolGrantType.AuthorizationCode => ManagedOidcGrantType.AuthorizationCode,
         ProtocolGrantType.ClientCredentials => ManagedOidcGrantType.ClientCredentials,
         ProtocolGrantType.RefreshToken => ManagedOidcGrantType.RefreshToken,
-        ProtocolGrantType.Password => ManagedOidcGrantType.Password,
         _ => throw Invalid("grantTypes", "A supported OIDC grant type is required."),
     };
 
@@ -177,7 +180,6 @@ internal static class IdentityProtocolMapper
         ManagedOidcGrantType.AuthorizationCode => ProtocolGrantType.AuthorizationCode,
         ManagedOidcGrantType.ClientCredentials => ProtocolGrantType.ClientCredentials,
         ManagedOidcGrantType.RefreshToken => ProtocolGrantType.RefreshToken,
-        ManagedOidcGrantType.Password => ProtocolGrantType.Password,
         _ => ProtocolGrantType.Unspecified,
     };
 

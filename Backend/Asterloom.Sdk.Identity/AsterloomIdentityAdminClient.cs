@@ -602,7 +602,9 @@ public sealed class AsterloomIdentityAdminClient
         ParseOptionalGuid(client.TenantId, "client.tenant_id"),
         ParseOptionalGuid(client.ApplicationId, "client.application_id"),
         client.AllowUserRegistration,
-        client.AllowMembershipAutoJoin);
+        client.AllowMembershipAutoJoin,
+        client.IsSystem,
+        client.IsMutable);
 
     private static AsterloomOidcClientCredential ToModel(
         ProtocolClientCredential credential) => new(
@@ -615,14 +617,15 @@ public sealed class AsterloomIdentityAdminClient
         scope.DisplayName,
         scope.Description,
         scope.Resources.ToArray(),
-        scope.Version);
+        scope.Version,
+        scope.IsSystem,
+        scope.IsMutable);
 
     private static AsterloomOidcGrantType ToModel(ProtocolGrantType type) => type switch
     {
         ProtocolGrantType.AuthorizationCode => AsterloomOidcGrantType.AuthorizationCode,
         ProtocolGrantType.ClientCredentials => AsterloomOidcGrantType.ClientCredentials,
         ProtocolGrantType.RefreshToken => AsterloomOidcGrantType.RefreshToken,
-        ProtocolGrantType.Password => AsterloomOidcGrantType.Password,
         _ => throw InvalidProtocol("OIDC grant type"),
     };
 
@@ -646,7 +649,6 @@ public sealed class AsterloomIdentityAdminClient
         AsterloomOidcGrantType.AuthorizationCode => ProtocolGrantType.AuthorizationCode,
         AsterloomOidcGrantType.ClientCredentials => ProtocolGrantType.ClientCredentials,
         AsterloomOidcGrantType.RefreshToken => ProtocolGrantType.RefreshToken,
-        AsterloomOidcGrantType.Password => ProtocolGrantType.Password,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 
@@ -737,15 +739,6 @@ public sealed class AsterloomIdentityAdminClient
                 nameof(clientType));
         }
 
-        if (grants.Contains(AsterloomOidcGrantType.Password)
-            && (clientType != AsterloomOidcClientType.Confidential
-                || applicationType != AsterloomOidcApplicationType.Web))
-        {
-            throw new ArgumentException(
-                "Password authentication requires a confidential Web client.",
-                nameof(grants));
-        }
-
         if (tenantId.HasValue != applicationId.HasValue)
         {
             throw new ArgumentException(
@@ -753,9 +746,7 @@ public sealed class AsterloomIdentityAdminClient
                 nameof(applicationId));
         }
 
-        if ((grants.Contains(AsterloomOidcGrantType.Password)
-                || allowUserRegistration
-                || allowMembershipAutoJoin)
+        if ((allowUserRegistration || allowMembershipAutoJoin)
             && applicationId is null)
         {
             throw new ArgumentException(
@@ -781,11 +772,10 @@ public sealed class AsterloomIdentityAdminClient
         }
 
         if (grants.Contains(AsterloomOidcGrantType.RefreshToken)
-            && !grants.Contains(AsterloomOidcGrantType.AuthorizationCode)
-            && !grants.Contains(AsterloomOidcGrantType.Password))
+            && !grants.Contains(AsterloomOidcGrantType.AuthorizationCode))
         {
             throw new ArgumentException(
-                "Refresh tokens require authorization-code or password authentication.",
+                "Refresh tokens require authorization-code authentication.",
                 nameof(grants));
         }
     }

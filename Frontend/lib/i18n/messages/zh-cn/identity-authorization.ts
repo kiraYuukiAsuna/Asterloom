@@ -86,6 +86,9 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Allow trusted backend registration": "允许可信业务后端注册",
   "Rotate secret": "轮换 Secret",
   "Save client": "保存客户端",
+  "System resource": "系统资源",
+  "This system resource is managed by deployment configuration and cannot be changed or deleted here.":
+    "此系统资源由部署配置托管，无法在管理后台中修改或删除。",
   "OIDC scopes": "OIDC Scope",
   "Named access boundaries and their target API resources.": "命名的访问边界及其目标 API 资源。",
   "Scope name": "Scope 名称",
@@ -101,7 +104,6 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Authorization code + PKCE": "授权码 + PKCE",
   "Client credentials": "客户端凭据",
   "Refresh token": "刷新令牌",
-  "Trusted backend password": "可信后端密码登录",
   "Redirect URIs (one per line)": "重定向 URI（每行一个）",
   "Post-logout redirect URIs (one per line)": "退出后重定向 URI（每行一个）",
   "Scopes (comma separated)": "Scope（逗号分隔）",

@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Asterloom.Shared\Asterloom.Shared.csproj" />
     <ProjectReference Include="..\Asterloom.Module\Asterloom.Module.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Identity\Asterloom.Module.Identity.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Mail\Asterloom.Module.Mail.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Authorization\Asterloom.Module.Authorization.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Feature\Asterloom.Module.Feature.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />

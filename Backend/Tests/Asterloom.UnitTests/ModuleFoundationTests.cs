@@ -1,5 +1,5 @@
-using Asterloom.Modules.Hosting;
 using Asterloom.Modules.Errors;
+using Asterloom.Modules.Hosting;
 using Asterloom.Modules.Infrastructure;
 using Asterloom.Modules.Infrastructure.Persistence;
 using Asterloom.Modules.Persistence;
@@ -37,7 +37,7 @@ public sealed class ModuleFoundationTests
 
         var response = provider.GetPlatformInfo();
 
-        Assert.Equal(12, response.Capabilities.Count);
+        Assert.Equal(13, response.Capabilities.Count);
         Assert.Equal(
             CapabilityLifecycle.Available,
             response.Capabilities.Single(capability => capability.Key == "rpc").Lifecycle);
@@ -59,6 +59,9 @@ public sealed class ModuleFoundationTests
         Assert.Equal(
             CapabilityLifecycle.Available,
             response.Capabilities.Single(capability => capability.Key == "config").Lifecycle);
+        Assert.Equal(
+            CapabilityLifecycle.Available,
+            response.Capabilities.Single(capability => capability.Key == "mail").Lifecycle);
         Assert.Equal(
             CapabilityLifecycle.Available,
             response.Capabilities.Single(capability => capability.Key == "persistence").Lifecycle);

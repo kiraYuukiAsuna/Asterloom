@@ -8,6 +8,8 @@ public static class IdentityClaimTypes
 
     public const string ActorType = "asterloom_actor_type";
 
+    public const string PersistentSession = "asterloom_persistent_session";
+
     public const string UserActor = "user";
 
     public const string ClientActor = "client";

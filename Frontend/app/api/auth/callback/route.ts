@@ -46,7 +46,11 @@ export async function GET(request: NextRequest) {
       return failedCallback("invalid_identity");
     }
 
-    const session = createSession({ ...tokens, actor: tokens.actor });
+    const persistent = tokens.persistentSession === true;
+    const session = createSession(
+      { ...tokens, actor: tokens.actor },
+      persistent,
+    );
     await saveSession(session.id, session.record);
     const response = NextResponse.redirect(
       new URL(transaction.returnTo, config.webOrigin),
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(
       config.sessionCookieName,
       session.id,
-      sessionCookieOptions(),
+      sessionCookieOptions(persistent),
     );
     response.cookies.set(
       config.oidcCookieName,

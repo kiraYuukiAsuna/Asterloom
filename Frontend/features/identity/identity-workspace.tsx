@@ -97,7 +97,6 @@ const nativeApplication = "OIDC_APPLICATION_TYPE_NATIVE";
 const authorizationCode = "OIDC_GRANT_TYPE_AUTHORIZATION_CODE";
 const clientCredentials = "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS";
 const refreshToken = "OIDC_GRANT_TYPE_REFRESH_TOKEN";
-const passwordGrant = "OIDC_GRANT_TYPE_PASSWORD";
 const removedMembership = "APPLICATION_MEMBERSHIP_STATUS_REMOVED";
 
 type WorkspaceTab = "users" | "memberships" | "clients" | "scopes";
@@ -1204,6 +1203,9 @@ function ClientsPanel({
                     <p className="truncate font-mono text-[10px] text-slate-600">{client.clientId}</p>
                   </div>
                   <div className="flex shrink-0 gap-1.5">
+                    {client.isSystem && (
+                      <Badge variant="planned">{translate("System resource")}</Badge>
+                    )}
                     <Badge variant="planned">
                       {translate(client.applicationType === nativeApplication ? "Native" : "Web")}
                     </Badge>
@@ -1339,7 +1341,7 @@ function CreateClientCard({
                   if (next === publicClient) {
                     setGrants((current) =>
                       current.filter(
-                        (grant) => grant !== clientCredentials && grant !== passwordGrant,
+                        (grant) => grant !== clientCredentials,
                       ),
                     );
                     setAllowUserRegistration(false);
@@ -1356,10 +1358,6 @@ function CreateClientCard({
             grants={grants}
             onChange={(next) => {
               setGrants(next);
-              if (next.includes(passwordGrant)) {
-                setApplicationType(webApplication);
-                setClientType(confidentialClient);
-              }
               if (next.includes(clientCredentials)) setClientType(confidentialClient);
               if (!next.includes(clientCredentials)) setAllowUserRegistration(false);
             }}
@@ -1440,6 +1438,9 @@ function ClientInspector({
           <CardDescription>{client.clientId}</CardDescription>
         </div>
         <div className="flex gap-1.5">
+          {client.isSystem && (
+            <Badge variant="planned">{translate("System resource")}</Badge>
+          )}
           <Badge variant="planned">
             {translate(client.applicationType === nativeApplication ? "Native" : "Web")}
           </Badge>
@@ -1449,45 +1450,48 @@ function ClientInspector({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Field label={translate("Display name")}>
-          <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
-        </Field>
-        <GrantChecks
-          grants={grants}
-          onChange={(next) => {
-            const allowed =
-              client.clientType === publicClient
-                ? next.filter(
-                    (grant) => grant !== clientCredentials && grant !== passwordGrant,
-                  )
-                : next;
-            setGrants(allowed);
-            if (!allowed.includes(clientCredentials)) setAllowUserRegistration(false);
-          }}
-        />
-        <ClientBindingFields
-          allowMembershipAutoJoin={allowMembershipAutoJoin}
-          allowUserRegistration={allowUserRegistration}
-          applicationId={applicationId}
-          onAllowMembershipAutoJoinChange={setAllowMembershipAutoJoin}
-          onAllowUserRegistrationChange={setAllowUserRegistration}
-          onApplicationIdChange={setApplicationId}
-          onTenantIdChange={setTenantId}
-          registrationAvailable={
-            client.clientType === confidentialClient && grants.includes(clientCredentials)
-          }
-          tenantId={tenantId}
-        />
-        <ClientTextFields
-          onPostLogoutRedirectsChange={setPostLogoutRedirects}
-          onRedirectsChange={setRedirects}
-          onScopesChange={setScopes}
-          postLogoutRedirects={postLogoutRedirects}
-          redirects={redirects}
-          scopeNames={scopeNames}
-          scopes={scopes}
-        />
-        <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
+        <fieldset className="space-y-4" disabled={!client.isMutable}>
+          <Field label={translate("Display name")}>
+            <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
+          </Field>
+          <GrantChecks
+            grants={grants}
+            onChange={(next) => {
+              const allowed =
+                client.clientType === publicClient
+                  ? next.filter(
+                      (grant) => grant !== clientCredentials,
+                    )
+                  : next;
+              setGrants(allowed);
+              if (!allowed.includes(clientCredentials)) setAllowUserRegistration(false);
+            }}
+          />
+          <ClientBindingFields
+            allowMembershipAutoJoin={allowMembershipAutoJoin}
+            allowUserRegistration={allowUserRegistration}
+            applicationId={applicationId}
+            onAllowMembershipAutoJoinChange={setAllowMembershipAutoJoin}
+            onAllowUserRegistrationChange={setAllowUserRegistration}
+            onApplicationIdChange={setApplicationId}
+            onTenantIdChange={setTenantId}
+            registrationAvailable={
+              client.clientType === confidentialClient && grants.includes(clientCredentials)
+            }
+            tenantId={tenantId}
+          />
+          <ClientTextFields
+            onPostLogoutRedirectsChange={setPostLogoutRedirects}
+            onRedirectsChange={setRedirects}
+            onScopesChange={setScopes}
+            postLogoutRedirects={postLogoutRedirects}
+            redirects={redirects}
+            scopeNames={scopeNames}
+            scopes={scopes}
+          />
+        </fieldset>
+        {client.isMutable ? (
+          <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
           {client.clientType === confidentialClient && (
             <Button
               data-ui-action="rotate-client-secret"
@@ -1549,7 +1553,16 @@ function ClientInspector({
             variant="ghost"
           >
             <Trash2 className="size-4" /> {translate("Delete")}</Button>
-        </div>
+          </div>
+        ) : (
+          <div
+            className="flex gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.045] p-3 text-xs leading-5 text-slate-500"
+            data-testid="identity-system-resource-notice"
+          >
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-cyan-300" />
+            <span>{translate("This system resource is managed by deployment configuration and cannot be changed or deleted here.")}</span>
+          </div>
+        )}
         <p className="break-all font-mono text-[10px] text-slate-600">
           {client.id} {" "}{translate("· version")}{" "}{client.version}
         </p>
@@ -1609,7 +1622,12 @@ function ScopesPanel({
                     <p className="truncate font-mono text-xs text-slate-200">{scope.name}</p>
                     <p className="truncate text-xs text-slate-500">{scope.displayName}</p>
                   </div>
-                  <Badge variant="planned">{scope.resources.length} {" "}{translate("resources")}</Badge>
+                  <div className="flex shrink-0 gap-1.5">
+                    {scope.isSystem && (
+                      <Badge variant="planned">{translate("System resource")}</Badge>
+                    )}
+                    <Badge variant="planned">{scope.resources.length} {" "}{translate("resources")}</Badge>
+                  </div>
                 </button>
               ))}
               {scopes.length === 0 && <EmptyState text={translate("No scopes match this view.")} />}
@@ -1712,21 +1730,29 @@ function ScopeInspector({
   const refresh = [reloadScopes, reloadScope];
   return (
     <Card data-ui-action="update-scope">
-      <CardHeader>
-        <CardTitle>{scope.displayName}</CardTitle>
-        <CardDescription>{scope.name}</CardDescription>
+      <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>{scope.displayName}</CardTitle>
+          <CardDescription>{scope.name}</CardDescription>
+        </div>
+        {scope.isSystem && (
+          <Badge variant="planned">{translate("System resource")}</Badge>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <Field label={translate("Display name")}>
-          <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
-        </Field>
-        <Field label={translate("Description")}>
-          <textarea className={textAreaClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
-        </Field>
-        <Field label={translate("Resources (comma separated)")}>
-          <input className={inputClassName} onChange={(e) => setResources(e.target.value)} value={resources} />
-        </Field>
-        <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
+        <fieldset className="space-y-4" disabled={!scope.isMutable}>
+          <Field label={translate("Display name")}>
+            <input className={inputClassName} onChange={(e) => setDisplayName(e.target.value)} value={displayName} />
+          </Field>
+          <Field label={translate("Description")}>
+            <textarea className={textAreaClassName} onChange={(e) => setDescription(e.target.value)} value={description} />
+          </Field>
+          <Field label={translate("Resources (comma separated)")}>
+            <input className={inputClassName} onChange={(e) => setResources(e.target.value)} value={resources} />
+          </Field>
+        </fieldset>
+        {scope.isMutable ? (
+          <div className="flex flex-wrap justify-end gap-2 border-t border-white/8 pt-4">
           <Button
             disabled={pending !== ""}
             onClick={() =>
@@ -1754,7 +1780,16 @@ function ScopeInspector({
             type="button"
             variant="ghost"
           ><Trash2 className="size-4" /> {" "}{translate("Delete")}</Button>
-        </div>
+          </div>
+        ) : (
+          <div
+            className="flex gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.045] p-3 text-xs leading-5 text-slate-500"
+            data-testid="identity-system-resource-notice"
+          >
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-cyan-300" />
+            <span>{translate("This system resource is managed by deployment configuration and cannot be changed or deleted here.")}</span>
+          </div>
+        )}
         <p className="break-all font-mono text-[10px] text-slate-600">{scope.id} {" "}{translate("· version")}{" "}{scope.version}</p>
       </CardContent>
     </Card>
@@ -1806,7 +1841,6 @@ function GrantChecks({
     [authorizationCode, "Authorization code + PKCE"],
     [clientCredentials, "Client credentials"],
     [refreshToken, "Refresh token"],
-    [passwordGrant, "Trusted backend password"],
   ];
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">

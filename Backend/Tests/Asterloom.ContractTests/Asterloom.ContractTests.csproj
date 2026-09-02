@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\Asterloom.Sdk.Config\Asterloom.Sdk.Config.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Feature\Asterloom.Sdk.Feature.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Mail\Asterloom.Sdk.Mail.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Targeting\Asterloom.Sdk.Targeting.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Storage\Asterloom.Sdk.Storage.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Release\Asterloom.Sdk.Release.csproj" />

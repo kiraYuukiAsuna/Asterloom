@@ -9,9 +9,12 @@ using Asterloom.Modules.Infrastructure.Config;
 using Asterloom.Modules.Infrastructure.Authorization;
 using Asterloom.Modules.Feature.Persistence;
 using Asterloom.Modules.Infrastructure.Feature;
+using Asterloom.Modules.Infrastructure.Mail;
 using Asterloom.Modules.Infrastructure.Persistence;
 using Asterloom.Modules.Infrastructure.Outbox;
 using Asterloom.Modules.Outbox;
+using Asterloom.Modules.Mail.Persistence;
+using Asterloom.Modules.Mail.Transport;
 using Asterloom.Modules.Persistence;
 using Asterloom.Modules.Infrastructure.Platform;
 using Asterloom.Modules.Platform.Persistence;
@@ -58,12 +61,14 @@ public sealed class InfrastructureModule : IAsterloomModule
             services.TryAddSingleton<IPlatformResourceStore, InMemoryPlatformResourceStore>();
             services.TryAddSingleton<ITargetingStore, InMemoryTargetingStore>();
             services.TryAddSingleton<IFeatureStore, InMemoryFeatureStore>();
+            services.TryAddSingleton<IMailStore, InMemoryMailStore>();
             services.TryAddSingleton<IConfigStore, InMemoryConfigStore>();
             services.TryAddSingleton<IStorageStore, InMemoryStorageStore>();
             services.TryAddSingleton<IReleaseStore, InMemoryReleaseStore>();
             services.TryAddSingleton<IAnalyticsStore, InMemoryAnalyticsStore>();
             services.TryAddSingleton<ITelemetryStore, InMemoryTelemetryStore>();
             services.TryAddSingleton<IObjectStorageTransport, InMemoryObjectStorageTransport>();
+            services.TryAddSingleton<IMailTransport, MailKitTransport>();
             return;
         }
 
@@ -79,12 +84,14 @@ public sealed class InfrastructureModule : IAsterloomModule
         services.TryAddSingleton<IPlatformResourceStore, PostgreSqlPlatformResourceStore>();
         services.TryAddSingleton<ITargetingStore, PostgreSqlTargetingStore>();
         services.TryAddSingleton<IFeatureStore, PostgreSqlFeatureStore>();
+        services.TryAddSingleton<IMailStore, PostgreSqlMailStore>();
         services.TryAddSingleton<IConfigStore, PostgreSqlConfigStore>();
         services.TryAddSingleton<IStorageStore, PostgreSqlStorageStore>();
         services.TryAddSingleton<IReleaseStore, PostgreSqlReleaseStore>();
         services.TryAddSingleton<IAnalyticsStore, PostgreSqlAnalyticsStore>();
         services.TryAddSingleton<ITelemetryStore, PostgreSqlTelemetryStore>();
         services.TryAddSingleton<IObjectStorageTransport, S3ObjectStorageTransport>();
+        services.TryAddSingleton<IMailTransport, MailKitTransport>();
         services
             .AddHealthChecks()
             .AddCheck<PostgreSqlHealthCheck>(

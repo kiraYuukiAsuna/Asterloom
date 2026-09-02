@@ -8,10 +8,23 @@ internal sealed record ReferenceAppSettings(
     string ServiceClientId,
     string ServiceClientSecret,
     string InteractiveClientId,
+    string InteractiveApiScope,
     string StateFile,
     ReferenceDesktopReleaseSettings DesktopRelease,
     bool AllowInsecureDevelopment)
 {
+    public (string ClientId, string ClientSecret) RequireServiceCredentials()
+    {
+        if (string.IsNullOrWhiteSpace(ServiceClientId)
+            || string.IsNullOrWhiteSpace(ServiceClientSecret))
+        {
+            throw new InvalidOperationException(
+                "ASTERLOOM_REFERENCE_CLIENT_ID and ASTERLOOM_REFERENCE_CLIENT_SECRET are required for service commands only.");
+        }
+
+        return (ServiceClientId, ServiceClientSecret);
+    }
+
     public static ReferenceAppSettings Load()
     {
         var baseAddress = ReadUri(
@@ -35,22 +48,18 @@ internal sealed record ReferenceAppSettings(
             issuer,
             referenceBackend,
             referenceBackendGrpc,
-            ReadRequired("ASTERLOOM_REFERENCE_CLIENT_ID"),
-            ReadRequired("ASTERLOOM_REFERENCE_CLIENT_SECRET"),
+            Environment.GetEnvironmentVariable("ASTERLOOM_REFERENCE_CLIENT_ID")?.Trim()
+                ?? string.Empty,
+            Environment.GetEnvironmentVariable("ASTERLOOM_REFERENCE_CLIENT_SECRET")
+                ?? string.Empty,
             Environment.GetEnvironmentVariable("ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID")
                 ?.Trim() ?? "asterloom-reference-native",
+            Environment.GetEnvironmentVariable("ASTERLOOM_REFERENCE_API_SCOPE")
+                ?.Trim() ?? "asterloom.reference.api",
             Path.GetFullPath(stateFile),
             ReferenceDesktopReleaseSettings.Load(),
             ReadBoolean("ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT")
                 || (baseAddress.IsLoopback && baseAddress.Scheme == Uri.UriSchemeHttp));
-    }
-
-    private static string ReadRequired(string name)
-    {
-        var value = Environment.GetEnvironmentVariable(name)?.Trim();
-        return !string.IsNullOrEmpty(value)
-            ? value
-            : throw new InvalidOperationException($"Environment variable {name} is required.");
     }
 
     private static Uri ReadUri(string name, string fallback)

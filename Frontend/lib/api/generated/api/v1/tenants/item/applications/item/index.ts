@@ -6,6 +6,10 @@ import { createApplicationFromDiscriminatorValue, createStatusFromDiscriminatorV
 // @ts-ignore
 import { EnvironmentsRequestBuilderNavigationMetadata, EnvironmentsRequestBuilderRequestsMetadata, type EnvironmentsRequestBuilder } from './environments/index.js';
 // @ts-ignore
+import { MailRequestBuilderNavigationMetadata, type MailRequestBuilder } from './mail/index.js';
+// @ts-ignore
+import { MailSendRequestBuilderRequestsMetadata, type MailSendRequestBuilder } from './mailSend/index.js';
+// @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type Parsable, type ParsableFactory, type RequestConfiguration, type RequestInformation, type RequestsMetadata } from '@microsoft/kiota-abstractions';
 
 /**
@@ -16,6 +20,14 @@ export interface WithApplicationItemRequestBuilder extends BaseRequestBuilder<Wi
      * The environments property
      */
     get environments(): EnvironmentsRequestBuilder;
+    /**
+     * The mail property
+     */
+    get mail(): MailRequestBuilder;
+    /**
+     * The mailSend property
+     */
+    get mailSend(): MailSendRequestBuilder;
     /**
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
      * @returns {Promise<Application>}
@@ -55,6 +67,12 @@ export const WithApplicationItemRequestBuilderNavigationMetadata: Record<Exclude
     environments: {
         requestsMetadata: EnvironmentsRequestBuilderRequestsMetadata,
         navigationMetadata: EnvironmentsRequestBuilderNavigationMetadata,
+    },
+    mail: {
+        navigationMetadata: MailRequestBuilderNavigationMetadata,
+    },
+    mailSend: {
+        requestsMetadata: MailSendRequestBuilderRequestsMetadata,
     },
 };
 /**

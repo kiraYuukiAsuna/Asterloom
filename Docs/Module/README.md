@@ -25,7 +25,7 @@ For a new application integration:
 | --- | --- | --- | --- |
 | Platform | [Resource scopes](Platform.md) | `/tenants` | gRPC/JSON Admin API |
 | Identity | [Passport and accounts](Identity.md) | `/identity/users` | `Asterloom.Sdk.Identity` |
-| Business account integration | [Registration, sign-in, and application membership](Identity-Business-Integration.md) | Identity + Authorization workspaces | `AsterloomIdentityAccessClient` |
+| Business account integration | [Public Client sign-in, business API validation, registration, and membership](Identity-Business-Integration.md) | Identity + Authorization workspaces | `Asterloom.Sdk.Identity` + `Asterloom.Sdk.Identity.AspNetCore` |
 | Authorization | [Access control](Authorization.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
 | Targeting / Rollout | [Segments and deterministic rollout](Targeting-Rollout.md) | `/targeting/segments` | `Asterloom.Sdk.Targeting` |
 | Feature Flag | [Feature flags](Feature-Flags.md) | `/features` | `Asterloom.Sdk.Feature` + OpenFeature |
@@ -33,6 +33,7 @@ For a new application integration:
 | Desktop Update | [Desktop updates](Desktop-Updates.md) | `/channels`, `/artifacts`, `/releases` | `Asterloom.Sdk.Release` + Velopack |
 | Analytics | [Product analytics](Analytics.md) | `/analytics/schemas`, `/analytics/explorer` | `Asterloom.Sdk.Analytics` |
 | Telemetry | [Technical observability](Telemetry.md) | `/telemetry/sources`, `/telemetry/health` | `Asterloom.Sdk.Telemetry` + OpenTelemetry |
+| Mail | [Transactional application email](Mail.md) | `/mail/accounts`, `/mail/deliveries` | `Asterloom.Sdk.Mail` + MailKit |
 | RPC / HTTP | [Unified transport and contracts](Rpc-Http.md) | `/operations/apis` | `Asterloom.Sdk.Rpc` |
 | File Storage | [File and object storage](File-Storage.md) | `/storage/buckets`, `/storage/objects` | `Asterloom.Sdk.Storage` |
 | Persistence | [PostgreSQL and migrations](Persistence.md) | `/operations/health` | Npgsql / module stores |

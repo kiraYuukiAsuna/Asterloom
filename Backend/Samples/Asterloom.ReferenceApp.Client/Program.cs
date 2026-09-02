@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Asterloom.Sdk.Identity;
 using Asterloom.Sdk.Release;
@@ -47,10 +48,6 @@ internal static class Program
                     settings,
                     args,
                     cancellation.Token),
-                "account-login" => await RunAccountLoginAsync(
-                    settings,
-                    args,
-                    cancellation.Token),
                 "update" => await RunDesktopUpdateAsync(
                     settings,
                     args,
@@ -92,13 +89,14 @@ internal static class Program
         var resultFile = Path.GetFullPath(RequireArgument(args, 1, "result file"));
         var forceFull = args.Contains("--force-full", StringComparer.OrdinalIgnoreCase);
         var state = await ReferenceAppState.LoadAsync(settings.StateFile, cancellationToken);
+        var serviceCredentials = settings.RequireServiceCredentials();
 
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddAsterloomIdentityClient(options =>
         {
             options.Issuer = settings.PassportIssuer;
-            options.ClientId = settings.ServiceClientId;
-            options.ClientSecret = settings.ServiceClientSecret;
+            options.ClientId = serviceCredentials.ClientId;
+            options.ClientSecret = serviceCredentials.ClientSecret;
             options.RegistrationId = "asterloom-reference-updater";
             options.EnableServiceCredentials = true;
             options.AllowInsecureHttpForDevelopment = settings.AllowInsecureDevelopment;
@@ -275,12 +273,13 @@ internal static class Program
         bool json,
         CancellationToken cancellationToken)
     {
+        var serviceCredentials = settings.RequireServiceCredentials();
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddAsterloomIdentityClient(options =>
         {
             options.Issuer = settings.PassportIssuer;
-            options.ClientId = settings.ServiceClientId;
-            options.ClientSecret = settings.ServiceClientSecret;
+            options.ClientId = serviceCredentials.ClientId;
+            options.ClientSecret = serviceCredentials.ClientSecret;
             options.RegistrationId = "asterloom-reference-service";
             options.EnableServiceCredentials = true;
             options.AllowInsecureHttpForDevelopment = settings.AllowInsecureDevelopment;
@@ -372,6 +371,7 @@ internal static class Program
             options.RegistrationId = "asterloom-reference-native";
             options.EnableInteractiveAuthentication = true;
             options.RequestRefreshTokens = true;
+            options.Scopes.Add(settings.InteractiveApiScope);
             options.AllowInsecureHttpForDevelopment = settings.AllowInsecureDevelopment;
         });
         using var host = builder.Build();
@@ -388,6 +388,27 @@ internal static class Program
             Console.WriteLine(tokens.RefreshToken is null
                 ? "No refresh token was returned."
                 : "Refresh token flow is available.");
+            using var apiClient = new HttpClient
+            {
+                BaseAddress = settings.ReferenceBackendAddress,
+            };
+            apiClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+            using var response = await apiClient.GetAsync(
+                "api/reference/me",
+                cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"The reference business API rejected the user access token with HTTP {(int)response.StatusCode}: {body}");
+            }
+
+            Console.WriteLine("Business API accepted the same user Access Token:");
+            using var document = JsonDocument.Parse(body);
+            Console.WriteLine(JsonSerializer.Serialize(
+                document.RootElement,
+                IndentedJsonOptions));
             return 0;
         }
         finally
@@ -428,31 +449,9 @@ internal static class Program
             Console.WriteLine("Email confirmed through the business backend.");
         }
 
-        var session = await accounts.LoginAndReadSessionAsync(
-            email,
-            password,
-            cancellationToken);
-        Console.WriteLine("Application session (tokens remain in the backend):");
-        Console.WriteLine(JsonSerializer.Serialize(session, IndentedJsonOptions));
-        await accounts.LogoutAsync(cancellationToken);
-        Console.WriteLine("Application session closed.");
-        return 0;
-    }
-
-    private static async Task<int> RunAccountLoginAsync(
-        ReferenceAppSettings settings,
-        string[] args,
-        CancellationToken cancellationToken)
-    {
-        var email = RequireArgument(args, 1, "email");
-        var password = RequireEnvironment("ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD");
-        using var accounts = new ReferenceAccountClient(settings.ReferenceBackendAddress);
-        var session = await accounts.LoginAndReadSessionAsync(
-            email,
-            password,
-            cancellationToken);
-        Console.WriteLine(JsonSerializer.Serialize(session, IndentedJsonOptions));
-        await accounts.LogoutAsync(cancellationToken);
+        Console.WriteLine(
+            "Account provisioning completed. Run the login command to authenticate "
+            + "with Authorization Code + S256 PKCE and call the protected business API.");
         return 0;
     }
 
@@ -507,20 +506,20 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("  provision [--json]  Create complete platform test data and save local state.");
         Console.WriteLine("  doctor [--json]     Execute all capability diagnostics independently.");
-        Console.WriteLine("  login               Test interactive Passport authorization-code + PKCE login.");
+        Console.WriteLine("  login               Sign in with PKCE, then call the protected business API with the user token.");
         Console.WriteLine("  account-demo EMAIL NAME");
-        Console.WriteLine("                      Register, confirm, login, inspect, and logout via the sample BFF.");
-        Console.WriteLine("  account-login EMAIL Login through the sample BFF and inspect its server-side session.");
+        Console.WriteLine("                      Register and confirm an account through the sample business backend.");
         Console.WriteLine("  update RESULT_FILE [--force-full]");
         Console.WriteLine("                      Download, apply, restart, and prove an installed Velopack update.");
         Console.WriteLine();
         Console.WriteLine("Required environment variables:");
-        Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_ID");
-        Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_SECRET");
+        Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_ID (service commands only)");
+        Console.WriteLine("  ASTERLOOM_REFERENCE_CLIENT_SECRET (service commands only)");
         Console.WriteLine("  ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD (account commands only)");
         Console.WriteLine("Optional: ASTERLOOM_BASE_URL, ASTERLOOM_ISSUER,");
         Console.WriteLine("  ASTERLOOM_REFERENCE_BACKEND_URL, ASTERLOOM_REFERENCE_BACKEND_GRPC_URL,");
-        Console.WriteLine("  ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID, ASTERLOOM_REFERENCE_STATE_FILE.");
+        Console.WriteLine("  ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID, ASTERLOOM_REFERENCE_API_SCOPE,");
+        Console.WriteLine("  ASTERLOOM_REFERENCE_STATE_FILE.");
     }
 
     private static string RequireArgument(string[] args, int index, string name) =>

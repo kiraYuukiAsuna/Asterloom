@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Identity\Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Sdk.Identity.AspNetCore\Asterloom.Sdk.Identity.AspNetCore.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Feature\Asterloom.Sdk.Feature.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Config\Asterloom.Sdk.Config.csproj" />
     <ProjectReference Include="..\..\Asterloom.Sdk.Targeting\Asterloom.Sdk.Targeting.csproj" />

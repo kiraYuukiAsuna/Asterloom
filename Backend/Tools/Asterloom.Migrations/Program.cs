@@ -6,6 +6,7 @@ using Asterloom.Modules.Config;
 using Asterloom.Modules.Feature;
 using Asterloom.Modules.Infrastructure;
 using Asterloom.Modules.Infrastructure.Persistence;
+using Asterloom.Modules.Mail;
 using Asterloom.Modules.Identity.Persistence;
 using Asterloom.Modules.Identity.Bootstrap;
 using Asterloom.Modules.Platform;
@@ -27,6 +28,7 @@ try
         new TargetingModule(),
         new FeatureModule(),
         new ConfigModule(),
+        new MailModule(),
         new StorageModule(),
         new ReleaseModule(),
         new AnalyticsModule(),

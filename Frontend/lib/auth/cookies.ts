@@ -5,18 +5,23 @@ import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { getAuthConfig } from "@/lib/auth/config";
 import {
   oidcCookieMaxAge,
-  sessionCookieMaxAge,
+  persistentSessionCookieMaxAge,
 } from "@/lib/auth/session";
 
-export function sessionCookieOptions(): Partial<ResponseCookie> {
-  return {
+export function sessionCookieOptions(
+  persistent = false,
+): Partial<ResponseCookie> {
+  const options: Partial<ResponseCookie> = {
     httpOnly: true,
-    maxAge: sessionCookieMaxAge,
     path: "/",
     priority: "high",
     sameSite: "lax",
     secure: getAuthConfig().secureCookies,
   };
+  if (persistent) {
+    options.maxAge = persistentSessionCookieMaxAge;
+  }
+  return options;
 }
 
 export function oidcCookieOptions(): Partial<ResponseCookie> {

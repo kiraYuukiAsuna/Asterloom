@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Asterloom.ReferenceApp.Backend;
 using Asterloom.Sdk.Identity;
+using Asterloom.Sdk.Identity.AspNetCore;
+using Asterloom.Sdk.Mail;
 using Asterloom.Sdk.Telemetry;
 using Npgsql;
 
@@ -23,6 +25,10 @@ builder.Services.AddSingleton(provider =>
 builder.Services.AddSingleton<ReferenceAppStore>();
 var referenceIdentity = ReferenceIdentityOptions.FromConfiguration(builder.Configuration);
 builder.Services.AddSingleton(referenceIdentity);
+var resourceServer = ReferenceResourceServerOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(resourceServer);
+var referenceMail = ReferenceMailOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(referenceMail);
 if (referenceIdentity.Enabled)
 {
     builder.Services.AddAsterloomIdentityClient(options =>
@@ -32,13 +38,42 @@ if (referenceIdentity.Enabled)
         options.ClientSecret = referenceIdentity.ClientSecret;
         options.RegistrationId = "asterloom-reference-business-backend";
         options.EnableServiceCredentials = true;
-        options.EnablePasswordAuthentication = true;
-        options.RequestRefreshTokens = true;
         options.AllowInsecureHttpForDevelopment =
             referenceIdentity.AllowInsecureHttpForDevelopment;
     });
     builder.Services.AddSingleton<ReferenceIdentityGateway>();
-    builder.Services.AddSingleton<ReferenceIdentitySessionStore>();
+    if (referenceMail.Enabled)
+    {
+        builder.Services.AddTransient<ReferenceServiceTokenHandler>();
+        builder.Services.AddHttpClient<ReferenceMailGateway>(client =>
+        {
+            client.BaseAddress = referenceIdentity.AsterloomBaseAddress;
+        }).AddHttpMessageHandler<ReferenceServiceTokenHandler>();
+    }
+}
+if (resourceServer.Enabled)
+{
+    builder.Services.AddAsterloomResourceServer(options =>
+    {
+        options.Issuer = resourceServer.Issuer;
+        options.AuthorizationServer = resourceServer.AuthorizationServer;
+        options.Audience = resourceServer.Audience;
+        options.TenantId = resourceServer.TenantId;
+        options.ApplicationId = resourceServer.ApplicationId;
+        options.AllowInsecureHttpForDevelopment =
+            resourceServer.AllowInsecureHttpForDevelopment;
+    });
+    builder.Services.AddAuthorizationBuilder()
+        .AddPolicy(
+            ReferenceProtectedEndpoints.PlatformReadPolicy,
+            policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAsterloomPermission("platform.info.read"));
+}
+if (referenceMail.Enabled && !referenceIdentity.Enabled)
+{
+    throw new InvalidOperationException(
+        "Asterloom:Identity must be enabled when Asterloom:Mail is enabled.");
 }
 
 var telemetry = AsterloomTelemetryOptions.FromConfiguration(
@@ -55,6 +90,12 @@ builder.Logging.AddAsterloomTelemetryLogging(telemetry);
 
 var app = builder.Build();
 
+if (resourceServer.Enabled)
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+}
+
 await app.Services.GetRequiredService<ReferenceAppStore>().InitializeAsync(
     app.Lifetime.ApplicationStopping);
 
@@ -63,11 +104,21 @@ if (referenceIdentity.Enabled)
 {
     app.MapReferenceIdentityEndpoints();
 }
+if (resourceServer.Enabled)
+{
+    app.MapReferenceProtectedEndpoints();
+}
+if (referenceMail.Enabled && resourceServer.Enabled)
+{
+    app.MapReferenceMailEndpoints();
+}
 app.MapGet("/healthz", () => Results.Ok(new
 {
     status = "healthy",
     service = "asterloom.reference.backend",
     identityBffEnabled = referenceIdentity.Enabled,
+    resourceServerEnabled = resourceServer.Enabled,
+    mailEnabled = referenceMail.Enabled,
 }));
 
 app.Run();

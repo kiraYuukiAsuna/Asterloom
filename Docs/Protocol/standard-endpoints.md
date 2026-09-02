@@ -18,9 +18,12 @@
 约束：
 
 - 交互式客户端只使用 Authorization Code Flow + S256 PKCE。
-- 服务账户使用 Client Credentials；绑定 Platform Application 的 Confidential 可信业务后端可使用 Password Flow
-  代自己的登录页面交换用户 Token。浏览器和 Public Client 禁止使用 Password Flow；Implicit Flow 始终禁用。
-- Refresh Token 默认轮换且重用宽限为零；已兑换 Token 不得再次使用，BFF 必须串行刷新。
+- Access Token 是由 Passport Signing Certificate 签发、可通过 JWKS 验证的 `at+jwt`；业务 API 必须验证
+  Issuer、自己的 Resource Audience、过期时间和 Application 绑定，并拒绝 ID Token。
+- 服务账户使用 Client Credentials。原生业务客户端使用 Public Client + PKCE，再携带 Access Token 调用业务后端；
+  浏览器业务由 BFF 使用 Authorization Code + PKCE。Password Flow 和 Implicit Flow 均禁用。
+- PKCE 只接受 `S256`，服务端拒绝 `plain`。
+- Refresh Token 默认轮换且重用宽限为零；已兑换 Token 不得再次使用，客户端必须串行刷新。
 - 生产环境必须配置固定 HTTPS Issuer、外部签名/加密证书和持久化 Data
   Protection Key Ring。
 - Passport Cookie 为 HttpOnly；生产环境同时要求 Secure 和 `__Host-` 前缀。

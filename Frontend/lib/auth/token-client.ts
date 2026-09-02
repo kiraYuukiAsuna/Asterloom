@@ -20,6 +20,7 @@ export type ValidatedTokens = {
   accessToken: string;
   actor?: Actor;
   idToken?: string;
+  persistentSession?: boolean;
   refreshToken?: string;
 };
 
@@ -54,11 +55,13 @@ export async function exchangeAuthorizationCode(input: {
     throw new OidcTokenError("The OIDC response did not contain an ID token.", true);
   }
 
+  const identity = await verifyIdToken(response.id_token, input.nonce);
   return {
     accessExpiresAt: Date.now() + response.expires_in * 1000,
     accessToken: response.access_token,
-    actor: await verifyIdToken(response.id_token, input.nonce),
+    actor: identity.actor,
     idToken: response.id_token,
+    persistentSession: identity.persistentSession,
     refreshToken: response.refresh_token,
   };
 }
@@ -70,13 +73,15 @@ export async function exchangeRefreshToken(
     grant_type: "refresh_token",
     refresh_token: refreshToken,
   });
+  const identity = response.id_token
+    ? await verifyIdToken(response.id_token)
+    : undefined;
   return {
     accessExpiresAt: Date.now() + response.expires_in * 1000,
     accessToken: response.access_token,
-    actor: response.id_token
-      ? await verifyIdToken(response.id_token)
-      : undefined,
+    actor: identity?.actor,
     idToken: response.id_token,
+    persistentSession: identity?.persistentSession,
     refreshToken: response.refresh_token,
   };
 }
@@ -120,7 +125,7 @@ async function tokenRequest(
 async function verifyIdToken(
   idToken: string,
   expectedNonce?: string,
-): Promise<Actor> {
+): Promise<{ actor: Actor; persistentSession: boolean }> {
   const config = getAuthConfig();
   const jwksUrl = config.passportPublicUrl + "/.well-known/jwks";
   let jwks = jwksByUrl.get(jwksUrl);
@@ -166,10 +171,15 @@ async function verifyIdToken(
         : payload.sub;
 
   return {
-    email: typeof payload.email === "string" ? payload.email : undefined,
-    name,
-    roles,
-    subject: payload.sub,
+    actor: {
+      email: typeof payload.email === "string" ? payload.email : undefined,
+      name,
+      roles,
+      subject: payload.sub,
+    },
+    persistentSession:
+      typeof payload.asterloom_persistent_session === "string" &&
+      payload.asterloom_persistent_session.toLowerCase() === "true",
   };
 }
 

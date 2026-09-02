@@ -23,7 +23,7 @@ C# SDK、Next.js Web 管理后台和 Protobuf 契约为准；Rust、Go、C++ 不
 | --- | --- | --- | --- |
 | Platform | [平台作用域](Platform.zh-CN.md) | `/tenants` | gRPC/JSON Admin API |
 | Identity | [Passport 与账号](Identity.zh-CN.md) | `/identity/users` | `Asterloom.Sdk.Identity` |
-| 业务账号接入 | [注册、登录与应用成员关系](Identity-Business-Integration.zh-CN.md) | Identity + Authorization 工作区 | `AsterloomIdentityAccessClient` |
+| 业务账号接入 | [Public Client 登录、业务 API 验证、注册与成员关系](Identity-Business-Integration.zh-CN.md) | Identity + Authorization 工作区 | `Asterloom.Sdk.Identity` + `Asterloom.Sdk.Identity.AspNetCore` |
 | Authorization | [权限控制](Authorization.zh-CN.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
 | Targeting / Rollout | [定向与稳定灰度](Targeting-Rollout.zh-CN.md) | `/targeting/segments` | `Asterloom.Sdk.Targeting` |
 | Feature Flag | [功能开关](Feature-Flags.zh-CN.md) | `/features` | `Asterloom.Sdk.Feature` + OpenFeature |
@@ -31,6 +31,7 @@ C# SDK、Next.js Web 管理后台和 Protobuf 契约为准；Rust、Go、C++ 不
 | Desktop Update | [桌面自动更新](Desktop-Updates.zh-CN.md) | `/channels`、`/artifacts`、`/releases` | `Asterloom.Sdk.Release` + Velopack |
 | Analytics | [产品埋点分析](Analytics.zh-CN.md) | `/analytics/schemas`、`/analytics/explorer` | `Asterloom.Sdk.Analytics` |
 | Telemetry | [技术可观测性](Telemetry.zh-CN.md) | `/telemetry/sources`、`/telemetry/health` | `Asterloom.Sdk.Telemetry` + OpenTelemetry |
+| Mail | [事务型应用邮件](Mail.zh-CN.md) | `/mail/accounts`、`/mail/deliveries` | `Asterloom.Sdk.Mail` + MailKit |
 | RPC / HTTP | [统一传输与契约](Rpc-Http.zh-CN.md) | `/operations/apis` | `Asterloom.Sdk.Rpc` |
 | File Storage | [文件与对象存储](File-Storage.zh-CN.md) | `/storage/buckets`、`/storage/objects` | `Asterloom.Sdk.Storage` |
 | Persistence | [PostgreSQL 与迁移](Persistence.zh-CN.md) | `/operations/health` | Npgsql / 模块 Store |

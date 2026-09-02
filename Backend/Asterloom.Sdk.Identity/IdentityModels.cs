@@ -112,7 +112,6 @@ public enum AsterloomOidcGrantType
     AuthorizationCode = 0,
     ClientCredentials = 1,
     RefreshToken = 2,
-    Password = 3,
 }
 
 public sealed record AsterloomOidcClient(
@@ -129,7 +128,9 @@ public sealed record AsterloomOidcClient(
     Guid? TenantId,
     Guid? ApplicationId,
     bool AllowUserRegistration,
-    bool AllowMembershipAutoJoin);
+    bool AllowMembershipAutoJoin,
+    bool IsSystem = false,
+    bool IsMutable = true);
 
 public sealed record AsterloomOidcClientCredential(
     AsterloomOidcClient Client,
@@ -170,7 +171,9 @@ public sealed record AsterloomOidcScope(
     string DisplayName,
     string Description,
     IReadOnlyList<string> Resources,
-    string Version);
+    string Version,
+    bool IsSystem = false,
+    bool IsMutable = true);
 
 public sealed record AsterloomOidcScopeRegistration(
     string Name,

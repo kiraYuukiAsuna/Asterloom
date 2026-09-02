@@ -655,8 +655,12 @@ public sealed partial class IdentityManagementService(
         string expectedVersion,
         CancellationToken cancellationToken)
     {
-        RequireMutableClient(clientId);
-        var application = await RequireClientAsync(clientId, cancellationToken);
+        var normalizedClientId = NormalizeClientId(clientId);
+        var application = await RequireClientAsync(normalizedClientId, cancellationToken);
+        await RequireMutableClientAsync(
+            application,
+            normalizedClientId,
+            cancellationToken);
         RequireVersion(GetApplicationVersion(application), expectedVersion);
         var current = await ToManagedClientAsync(application, cancellationToken);
         var normalizedGrants = NormalizeGrantTypes(grantTypes);
@@ -710,8 +714,12 @@ public sealed partial class IdentityManagementService(
         string expectedVersion,
         CancellationToken cancellationToken)
     {
-        RequireMutableClient(clientId);
-        var application = await RequireClientAsync(clientId, cancellationToken);
+        var normalizedClientId = NormalizeClientId(clientId);
+        var application = await RequireClientAsync(normalizedClientId, cancellationToken);
+        await RequireMutableClientAsync(
+            application,
+            normalizedClientId,
+            cancellationToken);
         RequireVersion(GetApplicationVersion(application), expectedVersion);
         if (!await applicationManager.HasClientTypeAsync(
             application,
@@ -736,9 +744,11 @@ public sealed partial class IdentityManagementService(
         CancellationToken cancellationToken)
     {
         var normalizedClientId = NormalizeClientId(clientId);
-        RequireMutableClient(normalizedClientId);
-
         var application = await RequireClientAsync(normalizedClientId, cancellationToken);
+        await RequireMutableClientAsync(
+            application,
+            normalizedClientId,
+            cancellationToken);
         RequireVersion(GetApplicationVersion(application), expectedVersion);
         var item = await ToManagedClientAsync(application, cancellationToken);
         var clientAuthorizations = await CollectAsync(
@@ -1001,17 +1011,11 @@ public sealed partial class IdentityManagementService(
             grants.Add(ManagedOidcGrantType.RefreshToken);
         }
 
-        if (permissions.Contains(Permissions.GrantTypes.Password, StringComparer.Ordinal))
-        {
-            grants.Add(ManagedOidcGrantType.Password);
-        }
-
         var scopes = permissions
             .Where(static permission => permission.StartsWith(Permissions.Prefixes.Scope, StringComparison.Ordinal))
             .Select(static permission => permission[Permissions.Prefixes.Scope.Length..])
             .ToHashSet(StringComparer.Ordinal);
-        if (grants.Contains(ManagedOidcGrantType.AuthorizationCode)
-            || grants.Contains(ManagedOidcGrantType.Password))
+        if (grants.Contains(ManagedOidcGrantType.AuthorizationCode))
         {
             scopes.Add(Scopes.OpenId);
         }
@@ -1025,11 +1029,17 @@ public sealed partial class IdentityManagementService(
             applicationManager,
             application,
             cancellationToken);
+        var clientId = await applicationManager.GetClientIdAsync(
+            application,
+            cancellationToken) ?? string.Empty;
+        var isSystem = await IsSystemClientAsync(
+            application,
+            clientId,
+            cancellationToken);
         return new ManagedOidcClient(
             await applicationManager.GetIdAsync(application, cancellationToken)
                 ?? throw new InvalidOperationException("An OpenIddict application has no identifier."),
-            await applicationManager.GetClientIdAsync(application, cancellationToken)
-                ?? string.Empty,
+            clientId,
             await applicationManager.GetDisplayNameAsync(application, cancellationToken)
                 ?? string.Empty,
             await applicationManager.HasClientTypeAsync(
@@ -1052,20 +1062,28 @@ public sealed partial class IdentityManagementService(
             binding?.TenantId,
             binding?.ApplicationId,
             binding?.AllowUserRegistration ?? false,
-            binding?.AllowMembershipAutoJoin ?? false);
+            binding?.AllowMembershipAutoJoin ?? false,
+            isSystem,
+            !isSystem);
     }
 
     private async Task<ManagedOidcScope> ToManagedScopeAsync(
         object scope,
-        CancellationToken cancellationToken) =>
-        new(
+        CancellationToken cancellationToken)
+    {
+        var name = await scopeManager.GetNameAsync(scope, cancellationToken) ?? string.Empty;
+        var isSystem = string.Equals(name, ApiScope, StringComparison.Ordinal);
+        return new ManagedOidcScope(
             await scopeManager.GetIdAsync(scope, cancellationToken)
                 ?? throw new InvalidOperationException("An OpenIddict scope has no identifier."),
-            await scopeManager.GetNameAsync(scope, cancellationToken) ?? string.Empty,
+            name,
             await scopeManager.GetDisplayNameAsync(scope, cancellationToken) ?? string.Empty,
             await scopeManager.GetDescriptionAsync(scope, cancellationToken) ?? string.Empty,
             await scopeManager.GetResourcesAsync(scope, cancellationToken),
-            GetScopeVersion(scope));
+            GetScopeVersion(scope),
+            isSystem,
+            !isSystem);
+    }
 
     private async Task<AsterloomUser> RequireUserAsync(
         string userId,
@@ -1149,19 +1167,32 @@ public sealed partial class IdentityManagementService(
         }
     }
 
-    private void RequireMutableClient(string clientId)
+    private async Task RequireMutableClientAsync(
+        object application,
+        string clientId,
+        CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(bootstrapOptions.WebClientId)
-            && string.Equals(
-                clientId.Trim(),
-                bootstrapOptions.WebClientId.Trim(),
-                StringComparison.OrdinalIgnoreCase))
+        if (await IsSystemClientAsync(application, clientId, cancellationToken))
         {
             throw FailedPrecondition(
                 "identity_client_protected",
                 "The built-in Web client is configuration-managed.");
         }
     }
+
+    private async Task<bool> IsSystemClientAsync(
+        object application,
+        string clientId,
+        CancellationToken cancellationToken) =>
+        await IdentitySystemResourceMetadata.IsConfigurationManagedAsync(
+            applicationManager,
+            application,
+            cancellationToken)
+        || (!string.IsNullOrWhiteSpace(bootstrapOptions.WebClientId)
+            && string.Equals(
+                clientId.Trim(),
+                bootstrapOptions.WebClientId.Trim(),
+                StringComparison.OrdinalIgnoreCase));
 
     private async Task UpdateUserRecordAsync(
         AsterloomUser user,
@@ -1259,12 +1290,6 @@ public sealed partial class IdentityManagementService(
             descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken);
         }
 
-        if (grantTypes.Contains(ManagedOidcGrantType.Password))
-        {
-            descriptor.Permissions.Add(Permissions.Endpoints.Token);
-            descriptor.Permissions.Add(Permissions.GrantTypes.Password);
-        }
-
         foreach (var scope in scopes.Where(scope =>
             !string.Equals(scope, Scopes.OpenId, StringComparison.Ordinal)
             && !string.Equals(scope, Scopes.OfflineAccess, StringComparison.Ordinal)))
@@ -1325,22 +1350,6 @@ public sealed partial class IdentityManagementService(
             throw Invalid("clientType", "Client credentials require a confidential client.");
         }
 
-        if (grants.Contains(ManagedOidcGrantType.Password)
-            && (clientType != ManagedOidcClientType.Confidential
-                || applicationType != ManagedOidcApplicationType.Web))
-        {
-            throw Invalid(
-                "grantTypes",
-                "Headless password authentication requires a confidential Web client.");
-        }
-
-        if (grants.Contains(ManagedOidcGrantType.Password) && binding is null)
-        {
-            throw Invalid(
-                "applicationId",
-                "Password clients must be bound to a platform application.");
-        }
-
         if (applicationType == ManagedOidcApplicationType.Native
             && clientType != ManagedOidcClientType.Public)
         {
@@ -1358,12 +1367,11 @@ public sealed partial class IdentityManagementService(
         }
 
         if (grants.Contains(ManagedOidcGrantType.RefreshToken)
-            && !grants.Contains(ManagedOidcGrantType.AuthorizationCode)
-            && !grants.Contains(ManagedOidcGrantType.Password))
+            && !grants.Contains(ManagedOidcGrantType.AuthorizationCode))
         {
             throw Invalid(
                 "grantTypes",
-                "Refresh tokens require authorization-code or password authentication.");
+                "Refresh tokens require authorization-code authentication.");
         }
 
         if (binding?.AllowUserRegistration is true

@@ -16,8 +16,10 @@
 
 ```text
 Reference Client
-  ├─ Passport (OIDC authorization code + PKCE / client credentials)
-  ├─ Business account demo → Reference Backend BFF
+  ├─ Passport (Public Client authorization code + PKCE)
+  │    └─ user Access Token → Reference Backend protected API
+  ├─ Service identity (Confidential Client / client credentials)
+  ├─ Business account registration → Reference Backend
   ├─ Asterloom gRPC + JSON/HTTP
   │    ├─ Authorization
   │    ├─ Targeting / Feature / Rollout
@@ -25,6 +27,7 @@ Reference Client
   │    ├─ Release / signed artifact download
   │    ├─ Analytics
   │    ├─ Telemetry management
+  │    ├─ Mail delivery
   │    ├─ Storage
   │    └─ Operations / OpenAPI
   ├─ OTLP → OpenTelemetry Collector
@@ -36,28 +39,27 @@ Reference Client
 
 ## 2. 命令
 
-客户端包含六个对外命令：
+客户端包含五个对外命令：
 
 ```bash
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
-dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-login user@example.com
 # 下面的 update 必须从 Velopack 安装目录中的程序运行，不能用 dotnet run。
 Asterloom.ReferenceApp.Client.exe update update-result.json [--force-full]
 ```
 
 - `provision`：创建独立的 tenant/application/environment，以及分群、已发布 Feature Flag、已发布动态配置、存储桶、签名密钥、更新通道、签名更新包、Analytics Schema/Write Key 和 Telemetry Source；敏感状态只写入被 Git 忽略的 `reference-state.json`。
 - `doctor`：逐项运行诊断。某项失败不会阻止后续能力，进程最终以非零退出码表示存在失败；加 `--json` 可供 CI 和监控采集。
-- `login`：启动系统浏览器，以 OIDC Authorization Code + PKCE 登录 Passport，并验证 token/refresh token。此命令用于桌面交互验证，不在无界面的容器中执行。
-- `account-demo`：通过参考后台真实执行业务用户注册、邮箱确认、密码登录、读取服务端 Session 和退出。
-- `account-login`：使用已有全局账号登录参考业务，并验证应用绑定的 `tenant_id`、`application_id` 和全局 `sub`。
+- `login`：启动系统浏览器，以 Public Client + OIDC Authorization Code + PKCE 登录 Passport，再把用户 Access Token 作为 Bearer 调用参考后台 `/api/reference/me`。参考后台会验证公开签名、Issuer、Audience、用户类型和 Tenant/Application 绑定；此命令不需要 Client Secret，也不在无界面的容器中执行。
+- `account-demo`：通过参考后台真实执行业务用户注册和邮箱确认；随后使用 `login` 通过标准 PKCE 登录并验证应用绑定的 `tenant_id`、`application_id` 和全局 `sub`。
 - `update`：仅在真实 Velopack 安装态运行；经 Asterloom 检查、下载并应用更新，重启到新版本后把下载的
   `Delta`/`Full` 类型、前后版本和 Restart Hook 结果写入指定 JSON。`--force-full` 禁用 Delta，用于验证 Full 回退。
 
-两个 `account-*` 命令从 `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` 读取密码，避免密码进入命令历史。
-`account-demo` 若没有接入真实邮件发送，需要在执行 Provision 脚本前显式设置
+`account-demo` 从 `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` 读取初始密码，避免密码进入命令历史。
+`account-demo` 在 Reference Backend 启用 `Asterloom:Mail` 时会通过业务 Confidential Client 和
+`Asterloom.Sdk.Mail` 发送邮箱确认内容；没有接入真实邮件发送时，需要在执行 Provision 脚本前显式设置
 `ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN=true` 并重建参考后台；该开关默认关闭，禁止在公开生产入口启用。
 
 服务身份和原生客户端由管理面完成一次性注册：
@@ -67,24 +69,33 @@ bash Deploy/Scripts/Provision-Reference-App.sh
 ```
 
 该脚本使用 Web BFF 登录，不把管理员 access token 暴露给浏览器脚本；它创建/轮换
-`asterloom-reference-service`、创建 `asterloom-reference-native`，并创建独立的
+`asterloom-reference-service`，创建 `asterloom.reference.api` → `asterloom-reference-api` 资源 Audience，创建并
+绑定 `asterloom-reference-native` Public Client，同时创建独立的
 `asterloom-reference-business` Confidential Client。业务 Client 绑定到专用 Platform Application，启用
-Client Credentials、Password、Refresh Token、可信注册和登录自动加入。生成的密钥只保存在
+Client Credentials 和可信注册；用户登录只由独立的 Public Client 通过 Authorization Code + S256 PKCE 完成。生成的密钥只保存在
 `.data/reference-app/reference.env`，权限为 `0600`；可写状态单独位于 `.data/reference-app/state`，生产容器仍以
 非 root UID 1654 运行。
+
+同一 `reference.env` 还会为 Reference Backend 写入 Resource Server 的 Issuer、Audience、TenantId 和
+ApplicationId。修改 Scope Resource、Application 绑定或域名后必须重新执行脚本并重建参考后台。
 
 ## 3. 环境变量
 
 | 名称 | 必需 | 说明 |
 | --- | --- | --- |
-| `ASTERLOOM_REFERENCE_CLIENT_ID` | 是 | confidential service client ID。 |
-| `ASTERLOOM_REFERENCE_CLIENT_SECRET` | 是 | service client secret。 |
+| `ASTERLOOM_REFERENCE_CLIENT_ID` | service 命令需要 | confidential service client ID；`login` 不读取。 |
+| `ASTERLOOM_REFERENCE_CLIENT_SECRET` | service 命令需要 | service client secret；`login` 不读取。 |
 | `ASTERLOOM_BASE_URL` | 否 | Asterloom gRPC/HTTP 地址；默认生产域名。 |
 | `ASTERLOOM_ISSUER` | 否 | Passport issuer；默认同平台地址。 |
 | `ASTERLOOM_REFERENCE_BACKEND_URL` | 否 | 参考后台 JSON Transcoding 地址。 |
 | `ASTERLOOM_REFERENCE_BACKEND_GRPC_URL` | 否 | 参考后台原生 gRPC 地址。 |
 | `ASTERLOOM_REFERENCE_INTERACTIVE_CLIENT_ID` | 否 | public native OIDC client ID。 |
-| `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` | account 命令需要 | 业务账号演练密码，只从环境读取。 |
+| `ASTERLOOM_REFERENCE_API_SCOPE` | 否 | Public Client 请求的业务 API Scope；默认 `asterloom.reference.api`。 |
+| `ASTERLOOM_REFERENCE_API_AUDIENCE` | Provision 脚本可选 | Reference Backend 验证的 Audience；默认 `asterloom-reference-api`。 |
+| `ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD` | `account-demo` 需要 | 新业务账号的初始密码，只从环境读取。 |
+| `Asterloom__Mail__Enabled` | 否 | 为 Reference Backend 启用真实确认邮件发送。 |
+| `Asterloom__Mail__SmtpAccountId` | Mail 启用时 | Web 控制台中创建的 SMTP Account UUID。 |
+| `Asterloom__Mail__TenantId` / `Asterloom__Mail__ApplicationId` | Mail 启用时 | SMTP 账号所属作用域；必须与业务 Confidential Client 的绑定一致。 |
 | `ASTERLOOM_REFERENCE_STATE_FILE` | 否 | provision 产生的状态文件。 |
 | `ASTERLOOM_REFERENCE_RELEASE_PACKAGE_ID` | 真实更新测试 | 必须与 `vpk --packId` 相同。 |
 | `ASTERLOOM_REFERENCE_RELEASE_RUNTIME_ID` | 真实更新测试 | Artifact RID，例如 `win-x64`。 |
@@ -101,7 +112,7 @@ Client Credentials、Password、Refresh Token、可信注册和登录自动加�
 
 | 能力 | 真实操作 | 成功条件 |
 | --- | --- | --- |
-| Identity | OIDC discovery、client credentials、受保护 Identity API；另有 PKCE 和业务账号命令 | 能取得服务 Token；PKCE 能形成 principal；业务注册/确认/密码登录/BFF Session 全链路成功。 |
+| Identity | OIDC discovery、client credentials、受保护 Identity API；另有 Public Client PKCE、业务 Bearer API 和业务账号命令 | 能取得服务 Token；discovery 不公布 Password Grant 且只公布 S256 PKCE；公开 `at+jwt` 可由 JWKS 验签；Reference Backend 接受用户 Access Token 且拒绝 ID Token；业务注册/确认全链路成功。 |
 | Authorization | `AsterloomAuthorizationClient.CheckPermissionAsync` | 服务身份在指定 scope 获得 `feature.flag.evaluate`。 |
 | Targeting | `AsterloomTargetingAdminClient.ListSegmentsAsync` | PostgreSQL 中创建的 segment 可由 gRPC SDK 读取。 |
 | Feature Flag | `AsterloomFeatureProvider` | CN context 命中 segment 并返回 `on/true`。 |
@@ -110,6 +121,7 @@ Client Credentials、Password、Refresh Token、可信注册和登录自动加�
 | Desktop Update | 真实 `vpk` Full/Delta、`AsterloomVelopackUpdateSource`、安装态 `UpdateManager` | Delta 下载并逐字节还原目标 Full；真实安装程序从基线更新、替换、重启到目标版本；可强制验证 Full 回退。 |
 | Analytics | `AsterloomAnalyticsClient.TrackAsync/FlushAsync` | Schema 校验通过且 accepted=1、remaining=0。 |
 | Telemetry | 自定义 Activity/Meter/Log + OTLP；读取 source/collector health | 三类信号均生成，Collector 管理 API 可访问。 |
+| Mail | 注册后由 Reference Backend 提交确认邮件；受保护测试端点提交业务邮件 | 使用绑定应用的 SMTP 账号返回 `SENT`，投递历史可从控制台查看。 |
 | RPC | 调用参考后台 `RecordHeartbeat` | 原生 HTTP/2 gRPC 成功返回 heartbeat ID。 |
 | HTTP | 调用同一 protobuf 的 JSON 路由 | HTTP/1.1 POST/GET 成功，证明浏览器可用 Transcoding。 |
 | File Storage | SDK upload/complete/download | 对象可读回且字节完全一致，SHA-256 一致。 |

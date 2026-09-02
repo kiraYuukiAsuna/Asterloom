@@ -29,6 +29,7 @@ services:
       Persistence__Provider: PostgreSql
       ConnectionStrings__Asterloom: Host=postgres;Port=5432;Database=asterloom;Username=asterloom;Password=${POSTGRES_PASSWORD:-asterloom-dev};GSS Encryption Mode=Disable
       Identity__Issuer: http://localhost:60001/
+      Identity__WebClient__ClientId: asterloom-web
       Identity__DataProtectionKeysPath: /var/lib/asterloom/dataprotection-keys
       Storage__Endpoint: http://minio:9000
       Storage__PublicEndpoint: http://localhost:60003

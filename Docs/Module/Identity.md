@@ -13,7 +13,7 @@ trusted Passport roles distinguish operators, while business access is scoped th
 | --- | --- | --- | --- |
 | Desktop/native client | Authorization Code + PKCE | Public / Native | Never embedded |
 | Management Web BFF | Authorization Code | Confidential / Web | BFF server only |
-| Business backend registering/signing in users | Client Credentials + controlled Password Grant | Confidential / Web, application-bound | Business backend only |
+| Business backend registering accounts | Client Credentials | Confidential / Web, application-bound | Business backend only |
 | Backend service, job, CI | Client Credentials | Confidential | Secret Manager injection |
 
 Standard endpoints:
@@ -58,11 +58,18 @@ One workspace covers four resource groups.
 - Configure application type, client type, grants, redirect URIs, post-logout URIs, and scopes.
 - Optionally bind a client to one Tenant/Application and control trusted registration and login auto-join.
 - A confidential client secret is returned only when created or rotated; copy it immediately.
+- The bootstrap `Asterloom Web Console` client is a system resource used by the management BFF. It is marked
+  `isSystem=true` and `isMutable=false`; the API rejects update, secret rotation, and deletion. Change its callback
+  URLs or secret through deployment configuration and rerun the migration/bootstrap service.
 
 ### Scopes
 
 - List/Get/Create/Update/Delete scopes.
 - Scopes limit what a token requests; Authorization still decides each API permission.
+- The bootstrap `asterloom.api` scope is a system resource and cannot be updated or deleted.
+
+The Web Console displays system resources as read-only and does not render destructive actions. These restrictions
+are enforced again by the backend; hiding a button is not the security boundary.
 
 A Passport role is a platform account role, not a customizable Authorization role. Prefer Authorization roles,
 bindings, and policies for business access.
@@ -96,13 +103,18 @@ unbound service client represents a platform service. A business client must be 
 
 ## 4. Business application registration and sign-in
 
-Each product owns its browser UI and calls Asterloom only from its trusted backend. Registration uses
-`AsterloomIdentityAccessClient`; sign-in uses `AuthenticateWithPasswordAsync`. The backend retains user tokens in a
-per-user server-side session and returns only an opaque HttpOnly cookie to the browser.
+The standard native flow uses Authorization Code + PKCE in a Public Client and sends the resulting user Access Token
+as a bearer credential directly to the business backend. `Asterloom.Sdk.Identity.AspNetCore` validates its signature,
+issuer, business audience, and tenant/application binding. The backend neither stores the user token nor substitutes
+its own Client Secret for the user identity.
 
-The same global account has the same `sub` in every business application, while tokens carry the bound
-`tenant_id` and `application_id`. Removing one membership immediately blocks that application's protected API calls
-and refresh flow without affecting other memberships. Follow the complete setup and C# example in
+Account registration still runs from a trusted backend through its Confidential Client and
+`AsterloomIdentityAccessClient`. A browser product uses Authorization Code + S256 PKCE through an OIDC BFF, which
+encrypts one user token set per browser session and returns only an opaque HttpOnly cookie. A business backend must
+not collect Passport passwords to exchange them directly for tokens.
+
+The same global account has the same `sub` in every business application, while each application receives its own
+`application_id` and audience. Follow the complete setup, invalidation boundaries, and C# example in
 [Integrating Business Applications with Passport](Identity-Business-Integration.md).
 
 ## 5. Interactive desktop sign-in
@@ -117,11 +129,13 @@ builder.Services.AddAsterloomIdentityClient(options =>
     options.EnableInteractiveAuthentication = true;
     options.RequestRefreshTokens = true;
     options.RedirectUri = new Uri("http://localhost/");
+    options.Scopes.Add("my-business.api");
 });
 
 var identity = host.Services.GetRequiredService<AsterloomIdentityClient>();
 var tokens = await identity.SignInAsync(cancellationToken: cancellationToken);
 var accessToken = await identity.GetAccessTokenAsync(cancellationToken);
+// Send accessToken, not the ID Token, as the business API bearer credential.
 await identity.SignOutAsync(cancellationToken);
 ```
 
@@ -131,13 +145,15 @@ The SDK uses the system browser and PKCE. A public client must not have a secret
 
 ## 6. Token lifecycle
 
+- Without **Keep me signed in**, Passport uses a browser-session cookie that expires when the browser closes. With it,
+  Passport and the management Web BFF session persist for 30 days. Explicit logout immediately clears both layers.
 - `GetAccessTokenAsync` reuses a valid token and refreshes or reacquires it near expiration.
 - An interactive client needs `offline_access` to receive a refresh token.
 - `SignOutAsync` calls the end-session endpoint and clears local tokens.
 - `ClearLocalSessionAsync` clears only local state and does not revoke other server sessions.
 - After administrative revocation, return to sign-in when the next API or refresh operation fails.
-- `RefreshUserTokensAsync(currentTokens)` refreshes one BFF user's token set without writing it into the shared SDK token store.
-- Application-bound user tokens require an active membership at API evaluation time and again during refresh.
+- Refresh rechecks active membership. A third-party API doing only local JWT validation has an invalidation window no longer than the Access Token lifetime.
+- Resource-server policies using `RequireAsterloomPermission` check membership and roles/policies remotely on every request.
 
 ## 7. Permissions
 
@@ -156,7 +172,7 @@ roles, bindings, or policies as well.
 - The SDK rejects non-loopback HTTP issuers and redirects; use HTTPS in production.
 - Native clients never carry a secret; service secrets must be rotatable and revocable.
 - A browser stores only an HttpOnly session ID; OIDC tokens remain in the BFF.
-- Password Grant is limited to a confidential, application-bound trusted backend; never call it from browser JavaScript.
+- Password Grant and Implicit Grant are disabled; user sign-in uses only Authorization Code + S256 PKCE.
 - Use a separate client and secret for each business application.
 - Never place access or refresh tokens in logs, Analytics, Telemetry, or browser local storage.
 - Treat invitation links and one-time secrets as credentials.
@@ -169,6 +185,7 @@ roles, bindings, or policies as well.
 - C# client: [AsterloomIdentityClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityClient.cs)
 - Business account client: [AsterloomIdentityAccessClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityAccessClient.cs)
 - SDK registration: [AsterloomIdentityServiceCollectionExtensions.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityServiceCollectionExtensions.cs)
+- ASP.NET Core resource-server SDK: [AsterloomResourceServerServiceCollectionExtensions.cs](../../Backend/Asterloom.Sdk.Identity.AspNetCore/AsterloomResourceServerServiceCollectionExtensions.cs)
 - Server module: [IdentityModule.cs](../../Backend/Asterloom.Module.Identity/IdentityModule.cs)
 - Web: [identity-workspace.tsx](../../Frontend/features/identity/identity-workspace.tsx)
 - BFF guide: [Web-Console-Bff.md](Web-Console-Bff.md)

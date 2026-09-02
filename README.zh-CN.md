@@ -4,7 +4,7 @@
 
 Asterloom 是一个面向客户端应用与后端服务的统一基础能力平台，提供 Passport 登录认证、
 权限控制、Feature Flag、定向与灰度发布、动态配置、桌面更新、Analytics、Telemetry、
-gRPC/HTTP、文件存储和 PostgreSQL 持久化能力。
+事务邮件、gRPC/HTTP、文件存储和 PostgreSQL 持久化能力。
 
 当前实现范围是 .NET/C# 后端与公共 C# SDK，以及 React/Next.js Web 管理后台；不包含
 Rust、Go 或 C++ SDK。
@@ -21,6 +21,7 @@ Rust、Go 或 C++ SDK。
 | Desktop Update | Channel、签名 Artifact、Manifest、灰度发布及 Velopack 适配。 |
 | Analytics | Event Schema、Write Key、批量摄取、脱敏、聚合和导出。 |
 | Telemetry | OpenTelemetry Trace、Metric、Log、采样、Collector 健康和诊断跳转。 |
+| Mail | 按租户与应用隔离的加密 SMTP 账号、MailKit 投递、幂等发送和投递历史。 |
 | RPC / HTTP | 一份 Protobuf 契约同时提供原生 gRPC 与 JSON Transcoding。 |
 | File Storage | S3 兼容 Bucket/Object、签名上传下载、元数据和 SHA-256 验证。 |
 | Persistence | PostgreSQL 模块独立 Schema、显式迁移和持久业务数据。 |
@@ -34,12 +35,17 @@ Browser
                  ├─ Redis：加密服务端 Session
                  └─ HTTP/JSON → Asterloom.Server
 
-.NET Desktop / Backend Service
-  └─ C# SDK / native gRPC → Asterloom.Server
+.NET Desktop
+  ├─ Public Client + PKCE → Asterloom Passport
+  └─ User Access Token → Business ASP.NET Core API
+                         └─ JWT/JWKS 验证，可选实时 Permission 检查
+
+Backend Service
+  └─ Confidential Client + C# SDK / native gRPC → Asterloom.Server
 
 Asterloom.Server
   ├─ Identity / Authorization / Targeting / Feature / Config
-  ├─ Release / Analytics / Telemetry / Storage / RPC
+  ├─ Release / Analytics / Telemetry / Mail / Storage / RPC
   ├─ PostgreSQL
   ├─ S3-compatible object storage
   └─ OpenTelemetry Collector
@@ -56,8 +62,8 @@ Asterloom.Server
 
 | 范围 | 技术 |
 | --- | --- |
-| Backend | .NET 10、ASP.NET Core、gRPC、JSON Transcoding、OpenIddict、Casbin.NET、Npgsql |
-| C# SDK | Grpc.Net.Client、OpenFeature、HttpClient、System.Text.Json、OpenTelemetry、Velopack |
+| Backend | .NET 10、ASP.NET Core、gRPC、JSON Transcoding、OpenIddict、Casbin.NET、MailKit、Npgsql |
+| C# SDK | Grpc.Net.Client、JwtBearer/JWKS Resource Server、OpenFeature、HttpClient、System.Text.Json、OpenTelemetry、Velopack |
 | Web | React 19、Next.js 16 App Router、TypeScript、Tailwind CSS 4、shadcn-ui、Radix UI |
 | Web 数据层 | SWR、Zustand、Zod、Kiota、Redis Session、jose |
 | 基础设施 | PostgreSQL 18、Redis 8、S3/MinIO、OpenTelemetry Collector、Nginx、Docker Compose |
@@ -178,6 +184,7 @@ npm run dev
 
 - [模块使用文档（中文）](Docs/Module/README.zh-CN.md)：按能力拆分的实施、Web、API、SDK、权限与运维文档。
 - [Module Guides (English)](Docs/Module/README.md)：对应的英文模块索引。
+- [业务统一登录接入](Docs/Module/Identity-Business-Integration.zh-CN.md)：Public Client PKCE、用户 Bearer Token、ASP.NET Core 业务 API 验证与可信后端注册。
 - [业务应用统一账号接入](Docs/Module/Identity-Business-Integration.zh-CN.md)：全局账号、应用成员关系、业务后端注册登录与安全边界。
 - [功能使用指南（中文）](Docs/Feature-Guide.zh-CN.md)：Web 操作顺序、全部能力说明和 C# SDK 示例。
 - [Feature Usage Guide (English)](Docs/Feature-Guide.md)：对应的英文文档。

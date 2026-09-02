@@ -2,72 +2,118 @@
 
 [简体中文](Identity-Business-Integration.zh-CN.md) | [English](Identity-Business-Integration.md) | [Identity](Identity.zh-CN.md)
 
-本文说明业务 A、业务 B 等产品如何把 Asterloom 当作统一 Passport 使用。业务应用保留自己的注册、登录和找回密码页面；密码、Client Secret 和 OIDC Token 只在业务后端与 Asterloom 之间传递。
+本文给出 Asterloom 的标准业务接入链路。桌面、移动或其他可打开系统浏览器的客户端使用 Public Client + Authorization Code + PKCE 登录；客户端取得用户 Access Token 后，直接用它访问业务后端。业务后端本地验证签名和业务 Audience，不需要保存用户 Token，也不需要在每次请求时用自己的 Client Secret 换 Token。
 
-## 1. 账号模型
+Confidential Client 仍然必要，但它只属于可信业务后端，用于注册账号、确认邮箱、后台任务和管理调用，不能嵌入客户端。
 
-```text
-Global Passport account (one user ID / sub)
-  ├─ Application membership: Business A (active/removed)
-  │    └─ Authorization bindings and policies for Business A
-  └─ Application membership: Business B (active/removed)
-       └─ Authorization bindings and policies for Business B
-```
-
-- Passport 账号是全局唯一的，同一邮箱只创建一个账号和一个稳定的 `sub`。
-- 应用成员关系独立。用户可以加入 A、不加入 B，也可以只从 A 移除。
-- Authorization 的 Role Binding/Policy 按 Tenant/Application/Environment Scope 隔离。
-- 管理后台账号与业务用户不是两套表。它们都是 Passport 账号；区别在于管理人员拥有受信任的 Passport Role，普通业务用户的 `roles` 通常为空。
-- Asterloom Web 是管理控制面，不承载各业务面向最终用户的注册或登录页面。
-
-用户先在业务 A 注册后，业务 B 可以复用同一账号。B 可选择：
-
-- 开启 `allow_membership_auto_join`，用户首次正确登录时自动加入 B；或
-- 通过 B 的可信后端再次调用注册 API。用户必须提供同一邮箱和正确密码，Asterloom 只增加 B 的成员关系，不创建第二个账号。
-
-## 2. 每个业务应用需要的资源
-
-在 Web 管理后台依次完成：
-
-1. 在 `/tenants` 创建或选择 Tenant 和 Application。
-2. 在 `/identity/users` 的 **OIDC clients** 创建一个 Confidential Web Client。
-3. 将 Client 绑定到准确的 `tenantId` 和 `applicationId`。
-4. 启用 `client_credentials` 和 `password`；需要长会话时再启用 `refresh_token`。
-5. 开启 `allow_user_registration`，允许这个可信后端调用注册接口。
-6. 按产品策略决定是否开启 `allow_membership_auto_join`。
-7. 立即保存只显示一次的 Client Secret，并从 Secret Manager 注入业务后端。
-8. 在 `/authorization/roles` 给用户或服务主体配置应用作用域的 Role Binding/Policy。
-
-一个 OIDC Client 只能绑定一个 Platform Application。不要让多个业务共享同一个 Client Secret；业务 A 和 B 应分别注册 Client。
-
-## 3. 业务注册流程
+## 1. 账号与应用模型
 
 ```text
-Browser registration form
-  → Business backend
-      → client_credentials token
-      → IdentityAccess.RegisterAccount
-          → create/reuse global account
-          → create/reactivate this application's membership
-          → return one-time email confirmation token
-      → Business email provider
-Browser confirmation page
-  → Business backend
-      → IdentityAccess.ConfirmEmail
+Global Passport account (one stable sub)
+  ├─ Membership: Business A
+  │    ├─ Public Client A → end-user PKCE login
+  │    ├─ Confidential Client A → registration/service operations
+  │    └─ API Scope A → Audience business-a-api
+  └─ Membership: Business B
+       ├─ Public Client B
+       ├─ Confidential Client B
+       └─ API Scope B → Audience business-b-api
 ```
 
-Headless JSON Transcoding API：
+- Passport 账号全局唯一；用户在 A、B 登录得到相同的 `sub`。
+- Membership、Token 的 `application_id` 和权限作用域按业务 Application 隔离。
+- 管理员和业务用户使用同一套账号表；管理员只是拥有受信任的 Passport Role。
+- Asterloom Web 是管理控制面。业务自己提供最终用户 UI；Public Client 登录时会跳到 Passport 完成认证，再回到业务客户端。
 
-| 操作 | HTTP | 作用域来源 |
-| --- | --- | --- |
-| 注册或加入当前应用 | `POST /api/v1/identity/accounts:register` | 调用方 Client 的应用绑定 |
-| 确认邮箱 | `POST /api/v1/identity/accounts:confirm-email` | 调用方 Client 的应用绑定 |
-| 读取当前应用账号 | `GET /api/v1/identity/accounts/{userId}` | 调用方 Client 的应用绑定 |
-| 移除当前应用成员关系 | `DELETE /api/v1/identity/accounts/{userId}/membership?expectedVersion=...` | 调用方 Client 的应用绑定 |
+## 2. 一个业务应创建哪些资源
 
-请求体不能指定 Tenant/Application，因此业务后端无法越权操作其他应用。注册返回的确认 Token 只交给可信后端，由业务自己的邮件模板和确认页面发送；不要把它写入日志或 Analytics。
+在 Web 管理后台创建或选择 Tenant/Application 后，创建以下三项：
 
-C# 接入：
+1. API Scope，例如 `business-a.api`，Resources 填业务后端唯一 Audience，例如 `business-a-api`。
+2. Public Native Client：启用 `authorization_code`、`refresh_token` 和 PKCE，绑定当前 Tenant/Application，授权 `openid profile email roles offline_access asterloom.api business-a.api`，填写精确 Redirect URI；Public Client 没有 Client Secret。
+3. Confidential Web Client：绑定同一 Tenant/Application，启用 `client_credentials`；如果业务后端要调用账号注册 API，则启用 `allow_user_registration`。浏览器 BFF 如需登录用户，应另建启用 `authorization_code`、`refresh_token` 的 Web Client。
+
+`allow_membership_auto_join` 决定已存在的全局账号首次通过该 Client 登录时是否自动加入应用。A、B 不得共用 Client ID、Client Secret 或 API Audience。
+
+## 3. Public Client 登录并调用业务 API
+
+桌面客户端使用 `Asterloom.Sdk.Identity`。SDK 打开系统浏览器、启动本机 Loopback Callback，并自动使用 PKCE：
+
+```csharp
+builder.Services.AddAsterloomIdentityClient(options =>
+{
+    options.Issuer = new Uri("https://asterloom.example/");
+    options.ClientId = "business-a-desktop";
+    options.EnableInteractiveAuthentication = true;
+    options.RequestRefreshTokens = true;
+    options.Scopes.Add("business-a.api");
+});
+
+var identity = services.GetRequiredService<AsterloomIdentityClient>();
+var tokens = await identity.SignInAsync(cancellationToken: cancellationToken);
+
+using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.business-a.example/me");
+request.Headers.Authorization =
+    new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+using var response = await httpClient.SendAsync(request, cancellationToken);
+response.EnsureSuccessStatusCode();
+```
+
+只把 Access Token 发给业务 API。ID Token 只描述登录结果，Refresh Token 只交给 Passport 换新 Token，两者都不能当 API Bearer Token。
+
+原生客户端应把 Token 放在操作系统安全存储中，并按 SDK 的刷新流程续期；不要写入配置文件、命令行、日志、Telemetry 或 Analytics。Public Client 本身无法保密，因此绝不能配置 Client Secret。
+
+## 4. ASP.NET Core 业务后端验证 Token
+
+业务后端引用 `Asterloom.Sdk.Identity.AspNetCore`：
+
+```csharp
+builder.Services.AddAsterloomResourceServer(options =>
+{
+    options.Issuer = new Uri("https://asterloom.example/");
+    options.Audience = "business-a-api";
+    options.TenantId = Guid.Parse(configuration["Asterloom:TenantId"]!);
+    options.ApplicationId = Guid.Parse(configuration["Asterloom:ApplicationId"]!);
+});
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/me", (ClaimsPrincipal user) => new
+{
+    subject = user.FindFirstValue("sub"),
+    applicationId = user.FindFirstValue("application_id"),
+}).RequireAuthorization();
+```
+
+SDK 通过 Issuer 的 OIDC Discovery/JWKS 本地验证：
+
+- RS256 签名、`typ=at+jwt`、Issuer、Audience、过期时间；
+- `sub` 存在且 `asterloom_actor_type=user`；
+- 配置后，`tenant_id`、`application_id` 必须精确匹配。
+
+因此普通 API 请求不需要业务 Client Secret，也不需要回调 Asterloom。签名密钥会按标准 Metadata 刷新。生产必须使用 HTTPS；明文 HTTP 仅能通过 `AllowInsecureHttpForDevelopment` 显式用于 Loopback 开发环境。
+
+### 实时 Asterloom 权限判断
+
+需要 Asterloom Role/Policy 的端点可增加远程 Permission Policy：
+
+```csharp
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("platform-read", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAsterloomPermission("platform.info.read"));
+
+app.MapGet("/platform", Handle)
+    .RequireAuthorization("platform-read");
+```
+
+该 Handler 会把当前请求的同一份用户 Access Token 传给 Asterloom `CheckPermission`。Asterloom 从 Token 读取 `sub`，锁定 Tenant/Application，实时检查 Membership 和 Role/Policy；业务后端仍不保存 Token。权限服务不可达或拒绝时按 Fail Closed 处理。
+
+## 5. 可信后端注册账号
+
+注册不是 Public Client 的能力。业务注册表单提交到业务后端，后端用自己的 Confidential Client 获取 Service Token，再调用账号 API：
 
 ```csharp
 builder.Services.AddAsterloomIdentityClient(options =>
@@ -76,8 +122,6 @@ builder.Services.AddAsterloomIdentityClient(options =>
     options.ClientId = configuration["Asterloom:Identity:ClientId"]!;
     options.ClientSecret = configuration["Asterloom:Identity:ClientSecret"]!;
     options.EnableServiceCredentials = true;
-    options.EnablePasswordAuthentication = true;
-    options.RequestRefreshTokens = true;
 });
 
 var identity = services.GetRequiredService<AsterloomIdentityClient>();
@@ -88,100 +132,51 @@ using var transport = AsterloomAuthenticatedTransport.Create(
 var accounts = new AsterloomIdentityAccessClient(transport.CallInvoker);
 
 var registration = await accounts.RegisterAccountAsync(
-    email,
-    displayName,
-    password,
-    cancellationToken);
-
-// 由业务邮件服务发送 registration.EmailVerificationToken。
+    email, displayName, password, cancellationToken);
 await accounts.ConfirmEmailAsync(email, confirmationToken, cancellationToken);
 ```
 
-`RegisterAccountAsync` 的重要语义：
+`AsterloomAuthenticatedTransport` 的 URI 是 Asterloom API 地址，不是重复填写 Client 身份。Issuer 负责 OIDC 协议和 Token；Transport 地址负责实际发送 gRPC/HTTP API。二者同域部署时值通常相同。
 
-- 邮箱不存在：创建 Pending 全局账号和当前应用成员关系。
-- 邮箱已存在且密码正确：复用原账号，只创建或恢复当前应用成员关系。
-- 邮箱已存在但密码不正确，或账号已 Suspended/Archived：统一拒绝，避免直接接管已有账号。
-- 邮箱确认后，Pending 账号转为 Active；已确认的全局账号加入新应用时无需重复确认。
+注册 API 只能操作 Confidential Client 绑定的 Application：新邮箱创建全局账号；已有邮箱且密码正确时复用同一 `sub` 并添加/恢复当前 Membership；错误密码或异常账号统一拒绝。
 
-## 4. 业务登录与 BFF Session
+## 6. Web/BFF 与用户 Token 保存
 
-浏览器只把账号密码提交给自己的同源业务后端。业务后端使用其 Confidential Client 完成受控 Password Grant：
+浏览器业务推荐 Authorization Code + PKCE，由业务 BFF 完成 OIDC Callback，并把用户 Token 加密存入服务端 Session Store；浏览器只拿随机 `HttpOnly`、`Secure` Session Cookie。此时是 BFF 为每个浏览器 Session 保存用户 Token并负责 Refresh。
 
-```csharp
-var tokens = await identity.AuthenticateWithPasswordAsync(
-    email,
-    password,
-    cancellationToken);
-```
+原生 Public Client 场景不同：Token 由客户端安全存储和刷新，业务后端只验证每次请求携带的 Access Token，不保存它。Confidential Client 的 Service Token 又是第三类独立身份，不能替代用户 Token访问需要用户身份的 API。
 
-成功 Token 包含稳定的全局 `sub`，并包含 Client 绑定的 `tenant_id`、`application_id` 和 `asterloom_actor_type=user`。A、B 登录得到相同 `sub`，但 `application_id` 不同。
+Password Grant 已禁用。无论原生客户端还是浏览器 BFF，都不得收集 Passport 密码向 Token Endpoint 直接换取 Token。
 
-业务后端应：
+## 7. 失效边界
 
-1. 把 Access/Refresh Token 加密保存在服务端 Session Store（生产建议 Redis 或数据库）。
-2. 只给浏览器设置随机、不透明、`HttpOnly`、`Secure`、合适 `SameSite` 的 Session Cookie。
-3. 每个浏览器 Session 独立保存一份 Token；不要把用户 Token 放进单例 `IAsterloomTokenStore`。
-4. 接近过期时调用 `RefreshUserTokensAsync(currentTokens)`，并原子替换服务端 Session。
-5. Refresh 或 API 返回未认证/拒绝时清理 Session，让用户重新登录。
+- Access Token 默认 10 分钟。仅使用本地 `.RequireAuthorization()` 的业务 API 在 Token 过期前不会实时得知 Membership、账号状态或权限变化。
+- Refresh 时 Passport 会重新检查账号与 Membership；移除 Membership 后 Refresh 立即失败。
+- 使用 `RequireAsterloomPermission` 的请求每次都会远程检查 Membership 和权限，因此可立即生效。
+- 高风险端点应使用远程 Permission Policy；普通低风险端点可接受短 Access Token 的失效窗口。
+- A、B 使用不同 Audience/Application，A 的 Token 不能访问 B 的资源服务器。
 
-禁止浏览器直接使用 Password Grant；禁止把 Client Secret、Access Token 或 Refresh Token放入 JavaScript、Local Storage、Cookie 明文、日志、Telemetry 或 Analytics。
+## 8. 可运行参考与测试
 
-## 5. 成员关系和权限失效
+`Provision-Reference-App.sh` 会创建：
 
-成员关系与权限是两层独立条件：
+- `asterloom.reference.api` → `asterloom-reference-api`；
+- 绑定到参考 Application 的 `asterloom-reference-native` Public Client；
+- 注册/服务使用的 Confidential Client；
+- Reference Backend 的 Issuer/Audience/Tenant/Application 配置。
 
-```text
-active application membership
-  AND Authorization decision allows permission
-  → request allowed
-```
+运行 `Asterloom.ReferenceApp.Client login` 后，示例会完成 PKCE 登录，并用所得 Access Token 调用 `/api/reference/me`。相关实现：
 
-- 移除应用成员关系后，该应用绑定 Token 的受保护 API 调用立即拒绝，Refresh 也失败。
-- 如果该 Client 开启 `allow_membership_auto_join`，用户下次以正确密码登录会重新激活成员关系；需要管理员移除持续生效时必须关闭自动加入，或使用全局 Suspend / Authorization Deny。
-- 其他应用的成员关系、登录和权限不受影响。
-- Suspended/Archived 是全局账号状态，会阻止所有应用继续登录或 Refresh。
-- 移除 Role Binding/添加 Deny Policy 只改变权限，不删除成员关系。
-- 恢复成员关系不会自动恢复以前删除的 Role Binding。
+- [ReferenceProtectedEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceProtectedEndpoints.cs)
+- [Reference Resource Server 配置](../../Backend/Samples/Asterloom.ReferenceApp.Backend/Program.cs)
+- [Reference Public Client](../../Backend/Samples/Asterloom.ReferenceApp.Client/Program.cs)
+- [ASP.NET Core Resource Server SDK](../../Backend/Asterloom.Sdk.Identity.AspNetCore/AsterloomResourceServerServiceCollectionExtensions.cs)
 
-## 6. 管理后台职责
+集成测试还会验证 Access Token 是公开可验证的三段式 `at+jwt`、JWKS 包含对应签名密钥、资源服务器接受 Access Token、拒绝 ID Token，并通过同一 Token 完成远程 Permission 判断。
 
-`/identity/users` 覆盖管理面 API：
+## 9. 相关契约
 
-- 全局账号创建、邀请、资料、Passport Role、密码重置、暂停、归档与恢复。
-- OIDC Session 查看和撤销。
-- Application Membership 查询、添加/恢复和移除。
-- OIDC Client 的应用绑定、Grant、注册/自动加入开关、Redirect URI、Scope、Secret 轮换与删除。
-- OIDC Scope 管理。
-
-业务 Headless API 不在管理后台中模拟调用，因为它必须以具体业务 Client 的 Secret 标识应用。管理后台提供等价的账号和成员关系人工操作，不保存各业务 Client Secret。
-
-## 7. 可运行参考
-
-参考后台实现了完整 BFF 边界：
-
-- [ReferenceIdentityEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentityEndpoints.cs)
-- [ReferenceIdentityGateway.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentityGateway.cs)
-- [ReferenceIdentitySessionStore.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceIdentitySessionStore.cs)
-
-配置并启动参考后台后可执行：
-
-```powershell
-$env:ASTERLOOM_REFERENCE_ACCOUNT_PASSWORD = "Use-A-Strong-Test-Password!2026"
-dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- \
-  account-demo user@example.com "Example User"
-dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- \
-  account-login user@example.com
-```
-
-`account-demo` 会真实执行注册、邮箱确认、登录、读取服务端 Session 和退出。示例的内存 Session Store 只用于演示，生产必须换成共享、加密、可过期和可撤销的持久 Session Store。
-没有配置邮件服务的本地演练可显式启用 `ASTERLOOM_REFERENCE_EXPOSE_CONFIRMATION_TOKEN=true`；该开关会把确认
-Token 返回给测试客户端，默认关闭且禁止用于公开生产入口。
-
-## 8. 相关契约
-
-- 业务接入协议：[identity_access.proto](../../Proto/Asterloom/identity/v1/identity_access.proto)
-- 管理协议：[identity_admin.proto](../../Proto/Asterloom/identity/v1/identity_admin.proto)
-- C# 业务账号 SDK：[AsterloomIdentityAccessClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityAccessClient.cs)
-- 登录 SDK：[AsterloomIdentityClient.cs](../../Backend/Asterloom.Sdk.Identity/AsterloomIdentityClient.cs)
-- 权限接入：[Authorization.zh-CN.md](Authorization.zh-CN.md)
+- [identity_access.proto](../../Proto/Asterloom/identity/v1/identity_access.proto)
+- [identity_admin.proto](../../Proto/Asterloom/identity/v1/identity_admin.proto)
+- [authorization.proto](../../Proto/Asterloom/authorization/v1/authorization.proto)
+- [Authorization 文档](Authorization.zh-CN.md)

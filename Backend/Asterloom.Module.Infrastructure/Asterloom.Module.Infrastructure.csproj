@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="AWSSDK.S3" />
   </ItemGroup>
@@ -10,6 +11,7 @@
     <ProjectReference Include="..\Asterloom.Module.Authorization\Asterloom.Module.Authorization.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Config\Asterloom.Module.Config.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Feature\Asterloom.Module.Feature.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Mail\Asterloom.Module.Mail.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Release\Asterloom.Module.Release.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Targeting\Asterloom.Module.Targeting.csproj" />
     <ProjectReference Include="..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />

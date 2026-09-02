@@ -97,6 +97,16 @@ internal sealed class AuthorizationInterceptor(
             [IdentityMethod("CreateScope")] = "identity.scope.create",
             [IdentityMethod("UpdateScope")] = "identity.scope.update",
             [IdentityMethod("DeleteScope")] = "identity.scope.delete",
+            [MailAdminMethod("ListSmtpAccounts")] = "mail.account.read",
+            [MailAdminMethod("GetSmtpAccount")] = "mail.account.read",
+            [MailAdminMethod("CreateSmtpAccount")] = "mail.account.create",
+            [MailAdminMethod("UpdateSmtpAccount")] = "mail.account.update",
+            [MailAdminMethod("ArchiveSmtpAccount")] = "mail.account.archive",
+            [MailAdminMethod("RestoreSmtpAccount")] = "mail.account.restore",
+            [MailAdminMethod("TestSmtpAccount")] = "mail.account.test",
+            [MailAdminMethod("ListMailDeliveries")] = "mail.delivery.read",
+            [MailAdminMethod("GetMailDelivery")] = "mail.delivery.read",
+            [MailRuntimeMethod("SendEmail")] = "mail.delivery.send",
             [TargetingMethod("ListTargetingAttributes")] = "targeting.attribute.read",
             [TargetingMethod("ListSegments")] = "targeting.segment.read",
             [TargetingMethod("GetSegment")] = "targeting.segment.read",
@@ -363,6 +373,12 @@ internal sealed class AuthorizationInterceptor(
 
     private static string IdentityMethod(string method) =>
         $"/asterloom.identity.admin.v1.IdentityAdminService/{method}";
+
+    private static string MailAdminMethod(string method) =>
+        $"/asterloom.mail.admin.v1.MailAdminService/{method}";
+
+    private static string MailRuntimeMethod(string method) =>
+        $"/asterloom.mail.v1.MailService/{method}";
 
     private static string TargetingMethod(string method) =>
         $"/asterloom.targeting.admin.v1.TargetingAdminService/{method}";

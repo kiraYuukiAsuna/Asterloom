@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package asterloom.mail.v1;
+
+import "Asterloom/mail/v1/mail_types.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Mail.V1";
+
+// Sends application email through a configured SMTP account.
+service MailService {
+  rpc SendEmail(SendEmailRequest) returns (MailDelivery) {
+    option (google.api.http) = {
+      post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/mail:send"
+      body: "*"
+    };
+  }
+}
+
+message SendEmailRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string smtp_account_id = 3;
+  string client_message_id = 4;
+  repeated string to = 5;
+  repeated string cc = 6;
+  repeated string bcc = 7;
+  string reply_to = 8;
+  string subject = 9;
+  string text_body = 10;
+  string html_body = 11;
+}

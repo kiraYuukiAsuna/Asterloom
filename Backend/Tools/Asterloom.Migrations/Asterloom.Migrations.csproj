@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\Asterloom.Module.Feature\Asterloom.Module.Feature.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module\Asterloom.Module.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Identity\Asterloom.Module.Identity.csproj" />
+    <ProjectReference Include="..\..\Asterloom.Module.Mail\Asterloom.Module.Mail.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Infrastructure\Asterloom.Module.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Release\Asterloom.Module.Release.csproj" />
     <ProjectReference Include="..\..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />

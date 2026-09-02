@@ -5,6 +5,7 @@ using Asterloom.Modules.Authorization;
 using Asterloom.Modules.Config;
 using Asterloom.Modules.Feature;
 using Asterloom.Modules.Infrastructure;
+using Asterloom.Modules.Mail;
 using Asterloom.Modules.Identity;
 using Asterloom.Modules.Platform;
 using Asterloom.Modules.Rpc;
@@ -35,6 +36,7 @@ builder.Services.AddAsterloomModules(
     new TargetingModule(),
     new FeatureModule(),
     new ConfigModule(),
+    new MailModule(),
     new StorageModule(),
     new ReleaseModule(),
     new AnalyticsModule(),

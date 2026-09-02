@@ -83,6 +83,11 @@ internal sealed class AuditInterceptor(
             [IdentityMethod("CreateScope")] = new("identity_scope", null),
             [IdentityMethod("UpdateScope")] = new("identity_scope", "scope_id"),
             [IdentityMethod("DeleteScope")] = new("identity_scope", "scope_id"),
+            [MailMethod("CreateSmtpAccount")] = new("smtp_account", null),
+            [MailMethod("UpdateSmtpAccount")] = new("smtp_account", "smtp_account_id"),
+            [MailMethod("ArchiveSmtpAccount")] = new("smtp_account", "smtp_account_id"),
+            [MailMethod("RestoreSmtpAccount")] = new("smtp_account", "smtp_account_id"),
+            [MailMethod("TestSmtpAccount")] = new("mail_delivery", null),
             [TargetingMethod("CreateSegment")] = new("targeting_segment", null),
             [TargetingMethod("UpdateSegment")] = new("targeting_segment", "segment_id"),
             [TargetingMethod("ArchiveSegment")] = new("targeting_segment", "segment_id"),
@@ -343,6 +348,9 @@ internal sealed class AuditInterceptor(
 
     private static string IdentityMethod(string method) =>
         $"/asterloom.identity.admin.v1.IdentityAdminService/{method}";
+
+    private static string MailMethod(string method) =>
+        $"/asterloom.mail.admin.v1.MailAdminService/{method}";
 
     private static string TargetingMethod(string method) =>
         $"/asterloom.targeting.admin.v1.TargetingAdminService/{method}";

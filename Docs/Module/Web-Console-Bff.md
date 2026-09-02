@@ -33,12 +33,17 @@ The Web Console uses OIDC Authorization Code + PKCE:
 
 1. `/api/auth/login` creates state, nonce, verifier/challenge, and a ten-minute login transaction.
 2. The browser redirects to Passport `/connect/authorize`.
-3. `/api/auth/callback` validates state/nonce, exchanges the code, and creates a BFF session lasting at most eight hours.
-4. The browser receives only a random HttpOnly, SameSite=Lax, Secure-on-HTTPS session cookie.
-5. Thirty seconds before access-token expiry, the BFF refreshes it; a distributed lock serializes concurrent refreshes.
-6. Logout deletes the server session, clears the cookie, and redirects through the Passport end-session endpoint.
+3. `/api/auth/callback` validates state/nonce, exchanges the code, and creates a BFF session from the Passport login choice.
+4. Without **Keep me signed in**, the browser receives a cookie without `Max-Age`, so closing the browser ends it; its
+   orphaned server-side session expires within eight hours. With the option enabled, both cookie and server session last 30 days.
+5. The browser receives only a random HttpOnly, SameSite=Lax, Secure-on-HTTPS session cookie.
+6. Thirty seconds before access-token expiry, the BFF refreshes it; a distributed lock serializes concurrent refreshes.
+7. Logout deletes the server session, clears the cookie, and redirects through the Passport end-session endpoint in both modes.
 
 Access, refresh, and ID tokens are never stored in Local Storage or exposed to browser JavaScript.
+Passport carries the persistence choice to the BFF in a signed ID-token claim, so the browser cannot promote a normal
+session into a persistent one by changing a preference value.
+Persistent sessions also receive a 30-day rotating refresh-token lifetime; normal sign-in keeps the default shorter policy.
 
 ## 3. Why Redis exists
 

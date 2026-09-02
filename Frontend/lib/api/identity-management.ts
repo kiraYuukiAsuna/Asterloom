@@ -54,7 +54,6 @@ const grantTypeSchema = z.enum([
   OidcGrantTypeObject.OIDC_GRANT_TYPE_AUTHORIZATION_CODE,
   OidcGrantTypeObject.OIDC_GRANT_TYPE_CLIENT_CREDENTIALS,
   OidcGrantTypeObject.OIDC_GRANT_TYPE_REFRESH_TOKEN,
-  OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD,
 ]);
 const membershipStatusSchema = z.enum([
   ApplicationMembershipStatusObject.APPLICATION_MEMBERSHIP_STATUS_ACTIVE,
@@ -114,6 +113,8 @@ const clientSchema = z.object({
   displayName: displayNameSchema,
   grantTypes: z.array(grantTypeSchema).min(1),
   id: z.string().min(1),
+  isMutable: z.boolean(),
+  isSystem: z.boolean(),
   postLogoutRedirectUris: z.array(uriSchema),
   redirectUris: z.array(uriSchema),
   scopes: z.array(scopeNameSchema),
@@ -140,6 +141,8 @@ const scopeSchema = z.object({
   description: z.string(),
   displayName: displayNameSchema,
   id: z.string().min(1),
+  isMutable: z.boolean(),
+  isSystem: z.boolean(),
   name: scopeNameSchema,
   resources: z.array(z.string().min(1).max(200)),
   version: opaqueVersionSchema,
@@ -211,17 +214,6 @@ const createClientInputSchema = z
       });
     }
     validateApplicationBinding(client, context);
-    if (
-      client.grantTypes.includes(OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD) &&
-      (client.clientType !== OidcClientTypeObject.OIDC_CLIENT_TYPE_CONFIDENTIAL ||
-        client.applicationType !== OidcApplicationTypeObject.OIDC_APPLICATION_TYPE_WEB)
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Password authentication requires a confidential Web client.",
-        path: ["grantTypes"],
-      });
-    }
     if (
       client.grantTypes.includes(
         OidcGrantTypeObject.OIDC_GRANT_TYPE_CLIENT_CREDENTIALS,
@@ -696,16 +688,6 @@ function validateApplicationBinding(
     context.addIssue({
       code: "custom",
       message: "Application capabilities require an application binding.",
-      path: ["applicationId"],
-    });
-  }
-  if (
-    client.grantTypes.includes(OidcGrantTypeObject.OIDC_GRANT_TYPE_PASSWORD) &&
-    !hasBinding
-  ) {
-    context.addIssue({
-      code: "custom",
-      message: "Password clients require an application binding.",
       path: ["applicationId"],
     });
   }

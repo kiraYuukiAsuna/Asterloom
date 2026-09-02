@@ -16,6 +16,7 @@ public sealed class PlatformInfoProvider(TimeProvider timeProvider)
         ("release", "Desktop updates", CapabilityLifecycle.Available),
         ("analytics", "Analytics", CapabilityLifecycle.Available),
         ("telemetry", "Telemetry", CapabilityLifecycle.Available),
+        ("mail", "Application email", CapabilityLifecycle.Available),
         ("rpc", "RPC and HTTP", CapabilityLifecycle.Available),
         ("storage", "File storage", CapabilityLifecycle.Available),
         ("persistence", "Persistence", CapabilityLifecycle.Available),

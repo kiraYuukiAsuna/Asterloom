@@ -102,8 +102,7 @@ Archive 是默认的可恢复移除方式。父级被归档或保护后，可能
 - **OIDC Scope：**创建、修改和删除 Passport 对外提供的 Scope。
 
 交互式桌面/管理 Web 客户端使用 Authorization Code + S256 PKCE，后端服务使用 Client Credentials。
-只有绑定应用的 Confidential 可信业务后端可使用受控 Password Flow 来承接自己的用户登录页，浏览器 JavaScript
-不得直接调用；禁止 Implicit Flow。完整流程见
+Password Flow 与 Implicit Flow 均禁用；业务应用不得收集 Passport 密码来直接换取 Token。完整流程见
 [业务应用统一账号接入](Module/Identity-Business-Integration.zh-CN.md)。新生成的 Client Secret 应立即保存到 Secret Manager。
 
 ### 4.3 Authorization
@@ -545,7 +544,7 @@ dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-de
 - `provision` 创建一套隔离的全能力资源。
 - `doctor` 分别验证 Identity、Authorization、Targeting、Feature/Rollout、Config、Release、Analytics、Telemetry、原生 gRPC、JSON Transcoding、Storage、PostgreSQL Persistence 和 Operations/OpenAPI。
 - `login` 验证交互式 Passport Authorization Code + PKCE。
-- `account-demo` 验证全局账号注册、确认、应用成员关系、业务 BFF 登录和退出。
+- `account-demo` 验证全局账号注册、确认和应用成员关系；`login` 完成交互登录并验证业务 API Bearer Token。
 
 环境变量、生产 Compose 命令和诊断成功条件见
 [Reference-Application.md](Reference-Application.md)。

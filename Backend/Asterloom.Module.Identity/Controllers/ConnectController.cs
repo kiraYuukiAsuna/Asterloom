@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using Asterloom.Modules.Identity.Model;
 using Asterloom.Modules.Identity.Management;
+using Asterloom.Modules.Identity.Model;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -26,6 +26,8 @@ public sealed class ConnectController(
     SignInManager<AsterloomUser> signInManager,
     UserManager<AsterloomUser> userManager) : Controller
 {
+    private static readonly TimeSpan PersistentSessionLifetime = TimeSpan.FromDays(30);
+
     [HttpGet("/connect/authorize")]
     [HttpPost("/connect/authorize")]
     [IgnoreAntiforgeryToken]
@@ -110,7 +112,12 @@ public sealed class ConnectController(
                 "Interactive consent is required for this client application.");
         }
 
-        var identity = await CreateUserIdentityAsync(user!, request.GetScopes(), binding);
+        var persistentSession = authentication.Properties?.IsPersistent is true;
+        var identity = await CreateUserIdentityAsync(
+            user!,
+            request.GetScopes(),
+            binding,
+            persistentSession);
         var authorization = authorizations.LastOrDefault();
         if (authorization is null && consentType == ConsentTypes.Implicit)
         {
@@ -128,8 +135,9 @@ public sealed class ConnectController(
                 await authorizationManager.GetIdAsync(authorization));
         }
 
+        var principal = CreateUserPrincipal(identity, persistentSession);
         return SignIn(
-            new ClaimsPrincipal(identity),
+            principal,
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
@@ -177,83 +185,18 @@ public sealed class ConnectController(
                     "The account is no longer a member of this application.");
             }
 
+            var persistentSession = string.Equals(
+                authentication.Principal!.GetClaim(IdentityClaimTypes.PersistentSession),
+                bool.TrueString,
+                StringComparison.OrdinalIgnoreCase);
             var identity = await CreateUserIdentityAsync(
                 user!,
                 authentication.Principal!.GetScopes(),
-                binding);
-            var principal = authentication.Principal!;
-            identity.SetAuthorizationId(principal.GetAuthorizationId());
-            return SignIn(
-                new ClaimsPrincipal(identity),
-                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        }
-
-        if (request.IsPasswordGrantType())
-        {
-            var application = await applicationManager.FindByClientIdAsync(request.ClientId!)
-                ?? throw new InvalidOperationException(
-                    "The OAuth 2.0 client cannot be found.");
-            var binding = await IdentityClientApplicationMetadata.ReadAsync(
-                applicationManager,
-                application,
-                HttpContext.RequestAborted);
-            if (binding is null)
-            {
-                return OpenIddictForbid(
-                    OidcErrors.UnauthorizedClient,
-                    "Password authentication requires an application-bound client.");
-            }
-
-            var user = string.IsNullOrWhiteSpace(request.Username)
-                ? null
-                : await userManager.FindByEmailAsync(request.Username.Trim());
-            if (!IsActive(user) || !await signInManager.CanSignInAsync(user!))
-            {
-                return OpenIddictForbid(
-                    OidcErrors.InvalidGrant,
-                    "The email or password is invalid.");
-            }
-
-            var password = await signInManager.CheckPasswordSignInAsync(
-                user!,
-                request.Password ?? string.Empty,
-                lockoutOnFailure: true);
-            if (!password.Succeeded)
-            {
-                return OpenIddictForbid(
-                    OidcErrors.InvalidGrant,
-                    "The email or password is invalid.");
-            }
-
-            if (!await EnsureApplicationAccessAsync(
-                user!,
                 binding,
-                allowAutoJoin: binding.AllowMembershipAutoJoin,
-                HttpContext.RequestAborted))
-            {
-                return OpenIddictForbid(
-                    OidcErrors.InvalidGrant,
-                    "The account is not a member of this application.");
-            }
-
-            var identity = await CreateUserIdentityAsync(
-                user!,
-                request.GetScopes(),
-                binding);
-            var subject = await userManager.GetUserIdAsync(user!);
-            var applicationId = await applicationManager.GetIdAsync(application)
-                ?? throw new InvalidOperationException(
-                    "The OAuth 2.0 client has no stable identifier.");
-            var authorization = await authorizationManager.CreateAsync(
-                identity,
-                subject,
-                applicationId,
-                AuthorizationTypes.Permanent,
-                identity.GetScopes());
-            identity.SetAuthorizationId(
-                await authorizationManager.GetIdAsync(authorization));
+                persistentSession);
+            identity.SetAuthorizationId(authentication.Principal!.GetAuthorizationId());
             return SignIn(
-                new ClaimsPrincipal(identity),
+                CreateUserPrincipal(identity, persistentSession),
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
@@ -335,7 +278,8 @@ public sealed class ConnectController(
     private async Task<ClaimsIdentity> CreateUserIdentityAsync(
         AsterloomUser user,
         IEnumerable<string> scopes,
-        IdentityClientApplicationBinding? binding)
+        IdentityClientApplicationBinding? binding,
+        bool persistentSession = false)
     {
         var identity = new ClaimsIdentity(
             TokenValidationParameters.DefaultAuthenticationType,
@@ -348,10 +292,26 @@ public sealed class ConnectController(
             .SetClaim(IdentityClaimTypes.ActorType, IdentityClaimTypes.UserActor)
             .SetClaims(Claims.Role, [.. await userManager.GetRolesAsync(user)])
             .SetScopes(scopes);
+        if (persistentSession)
+        {
+            identity.SetClaim(IdentityClaimTypes.PersistentSession, bool.TrueString);
+        }
         SetApplicationClaims(identity, binding);
         identity.SetDestinations(GetDestinations);
         await SetResourcesAsync(identity);
         return identity;
+    }
+
+    private static ClaimsPrincipal CreateUserPrincipal(
+        ClaimsIdentity identity,
+        bool persistentSession)
+    {
+        var principal = new ClaimsPrincipal(identity);
+        if (persistentSession)
+        {
+            principal.SetRefreshTokenLifetime(PersistentSessionLifetime);
+        }
+        return principal;
     }
 
     private async Task<bool> EnsureApplicationAccessAsync(
@@ -492,6 +452,10 @@ public sealed class ConnectController(
                 yield break;
 
             case "AspNet.Identity.SecurityStamp":
+                yield break;
+
+            case IdentityClaimTypes.PersistentSession:
+                yield return Destinations.IdentityToken;
                 yield break;
 
             default:

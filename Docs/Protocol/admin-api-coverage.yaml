@@ -1424,3 +1424,83 @@ apis:
     uiRoute: /operations/apis
     uiAction: get-operations-openapi
     e2eTest: tests/e2e/operations.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: ListSmtpAccounts
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts
+    permission: mail.account.read
+    uiRoute: /mail/accounts
+    uiAction: list-smtp-accounts
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: GetSmtpAccount
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}
+    permission: mail.account.read
+    uiRoute: /mail/accounts
+    uiAction: get-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: CreateSmtpAccount
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts
+    permission: mail.account.create
+    uiRoute: /mail/accounts
+    uiAction: create-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: UpdateSmtpAccount
+    category: admin
+    http: PATCH /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}
+    permission: mail.account.update
+    uiRoute: /mail/accounts
+    uiAction: update-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: ArchiveSmtpAccount
+    category: admin
+    http: DELETE /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}
+    permission: mail.account.archive
+    uiRoute: /mail/accounts
+    uiAction: archive-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: RestoreSmtpAccount
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}:restore
+    permission: mail.account.restore
+    uiRoute: /mail/accounts
+    uiAction: restore-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: TestSmtpAccount
+    category: admin
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/accounts/{smtp_account_id}:test
+    permission: mail.account.test
+    uiRoute: /mail/accounts
+    uiAction: test-smtp-account
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: ListMailDeliveries
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/deliveries
+    permission: mail.delivery.read
+    uiRoute: /mail/deliveries
+    uiAction: list-mail-deliveries
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.admin.v1.MailAdminService
+    rpc: GetMailDelivery
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/mail/deliveries/{delivery_id}
+    permission: mail.delivery.read
+    uiRoute: /mail/deliveries
+    uiAction: get-mail-delivery
+    e2eTest: tests/e2e/mail.spec.ts
+  - service: asterloom.mail.v1.MailService
+    rpc: SendEmail
+    category: runtime
+    http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/mail:send
+    sdkTest: Backend/Tests/Asterloom.ContractTests/MailContractTests.cs
+    uiRoute: /mail/deliveries
+    uiAction: send-email
+    e2eTest: tests/e2e/mail.spec.ts

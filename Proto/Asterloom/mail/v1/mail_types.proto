@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package asterloom.mail.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Asterloom.Protocol.Mail.V1";
+
+message MailScope {
+  string tenant_id = 1;
+  string application_id = 2;
+}
+
+message SmtpAccount {
+  string id = 1;
+  MailScope scope = 2;
+  string name = 3;
+  string host = 4;
+  int32 port = 5;
+  SmtpSecurity security = 6;
+  string username = 7;
+  string from_address = 8;
+  string from_name = 9;
+  MailAccountStatus status = 10;
+  int64 version = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp archived_at = 14;
+}
+
+message MailDelivery {
+  string id = 1;
+  MailScope scope = 2;
+  string smtp_account_id = 3;
+  string client_message_id = 4;
+  repeated string to = 5;
+  repeated string cc = 6;
+  repeated string bcc = 7;
+  string reply_to = 8;
+  string subject = 9;
+  MailDeliveryStatus status = 10;
+  string provider_message_id = 11;
+  string error_code = 12;
+  string error_message = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp completed_at = 15;
+}
+
+enum SmtpSecurity {
+  SMTP_SECURITY_UNSPECIFIED = 0;
+  SMTP_SECURITY_START_TLS = 1;
+  SMTP_SECURITY_SSL_ON_CONNECT = 2;
+}
+
+enum MailAccountStatus {
+  MAIL_ACCOUNT_STATUS_UNSPECIFIED = 0;
+  MAIL_ACCOUNT_STATUS_ACTIVE = 1;
+  MAIL_ACCOUNT_STATUS_ARCHIVED = 2;
+}
+
+enum MailDeliveryStatus {
+  MAIL_DELIVERY_STATUS_UNSPECIFIED = 0;
+  MAIL_DELIVERY_STATUS_PENDING = 1;
+  MAIL_DELIVERY_STATUS_SENT = 2;
+  MAIL_DELIVERY_STATUS_FAILED = 3;
+}

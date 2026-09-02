@@ -1,27 +1,29 @@
 using System.Security.Cryptography;
-using Asterloom.Modules.Hosting;
 using Asterloom.Modules.Analytics;
 using Asterloom.Modules.Auditing;
 using Asterloom.Modules.Authorization;
 using Asterloom.Modules.Authorization.Model;
-using Asterloom.Modules.Feature;
-using Asterloom.Modules.Feature.Model;
 using Asterloom.Modules.Config;
 using Asterloom.Modules.Config.Model;
+using Asterloom.Modules.Feature;
+using Asterloom.Modules.Feature.Model;
+using Asterloom.Modules.Hosting;
+using Asterloom.Modules.Identity.Bootstrap;
+using Asterloom.Modules.Identity.Persistence;
 using Asterloom.Modules.Infrastructure;
 using Asterloom.Modules.Infrastructure.Persistence;
-using Asterloom.Modules.Identity.Persistence;
-using Asterloom.Modules.Identity.Bootstrap;
-using Asterloom.Modules.Platform;
+using Asterloom.Modules.Mail;
+using Asterloom.Modules.Mail.Model;
 using Asterloom.Modules.Outbox;
+using Asterloom.Modules.Platform;
 using Asterloom.Modules.Platform.Model;
-using Asterloom.Modules.Requests;
-using Asterloom.Modules.Targeting;
-using Asterloom.Modules.Targeting.Model;
-using Asterloom.Modules.Storage;
-using Asterloom.Modules.Telemetry;
 using Asterloom.Modules.Release;
 using Asterloom.Modules.Release.Model;
+using Asterloom.Modules.Requests;
+using Asterloom.Modules.Storage;
+using Asterloom.Modules.Targeting;
+using Asterloom.Modules.Targeting.Model;
+using Asterloom.Modules.Telemetry;
 using Asterloom.Targeting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +67,7 @@ public sealed class DatabaseMigrationTests
             new ReleaseModule(),
             new AnalyticsModule(),
             new TelemetryModule(),
+            new MailModule(),
             new InfrastructureModule());
         services.AddAsterloomIdentityCore(configuration);
 
@@ -108,6 +111,28 @@ public sealed class DatabaseMigrationTests
             pageSize: 20,
             pageToken: null,
             query: "develop",
+            includeArchived: false,
+            CancellationToken.None);
+        var mail = identityScope.ServiceProvider
+            .GetRequiredService<MailAccountManagementService>();
+        var smtpAccount = await mail.CreateAccountAsync(
+            tenant.Id.ToString(),
+            application.Id.ToString(),
+            "migration-smtp-" + suffix,
+            "smtp.example.com",
+            465,
+            SmtpSecurityMode.SslOnConnect,
+            "mailer@example.com",
+            "migration-authorization-code",
+            "mailer@example.com",
+            "Migration Mail",
+            CancellationToken.None);
+        var persistedSmtpAccounts = await mail.ListAccountsAsync(
+            tenant.Id.ToString(),
+            application.Id.ToString(),
+            pageSize: 20,
+            pageToken: null,
+            query: "migration-smtp",
             includeArchived: false,
             CancellationToken.None);
         var targeting = identityScope.ServiceProvider
@@ -392,12 +417,15 @@ public sealed class DatabaseMigrationTests
         }
 
         Assert.True(firstRun.IsPersistent);
-        Assert.Equal(11, firstRun.AppliedCount);
+        Assert.Equal(12, firstRun.AppliedCount);
         Assert.Equal(0, secondRun.AppliedCount);
-        Assert.Equal(11, secondRun.PreviouslyAppliedCount);
+        Assert.Equal(12, secondRun.PreviouslyAppliedCount);
         Assert.Contains(
             persistedEnvironments.Items,
             candidate => candidate.Id == environment.Id);
+        Assert.Contains(
+            persistedSmtpAccounts.Items,
+            candidate => candidate.Id == smtpAccount.Id);
         Assert.True(authorizationDecision.Allowed);
         Assert.True(targetingSimulation.Matched);
         Assert.Equal("enabled", targetingSimulation.SelectedVariant);
@@ -437,6 +465,8 @@ public sealed class DatabaseMigrationTests
                 AND to_regclass('release.channels') IS NOT NULL
                 AND to_regclass('release.artifacts') IS NOT NULL
                 AND to_regclass('release.releases') IS NOT NULL
+                AND to_regclass('mail.smtp_accounts') IS NOT NULL
+                AND to_regclass('mail.deliveries') IS NOT NULL
                 AND to_regclass('infrastructure.audit_events') IS NOT NULL
                 AND to_regclass('infrastructure.outbox_messages') IS NOT NULL
                 AND to_regclass('infrastructure.inbox_receipts') IS NOT NULL

@@ -5,7 +5,7 @@
 Asterloom is a unified foundation platform for global Passport accounts, application membership,
 identity, authorization, feature
 flags, targeting, dynamic configuration, desktop releases, analytics,
-telemetry, RPC/HTTP, object storage, and persistence.
+telemetry, transactional email, RPC/HTTP, object storage, and persistence.
 
 ## Documentation
 
@@ -22,12 +22,14 @@ telemetry, RPC/HTTP, object storage, and persistence.
 - [桌面自动更新指南（中文）](Docs/Module/Desktop-Updates.zh-CN.md)
 - [File storage integration guide](Docs/Module/File-Storage.md)
 - [文件存储指南（中文）](Docs/Module/File-Storage.zh-CN.md)
+- [Transactional email guide](Docs/Module/Mail.md)
+- [事务型应用邮件指南（中文）](Docs/Module/Mail.zh-CN.md)
 - [Full-capability reference application](Docs/Reference-Application.md)
 - [Standard protocol endpoints](Docs/Protocol/standard-endpoints.md)
 
 ## Repository
 
-- `Backend`: .NET 10 server, modules, C# SDKs, and tests.
+- `Backend`: .NET 10 server, MailKit delivery, modules, C# SDKs, and tests.
 - `Frontend`: Next.js management console and BFF.
 - `Proto/Asterloom`: versioned Protobuf API contracts.
 - `Docs/Protocol`: generated OpenAPI and API/UI coverage data.
@@ -84,6 +86,13 @@ The browser calls the Next.js BFF under `/api/asterloom/*`; the BFF calls
 Asterloom.Server's gRPC JSON Transcoding routes. Native .NET callers use gRPC.
 The browser receives only an opaque HttpOnly session ID; OIDC tokens remain in
 the BFF.
+
+For an end-user native product, its Public Client signs in with Authorization
+Code + PKCE and sends the resulting Access Token to its own business API. The
+business API uses `Asterloom.Sdk.Identity.AspNetCore` to validate JWT/JWKS,
+audience, and application binding, with optional real-time Asterloom permission
+checks. Confidential Client credentials remain backend-only for registration
+and service operations.
 
 ## Protocol workflow
 

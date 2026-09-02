@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Asterloom.Modules.Hosting;
 using Asterloom.Modules.Identity.Bootstrap;
 using Asterloom.Modules.Identity.Controllers;
@@ -16,7 +17,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
-using System.Threading.RateLimiting;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Asterloom.Modules.Identity;
@@ -89,9 +89,10 @@ public sealed class IdentityModule(IHostEnvironment environment) : IAsterloomMod
                     .SetUserInfoEndpointUris("/connect/userinfo");
                 options.AllowAuthorizationCodeFlow()
                     .AllowClientCredentialsFlow()
-                    .AllowPasswordFlow()
                     .AllowRefreshTokenFlow()
                     .RequireProofKeyForCodeExchange();
+                options.Configure(serverOptions =>
+                    serverOptions.CodeChallengeMethods.Remove(CodeChallengeMethods.Plain));
                 options.RegisterScopes(
                     Scopes.Email,
                     Scopes.Profile,
@@ -102,6 +103,7 @@ public sealed class IdentityModule(IHostEnvironment environment) : IAsterloomMod
                 options.SetIdentityTokenLifetime(TimeSpan.FromMinutes(5));
                 options.SetRefreshTokenLifetime(TimeSpan.FromDays(14));
                 options.SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+                options.DisableAccessTokenEncryption();
 
                 if (security.IsDevelopment)
                 {

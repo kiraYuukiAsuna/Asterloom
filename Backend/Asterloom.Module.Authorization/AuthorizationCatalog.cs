@@ -67,6 +67,14 @@ public static class AuthorizationCatalog
         Permission("identity.scope.create", "Create OIDC scopes"),
         Permission("identity.scope.update", "Update OIDC scopes"),
         Permission("identity.scope.delete", "Delete OIDC scopes"),
+        Permission("mail.account.read", "Read SMTP accounts"),
+        Permission("mail.account.create", "Create SMTP accounts"),
+        Permission("mail.account.update", "Update SMTP accounts"),
+        Permission("mail.account.archive", "Archive SMTP accounts"),
+        Permission("mail.account.restore", "Restore SMTP accounts"),
+        Permission("mail.account.test", "Test SMTP accounts"),
+        Permission("mail.delivery.read", "Read mail delivery history"),
+        Permission("mail.delivery.send", "Send application email"),
         Permission("targeting.attribute.read", "Read targeting attribute catalog"),
         Permission("targeting.segment.read", "Read targeting segments"),
         Permission("targeting.segment.create", "Create targeting segments"),
@@ -226,6 +234,7 @@ public static class AuthorizationCatalog
                 || permission.Key.StartsWith("analytics.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("telemetry.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("operations.", StringComparison.Ordinal)
+                || permission.Key.StartsWith("mail.", StringComparison.Ordinal)
                 || permission.Key is "platform.info.read"
                     or "platform.tenant.read"
                     or "platform.tenant.update"
@@ -272,7 +281,9 @@ public static class AuthorizationCatalog
                             or "telemetry.settings.update"
                             or "telemetry.source.update"
                             or "telemetry.source.archive"
-                            or "telemetry.source.restore"))
+                            or "telemetry.source.restore"
+                    || permission.Key is "mail.account.test"
+                        or "mail.delivery.send"))
             .Select(static permission => permission.Key)
             .ToArray();
         var developerPermissions = PermissionItems
@@ -305,7 +316,8 @@ public static class AuthorizationCatalog
                         || permission.Key is "release.simulation.execute"
                             or "release.update.check"
                         || permission.Key.StartsWith("analytics.", StringComparison.Ordinal)
-                        || permission.Key.StartsWith("telemetry.", StringComparison.Ordinal)))
+                        || permission.Key.StartsWith("telemetry.", StringComparison.Ordinal)
+                    || permission.Key.StartsWith("mail.", StringComparison.Ordinal)))
             .Select(static permission => permission.Key)
             .ToArray();
 

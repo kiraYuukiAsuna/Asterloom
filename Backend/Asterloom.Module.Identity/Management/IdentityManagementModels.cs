@@ -58,7 +58,6 @@ public enum ManagedOidcGrantType
     AuthorizationCode = 0,
     ClientCredentials = 1,
     RefreshToken = 2,
-    Password = 3,
 }
 
 public sealed record ManagedOidcClient(
@@ -75,7 +74,9 @@ public sealed record ManagedOidcClient(
     Guid? TenantId,
     Guid? ApplicationId,
     bool AllowUserRegistration,
-    bool AllowMembershipAutoJoin);
+    bool AllowMembershipAutoJoin,
+    bool IsSystem,
+    bool IsMutable);
 
 public sealed record ManagedOidcClientCredential(
     ManagedOidcClient Client,
@@ -87,7 +88,9 @@ public sealed record ManagedOidcScope(
     string DisplayName,
     string Description,
     IReadOnlyList<string> Resources,
-    string Version);
+    string Version,
+    bool IsSystem,
+    bool IsMutable);
 
 public sealed record ManagedIdentitySession(
     string Id,

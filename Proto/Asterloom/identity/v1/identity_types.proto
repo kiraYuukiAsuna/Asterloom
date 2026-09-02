@@ -50,6 +50,8 @@ message OidcClient {
   string application_id = 12;
   bool allow_user_registration = 13;
   bool allow_membership_auto_join = 14;
+  bool is_system = 15;
+  bool is_mutable = 16;
 }
 
 message OidcClientCredential {
@@ -64,6 +66,8 @@ message OidcScope {
   string description = 4;
   repeated string resources = 5;
   string version = 6;
+  bool is_system = 7;
+  bool is_mutable = 8;
 }
 
 message IdentitySession {
@@ -97,11 +101,12 @@ enum OidcApplicationType {
 }
 
 enum OidcGrantType {
+  reserved 4;
+  reserved "OIDC_GRANT_TYPE_PASSWORD";
   OIDC_GRANT_TYPE_UNSPECIFIED = 0;
   OIDC_GRANT_TYPE_AUTHORIZATION_CODE = 1;
   OIDC_GRANT_TYPE_CLIENT_CREDENTIALS = 2;
   OIDC_GRANT_TYPE_REFRESH_TOKEN = 3;
-  OIDC_GRANT_TYPE_PASSWORD = 4;
 }
 
 enum ApplicationMembershipStatus {

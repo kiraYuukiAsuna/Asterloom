@@ -33,10 +33,10 @@
 | 项目 | 当前状态 |
 | --- | --- |
 | 后端与 SDK | .NET 10 模块化单体及 C# SDK 已覆盖 Platform、Identity、Authorization、Targeting、Feature、Config、Release、Analytics、Telemetry、Storage 与 RPC/Operations |
-| 协议 | 179 个自定义 RPC 均具有 `google.api.http` 映射，可通过原生 gRPC 与 HTTP/JSON 使用，并已生成 OpenAPI 与 Kiota TypeScript Client |
-| 管理覆盖 | 168/168 个 Admin RPC 均已绑定 Permission、Web 路由、页面操作标记和 E2E 旅程，覆盖率为 100% |
+| 协议 | 189 个自定义 RPC 均具有 `google.api.http` 映射，可通过原生 gRPC 与 HTTP/JSON 使用，并已生成 OpenAPI 与 Kiota TypeScript Client |
+| 管理覆盖 | 177/177 个 Admin RPC 均已绑定 Permission、Web 路由、页面操作标记和 E2E 旅程，覆盖率为 100% |
 | Web Console | Passport/BFF、全部管理工作区、Operations API 目录与健康页面均已实现 |
-| 自动化验证 | 49 个后端单元测试、9 个集成测试、21 个契约测试、34 个前端测试和 17 条浏览器旅程通过 |
+| 自动化验证 | 49 个后端单元测试、14 个集成测试、24 个契约测试、40 个前端测试和 18 条浏览器旅程通过 |
 | 构建与安全 | 后端 Release 构建 0 警告/0 错误，Next.js 生产构建通过，当前 NuGet 与 npm 依赖审计无已知漏洞 |
 
 该快照表示代码与自动化验收状态，不等同于任意部署环境已经完成容量评估、备份恢复演练或生产变更审批；这些工作仍按第 18、19 节执行。
@@ -57,6 +57,7 @@ Asterloom 为客户端应用和后端服务提供统一的基础平台能力：
 | Desktop Update | 管理桌面版本、通道、更新包和灰度升级 |
 | Analytics | 采集和分析产品事件与业务结果 |
 | Telemetry | 采集技术健康、日志、指标、Trace 和诊断信息 |
+| Mail | 集中管理应用 SMTP 账号并发送事务邮件 |
 | RPC / HTTP | 通过同一份契约提供原生 gRPC 和 HTTP/JSON |
 | File Storage | 基于 S3 协议存储、下载和管理对象 |
 | Persistence | 使用 PostgreSQL 持久化平台数据 |
@@ -137,7 +138,7 @@ flowchart LR
 1. **契约层**：`Proto/Asterloom` 中的 Protobuf 契约、HTTP 映射和生成的 OpenAPI。
 2. **宿主层**：`Asterloom.Server`，负责进程启动、模块装配、中间件、认证、路由和生命周期。
 3. **领域模块层**：`Asterloom.Module.*`，负责各能力的用例、领域规则和端口定义。
-4. **基础设施层**：PostgreSQL、S3、OpenTelemetry、时钟、ID、事务、迁移和 Outbox 等适配器。
+4. **基础设施层**：PostgreSQL、S3、SMTP/MailKit、OpenTelemetry、时钟、ID、事务、迁移和 Outbox 等适配器。
 5. **SDK 层**：`Asterloom.Sdk.*`，为 .NET 客户端提供统一调用、缓存、重试和本地行为。
 6. **管理体验层**：`Frontend`，通过转码后的 HTTP/JSON API 完成平台管理、测试和运维查看。
 
@@ -145,8 +146,8 @@ flowchart LR
 
 虽然首期部署在同一服务进程中，API 和代码必须区分控制面与运行面：
 
-- **控制面**：用户、权限、应用、环境、Flag、Segment、配置、发布、存储策略等管理操作。
-- **运行面**：Flag 评估、配置拉取、更新检查、Analytics 批量摄取等高频调用。
+- **控制面**：用户、权限、应用、环境、Flag、Segment、配置、发布、SMTP 账号、存储策略等管理操作。
+- **运行面**：Flag 评估、配置拉取、更新检查、Analytics 批量摄取、事务邮件发送等业务调用。
 
 运行面不得依赖管理页面会话；控制面必须执行更严格的权限检查和审计。二者可以共享领域服务，但应使用不同的 gRPC Service 和权限策略。
 
@@ -172,12 +173,14 @@ Backend/
   Asterloom.Module.Release/
   Asterloom.Module.Analytics/
   Asterloom.Module.Telemetry/
+  Asterloom.Module.Mail/
   Asterloom.Module.Rpc/
   Asterloom.Module.Storage/
   Asterloom.Module.Infrastructure/
 
   Asterloom.Sdk/
   Asterloom.Sdk.Identity/
+  Asterloom.Sdk.Identity.AspNetCore/
   Asterloom.Sdk.Authorization/
   Asterloom.Sdk.Feature/
   Asterloom.Sdk.Targeting/
@@ -185,6 +188,7 @@ Backend/
   Asterloom.Sdk.Release/
   Asterloom.Sdk.Analytics/
   Asterloom.Sdk.Telemetry/
+  Asterloom.Sdk.Mail/
   Asterloom.Sdk.Rpc/
   Asterloom.Sdk.Storage/
 
@@ -313,6 +317,7 @@ flowchart TD
 | Release | 应用版本、通道、Manifest、Artifact、灰度更新 | 通用对象存储实现 |
 | Analytics | 产品事件 Schema、摄取、聚合和查询 | 日志、Trace 和基础设施指标 |
 | Telemetry | OpenTelemetry 配置、采样、导出和技术健康 | 产品行为分析 |
+| Mail | SMTP 账号、凭据保护、幂等投递和投递历史 | 业务模板、营销群发和邮件正文持久化 |
 | Rpc | gRPC/HTTP 公共配置、拦截器、错误映射、协议元数据 | 业务用例 |
 | Storage | Bucket/Object 管理、上传下载、元数据和访问策略 | Release 业务状态 |
 | Infrastructure | Npgsql、S3、迁移、Outbox、加密、时钟等适配器 | 业务策略 |
@@ -327,13 +332,14 @@ flowchart TD
 | Server | ASP.NET Core、Grpc.AspNetCore |
 | JSON Transcoding | Microsoft.AspNetCore.Grpc.JsonTranscoding |
 | OpenAPI | Microsoft.AspNetCore.Grpc.Swagger + Swashbuckle.AspNetCore + OpenAPI |
-| Identity | ASP.NET Core Identity + OpenIddict Server/Client/Validation |
+| Identity | ASP.NET Core Identity + OpenIddict Server/Client/Validation + JwtBearer/JWKS Resource Server SDK |
 | Authorization | Casbin.NET |
 | Feature | OpenFeature .NET SDK + Asterloom Provider |
 | Config SDK | HttpClient + System.Text.Json |
 | Desktop Update | 自定义 Manifest + Velopack |
 | Analytics | 自研 Analytics SDK + HttpClient |
 | Telemetry | OpenTelemetry .NET SDK + OTLP |
+| Mail | MailKit + MimeKit；SMTP 凭据使用 ASP.NET Core Data Protection 加密 |
 | RPC Client | Grpc.Net.Client |
 | HTTP Client Generation | Kiota；确有不兼容时通过 ADR 改用 OpenAPI Generator |
 | Storage | AWSSDK.S3 |
@@ -374,24 +380,33 @@ Identity 模块允许使用 OpenIddict/ASP.NET Core Identity 官方 EF Core Stor
 支持以下标准流程：
 
 - 用户交互登录：Authorization Code Flow + PKCE。
-- 桌面客户端：系统浏览器 + Authorization Code Flow + PKCE；回调使用经过注册的 Loopback URI 或自定义 URI。
+- 桌面客户端：Public Client + 系统浏览器 + Authorization Code Flow + PKCE；回调使用经过注册的 Loopback URI
+  或自定义 URI。客户端申请业务 API Scope，并把所得用户 Access Token 作为 Bearer 调用业务后端。
 - 服务到服务：Client Credentials Flow。
-- 业务自有登录页：只有绑定 Platform Application 的 Confidential 可信后端可以使用受控 Password Flow；
-  浏览器不得直接调用 Token Endpoint，Client Secret 和用户 Token 不得离开后端。
+- 浏览器业务：推荐由业务 BFF 使用 Authorization Code + PKCE；Token 加密保存在服务端 Session。
+- 所有用户登录统一使用 Authorization Code + S256 PKCE；Password Flow 和 Implicit Flow 禁用。
+  浏览器 JavaScript 不得直接调用 Token Endpoint，Client Secret 不得离开后端。
 - Refresh Token：仅向允许离线访问且满足安全策略的客户端签发，并启用轮换和重用检测。
 
-不得启用 Implicit Flow。Password Flow 不是公共客户端能力，仅作为业务后端代用户登录的受控接口，并且必须
-同时满足 Confidential Client、Application Binding、Active User 和 Active Application Membership。
+不得启用 Password Flow 或 Implicit Flow。业务后端不得代用户收集 Passport 密码；业务后台账号注册与
+服务调用使用独立 Confidential Client，用户身份必须来自标准 Authorization Code 流程。
 
-签名密钥、加密密钥和 ASP.NET Core Data Protection Key Ring 必须持久化到容器外，并支持轮换。Issuer 在同一环境中必须稳定，不能随容器主机名变化。
+Access Token 是由 Signing Certificate 签发、可通过 OIDC JWKS 验证的 `at+jwt`；Authorization Code、
+Refresh Token 等仍由协议服务器保护。业务 ASP.NET Core API 使用独立 Resource Audience，并验证 Issuer、
+Audience、Token 类型、过期时间、用户主体和 Tenant/Application 绑定。签名密钥、加密密钥和 ASP.NET Core
+Data Protection Key Ring 必须持久化到容器外并支持轮换。Issuer 在同一环境中必须稳定，不能随容器主机名变化。
 
 Passport User 是全局账号，同一用户跨业务保持一个稳定 `sub`。每个业务通过 Identity Application Membership
 独立控制用户是否可进入该 Application，再由 Authorization Role Binding/Policy 控制具体动作。管理人员和普通
 业务用户使用同一账号存储；Passport Role 只授予控制面人员，普通业务用户默认不持有管理角色。
 
-业务注册与登录页面属于各业务产品。业务后端以绑定应用的 Client Credentials 调用 Headless Identity API，
+业务注册与登录页面属于各业务产品。注册由业务后端以绑定应用的 Client Credentials 调用 Headless Identity API，
 请求体不得自行选择 Tenant/Application。注册已有邮箱时必须验证原密码，只添加当前应用 Membership，不能创建
-重复全局账号。成员关系移除后，当前应用的已有用户 Token 调用受保护 API 和 Refresh 都必须立即失败，其他应用不受影响。
+重复全局账号。原生登录由 Public Client 直接走 Passport PKCE，不经过业务后端 Client Secret。
+
+成员关系移除后 Refresh 立即失败；只执行本地 JWT 验证的外部业务 API 最长存在一个 Access Token 生命周期的失效
+窗口。高风险端点通过 Resource Server SDK 的远程 Permission Policy 每次调用 Asterloom，此时 Membership 和
+Role/Policy 变化立即生效。其他应用不受影响。
 
 ### 9.2 Web 管理后台会话
 
@@ -813,6 +828,7 @@ Sonner 用于异步操作反馈；cmdk 用于全局命令面板、资源跳转�
 | Release | `/releases`、`/channels`、`/artifacts` | 上传、签名状态、Manifest、通道、灰度、暂停、晋级、回滚、更新模拟 |
 | Analytics | `/analytics/schemas`、`/analytics/explorer` | Event Schema、写入 Key、事件浏览、聚合、保留和导出 |
 | Telemetry | `/telemetry/sources`、`/telemetry/health` | 来源、采样、Exporter、Collector 健康、诊断跳转 |
+| Mail | `/mail/accounts`、`/mail/deliveries` | SMTP 账号、凭据轮换、测试、归档/恢复、应用邮件发送和投递历史 |
 | Storage | `/storage/buckets`、`/storage/objects` | Bucket、对象浏览、上传、下载、删除、元数据、预签名链接 |
 | RPC / Operations | `/operations/apis`、`/operations/health` | API 目录、OpenAPI、依赖健康；版本来自 Platform Info，受控测试调用位于对应领域页面 |
 | Audit | `/audit` | 搜索、筛选、详情、关联请求和导出 |

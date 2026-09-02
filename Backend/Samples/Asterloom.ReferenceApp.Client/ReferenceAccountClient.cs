@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -10,11 +9,7 @@ internal sealed class ReferenceAccountClient : IDisposable
 
     public ReferenceAccountClient(Uri baseAddress)
     {
-        _client = new HttpClient(new HttpClientHandler
-        {
-            CookieContainer = new CookieContainer(),
-            UseCookies = true,
-        })
+        _client = new HttpClient
         {
             BaseAddress = baseAddress,
         };
@@ -43,34 +38,6 @@ internal sealed class ReferenceAccountClient : IDisposable
             new { email, token },
             cancellationToken);
         return await ReadAsync(response, cancellationToken);
-    }
-
-    public async Task<JsonElement> LoginAndReadSessionAsync(
-        string email,
-        string password,
-        CancellationToken cancellationToken)
-    {
-        using (var login = await _client.PostAsJsonAsync(
-            "api/reference/account/login",
-            new { email, password },
-            cancellationToken))
-        {
-            await ReadAsync(login, cancellationToken);
-        }
-
-        using var current = await _client.GetAsync(
-            "api/reference/account/me",
-            cancellationToken);
-        return await ReadAsync(current, cancellationToken);
-    }
-
-    public async Task LogoutAsync(CancellationToken cancellationToken)
-    {
-        using var response = await _client.PostAsync(
-            "api/reference/account/logout",
-            content: null,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
     }
 
     public void Dispose() => _client.Dispose();

@@ -5,14 +5,12 @@ namespace Asterloom.ReferenceApp.Backend;
 
 internal sealed class ReferenceIdentityGateway : IDisposable
 {
-    private readonly AsterloomIdentityClient _identity;
     private readonly AsterloomAuthenticatedTransport _transport;
 
     public ReferenceIdentityGateway(
         AsterloomIdentityClient identity,
         ReferenceIdentityOptions options)
     {
-        _identity = identity;
         _transport = AsterloomAuthenticatedTransport.Create(
             options.AsterloomBaseAddress,
             cancellationToken => identity.GetServiceAccessTokenAsync(
@@ -22,17 +20,6 @@ internal sealed class ReferenceIdentityGateway : IDisposable
     }
 
     public AsterloomIdentityAccessClient Accounts { get; }
-
-    public Task<AsterloomTokenSet> AuthenticateAsync(
-        string email,
-        string password,
-        CancellationToken cancellationToken) =>
-        _identity.AuthenticateWithPasswordAsync(email, password, cancellationToken);
-
-    public Task<AsterloomTokenSet> RefreshAsync(
-        AsterloomTokenSet tokens,
-        CancellationToken cancellationToken) =>
-        _identity.RefreshUserTokensAsync(tokens, cancellationToken);
 
     public void Dispose() => _transport.Dispose();
 }

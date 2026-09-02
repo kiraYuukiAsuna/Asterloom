@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -12,6 +14,7 @@ using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Platform;
 using Asterloom.Sdk.Identity;
 using Grpc.Net.Client;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
@@ -24,19 +27,25 @@ public sealed partial class IdentityAdminContractTests(
     : IClassFixture<WebApplicationFactory<Program>>
 {
     private static readonly string[] InitialScopeResources = ["contract-api"];
+    private static readonly string[] AsterloomApiResources = ["asterloom-api"];
     private static readonly string[] UpdatedScopeResources =
         ["contract-api", "contract-worker"];
     private static readonly string[] ClientCredentialsGrant =
         ["OIDC_GRANT_TYPE_CLIENT_CREDENTIALS"];
+    private static readonly string[] DeprecatedPasswordGrant =
+        ["OIDC_GRANT_TYPE_PASSWORD"];
+    private static readonly string[] BusinessServiceScopes = ["asterloom.api"];
+    private static readonly string[] BusinessRedirectUris = ["http://127.0.0.1/callback"];
+    private static readonly string[] BusinessPostLogoutRedirectUris =
+        ["http://127.0.0.1/signed-out"];
     private static readonly string[] ViewerRole = ["Viewer"];
     private static readonly string[] DeveloperViewerRoles = ["Developer", "Viewer"];
-    private static readonly string[] BusinessGrantTypes =
+    private static readonly string[] BusinessLoginGrantTypes =
     [
-        "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS",
-        "OIDC_GRANT_TYPE_PASSWORD",
+        "OIDC_GRANT_TYPE_AUTHORIZATION_CODE",
         "OIDC_GRANT_TYPE_REFRESH_TOKEN",
     ];
-    private static readonly string[] BusinessScopes =
+    private static readonly string[] BusinessLoginScopes =
     [
         "asterloom.api",
         "openid",
@@ -50,6 +59,94 @@ public sealed partial class IdentityAdminContractTests(
 
     private readonly WebApplicationFactory<Program> _factory =
         factory.WithWebHostBuilder(_ => { });
+
+    [Fact]
+    public async Task BuiltInIdentityResourcesAreImmutable()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var webClient = await client.GetFromJsonAsync<ClientJson>(
+            "/api/v1/identity/clients/asterloom-web");
+        Assert.NotNull(webClient);
+        Assert.True(webClient.IsSystem);
+        Assert.False(webClient.IsMutable);
+
+        using (var update = await client.PatchAsJsonAsync(
+            "/api/v1/identity/clients/asterloom-web",
+            new
+            {
+                displayName = "Unsafe update",
+                expectedVersion = webClient.Version,
+            }))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+            Assert.Contains(
+                "identity_client_protected",
+                await update.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+
+        using (var rotate = await client.PostAsJsonAsync(
+            "/api/v1/identity/clients/asterloom-web:rotate-secret",
+            new { expectedVersion = webClient.Version }))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, rotate.StatusCode);
+            Assert.Contains(
+                "identity_client_protected",
+                await rotate.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+
+        using (var delete = await client.DeleteAsync(
+            "/api/v1/identity/clients/asterloom-web" +
+            $"?expectedVersion={webClient.Version}"))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, delete.StatusCode);
+            Assert.Contains(
+                "identity_client_protected",
+                await delete.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+
+        var scopes = await client.GetFromJsonAsync<ScopeListJson>(
+            "/api/v1/identity/scopes?pageSize=100");
+        var apiScope = Assert.Single(
+            scopes!.Scopes,
+            static scope => scope.Name == "asterloom.api");
+        Assert.True(apiScope.IsSystem);
+        Assert.False(apiScope.IsMutable);
+
+        using (var update = await client.PatchAsJsonAsync(
+            $"/api/v1/identity/scopes/{apiScope.Id}",
+            new
+            {
+                displayName = "Unsafe update",
+                description = string.Empty,
+                resources = AsterloomApiResources,
+                expectedVersion = apiScope.Version,
+            }))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+            Assert.Contains(
+                "identity_scope_protected",
+                await update.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+
+        using (var delete = await client.DeleteAsync(
+            $"/api/v1/identity/scopes/{apiScope.Id}?expectedVersion={apiScope.Version}"))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, delete.StatusCode);
+            Assert.Contains(
+                "identity_scope_protected",
+                await delete.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+
+        Assert.NotNull(await client.GetFromJsonAsync<ClientJson>(
+            "/api/v1/identity/clients/asterloom-web"));
+        Assert.NotNull(await client.GetFromJsonAsync<ScopeJson>(
+            $"/api/v1/identity/scopes/{apiScope.Id}"));
+    }
 
     [Fact]
     public async Task JsonTranscodingManagesCompleteIdentitySurface()
@@ -92,6 +189,10 @@ public sealed partial class IdentityAdminContractTests(
             }));
         Assert.False(string.IsNullOrWhiteSpace(credential.ClientSecret));
         Assert.Equal("OIDC_APPLICATION_TYPE_WEB", credential.Client.ApplicationType);
+        Assert.False(credential.Client.IsSystem);
+        Assert.True(credential.Client.IsMutable);
+        Assert.False(scope.IsSystem);
+        Assert.True(scope.IsMutable);
         var originalSecret = credential.ClientSecret;
         var oidcClient = await client.GetFromJsonAsync<ClientJson>(
             $"/api/v1/identity/clients/{credential.Client.ClientId}");
@@ -290,6 +391,25 @@ public sealed partial class IdentityAdminContractTests(
     }
 
     [Fact]
+    public async Task DeprecatedPasswordGrantCannotBeConfigured()
+    {
+        using var admin = await CreateAuthorizedClientAsync();
+        using var response = await admin.PostAsJsonAsync(
+            "/api/v1/identity/clients",
+            new
+            {
+                clientId = "password-grant-" + Guid.NewGuid().ToString("N"),
+                displayName = "Rejected password client",
+                applicationType = "OIDC_APPLICATION_TYPE_WEB",
+                clientType = "OIDC_CLIENT_TYPE_CONFIDENTIAL",
+                grantTypes = DeprecatedPasswordGrant,
+                scopes = BusinessServiceScopes,
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task BusinessApplicationsShareGlobalAccountsButKeepApplicationAccessIsolated()
     {
         using var admin = await CreateAuthorizedClientAsync();
@@ -332,6 +452,16 @@ public sealed partial class IdentityAdminContractTests(
             tenant.Id,
             applicationB.Id,
             allowRegistration: false);
+        var loginClientA = await CreateBusinessLoginClientAsync(
+            admin,
+            "business-a-native-" + suffix,
+            tenant.Id,
+            applicationA.Id);
+        var loginClientB = await CreateBusinessLoginClientAsync(
+            admin,
+            "business-b-native-" + suffix,
+            tenant.Id,
+            applicationB.Id);
 
         var directUser = await SendAsync<UserJson>(admin.PostAsJsonAsync(
             "/api/v1/identity/users",
@@ -392,14 +522,12 @@ public sealed partial class IdentityAdminContractTests(
         Assert.True(confirmed.EmailConfirmed);
         Assert.Equal("IDENTITY_USER_STATUS_ACTIVE", confirmed.Status);
 
-        var tokenA = await RequestPasswordTokenAsync(
-            clientA.Client.ClientId,
-            clientA.ClientSecret,
+        var tokenA = await RequestAuthorizationCodeTokenAsync(
+            loginClientA.Client.ClientId,
             email,
             password);
-        var tokenB = await RequestPasswordTokenAsync(
-            clientB.Client.ClientId,
-            clientB.ClientSecret,
+        var tokenB = await RequestAuthorizationCodeTokenAsync(
+            loginClientB.Client.ClientId,
             email,
             password);
         using var userA = CreateBearerClient(tokenA.AccessToken);
@@ -507,16 +635,14 @@ public sealed partial class IdentityAdminContractTests(
         }
 
         using (var refreshA = await RequestRefreshTokenAsync(
-            clientA.Client.ClientId,
-            clientA.ClientSecret,
+            loginClientA.Client.ClientId,
             tokenA.RefreshToken))
         {
             Assert.Equal(HttpStatusCode.BadRequest, refreshA.StatusCode);
         }
 
-        var stillValidB = await RequestPasswordTokenAsync(
-            clientB.Client.ClientId,
-            clientB.ClientSecret,
+        var stillValidB = await RequestAuthorizationCodeTokenAsync(
+            loginClientB.Client.ClientId,
             email,
             password);
         Assert.False(string.IsNullOrWhiteSpace(stillValidB.AccessToken));
@@ -530,12 +656,11 @@ public sealed partial class IdentityAdminContractTests(
             suspended.EnsureSuccessStatusCode();
         }
 
-        using var suspendedLogin = await RequestPasswordTokenResponseAsync(
-            clientB.Client.ClientId,
-            clientB.ClientSecret,
-            email,
-            password);
-        Assert.Equal(HttpStatusCode.BadRequest, suspendedLogin.StatusCode);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            RequestAuthorizationCodeTokenAsync(
+                loginClientB.Client.ClientId,
+                email,
+                password));
     }
 
     [Fact]
@@ -699,11 +824,34 @@ public sealed partial class IdentityAdminContractTests(
                 displayName = clientId,
                 applicationType = "OIDC_APPLICATION_TYPE_WEB",
                 clientType = "OIDC_CLIENT_TYPE_CONFIDENTIAL",
-                grantTypes = BusinessGrantTypes,
-                scopes = BusinessScopes,
+                grantTypes = ClientCredentialsGrant,
+                scopes = BusinessServiceScopes,
                 tenantId,
                 applicationId,
                 allowUserRegistration = allowRegistration,
+                allowMembershipAutoJoin = false,
+            }));
+
+    private static async Task<ClientCredentialJson> CreateBusinessLoginClientAsync(
+        HttpClient admin,
+        string clientId,
+        string tenantId,
+        string applicationId) =>
+        await SendAsync<ClientCredentialJson>(admin.PostAsJsonAsync(
+            "/api/v1/identity/clients",
+            new
+            {
+                clientId,
+                displayName = clientId,
+                applicationType = "OIDC_APPLICATION_TYPE_NATIVE",
+                clientType = "OIDC_CLIENT_TYPE_PUBLIC",
+                grantTypes = BusinessLoginGrantTypes,
+                redirectUris = BusinessRedirectUris,
+                postLogoutRedirectUris = BusinessPostLogoutRedirectUris,
+                scopes = BusinessLoginScopes,
+                tenantId,
+                applicationId,
+                allowUserRegistration = false,
                 allowMembershipAutoJoin = true,
             }));
 
@@ -724,44 +872,94 @@ public sealed partial class IdentityAdminContractTests(
         return client;
     }
 
-    private async Task<TokenJson> RequestPasswordTokenAsync(
+    private async Task<TokenJson> RequestAuthorizationCodeTokenAsync(
         string clientId,
-        string clientSecret,
         string email,
         string password)
     {
-        using var response = await RequestPasswordTokenResponseAsync(
-            clientId,
-            clientSecret,
-            email,
-            password);
-        return await ReadTokenAsync(response);
-    }
+        const string redirectUri = "http://127.0.0.1/callback";
+        const string verifier =
+            "asterloom-contract-pkce-verifier-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var challenge = WebEncoders.Base64UrlEncode(
+            SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        using var browser = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+        });
+        var authorizePath = QueryHelpers.AddQueryString(
+            "/connect/authorize",
+            new Dictionary<string, string?>
+            {
+                [Parameters.ClientId] = clientId,
+                [Parameters.RedirectUri] = redirectUri,
+                [Parameters.ResponseType] = ResponseTypes.Code,
+                [Parameters.Scope] =
+                    "asterloom.api openid profile email roles offline_access",
+                [Parameters.CodeChallenge] = challenge,
+                [Parameters.CodeChallengeMethod] = CodeChallengeMethods.Sha256,
+                [Parameters.State] = "contract-state",
+                [Parameters.Nonce] = "contract-nonce",
+            });
+        using var challengeResponse = await browser.GetAsync(authorizePath);
+        if (challengeResponse.StatusCode != HttpStatusCode.Redirect
+            || challengeResponse.Headers.Location is not { } loginLocation)
+        {
+            throw new InvalidOperationException(
+                $"Passport did not start the authorization flow for '{clientId}'.");
+        }
 
-    private async Task<HttpResponseMessage> RequestPasswordTokenResponseAsync(
-        string clientId,
-        string clientSecret,
-        string email,
-        string password)
-    {
-        using var client = _factory.CreateClient();
-        return await client.PostAsync(
+        using var loginPage = await browser.GetAsync(loginLocation);
+        loginPage.EnsureSuccessStatusCode();
+        var html = await loginPage.Content.ReadAsStringAsync();
+        var antiforgery = WebUtility.HtmlDecode(
+            AntiforgeryTokenPattern().Match(html).Groups[1].Value);
+        var returnUrl = WebUtility.HtmlDecode(
+            HiddenValuePattern("ReturnUrl").Match(html).Groups[1].Value);
+        using var loginResponse = await browser.PostAsync(
+            "/passport/login",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Email"] = email,
+                ["Password"] = password,
+                ["RememberMe"] = "false",
+                ["ReturnUrl"] = returnUrl,
+                ["__RequestVerificationToken"] = antiforgery,
+            }));
+        if (!loginResponse.IsSuccessStatusCode
+            || !(await loginResponse.Content.ReadAsStringAsync()).Contains(
+                "http-equiv=\"refresh\"",
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Passport rejected the interactive sign-in for '{clientId}'.");
+        }
+
+        using var authorizationResponse = await browser.GetAsync(returnUrl);
+        if (authorizationResponse.StatusCode != HttpStatusCode.Redirect
+            || authorizationResponse.Headers.Location is not { } callback)
+        {
+            throw new InvalidOperationException(
+                $"Passport did not complete the authorization flow for '{clientId}'.");
+        }
+
+        var query = QueryHelpers.ParseQuery(callback.Query);
+        var code = query[Parameters.Code].Single()!;
+        using var tokenResponse = await browser.PostAsync(
             "/connect/token",
             new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                [Parameters.GrantType] = GrantTypes.Password,
+                [Parameters.GrantType] = GrantTypes.AuthorizationCode,
                 [Parameters.ClientId] = clientId,
-                [Parameters.ClientSecret] = clientSecret,
-                [Parameters.Username] = email,
-                [Parameters.Password] = password,
-                [Parameters.Scope] =
-                    "asterloom.api openid profile email roles offline_access",
+                [Parameters.Code] = code,
+                [Parameters.RedirectUri] = redirectUri,
+                [Parameters.CodeVerifier] = verifier,
             }));
+        return await ReadTokenAsync(tokenResponse);
     }
 
     private async Task<HttpResponseMessage> RequestRefreshTokenAsync(
         string clientId,
-        string clientSecret,
         string refreshToken)
     {
         using var client = _factory.CreateClient();
@@ -771,7 +969,6 @@ public sealed partial class IdentityAdminContractTests(
             {
                 [Parameters.GrantType] = GrantTypes.RefreshToken,
                 [Parameters.ClientId] = clientId,
-                [Parameters.ClientSecret] = clientSecret,
                 [Parameters.RefreshToken] = refreshToken,
             }));
     }
@@ -832,7 +1029,9 @@ public sealed partial class IdentityAdminContractTests(
         string ClientType,
         IReadOnlyList<string> GrantTypes,
         IReadOnlyList<string> Scopes,
-        string Version);
+        string Version,
+        bool IsSystem,
+        bool IsMutable);
 
     private sealed record ClientCredentialJson(ClientJson Client, string ClientSecret);
 
@@ -844,7 +1043,9 @@ public sealed partial class IdentityAdminContractTests(
         string DisplayName,
         string Description,
         IReadOnlyList<string> Resources,
-        string Version);
+        string Version,
+        bool IsSystem,
+        bool IsMutable);
 
     private sealed record ScopeListJson(IReadOnlyList<ScopeJson> Scopes);
 
