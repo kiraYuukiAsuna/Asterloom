@@ -150,9 +150,15 @@ api_mutate() {
 }
 
 tenants_file="$temporary_directory/tenants.json"
-api_get "/api/v1/tenants?pageSize=100&query=asterloom-reference-identity" "$tenants_file"
+api_get "/api/v1/tenants?pageSize=100&query=asterloom-reference-identity&includeArchived=true" "$tenants_file"
 identity_tenant_id="$(jq --raw-output \
   '.tenants[]? | select(.slug == "asterloom-reference-identity") | .id' \
+  "$tenants_file" | head -n 1)"
+identity_tenant_version="$(jq --raw-output \
+  '.tenants[]? | select(.slug == "asterloom-reference-identity") | .version' \
+  "$tenants_file" | head -n 1)"
+identity_tenant_archived_at="$(jq --raw-output \
+  '.tenants[]? | select(.slug == "asterloom-reference-identity") | .archivedAt // empty' \
   "$tenants_file" | head -n 1)"
 if [[ -z "$identity_tenant_id" ]]; then
   identity_tenant_file="$temporary_directory/identity-tenant.json"
@@ -160,14 +166,26 @@ if [[ -z "$identity_tenant_id" ]]; then
     '{"slug":"asterloom-reference-identity","displayName":"Asterloom Reference Identity"}' \
     "$identity_tenant_file"
   identity_tenant_id="$(jq --raw-output '.id' "$identity_tenant_file")"
+elif [[ -n "$identity_tenant_archived_at" ]]; then
+  identity_tenant_file="$temporary_directory/identity-tenant-restore.json"
+  api_mutate POST "/api/v1/tenants/$identity_tenant_id:restore" \
+    "$(jq -cn --arg version "$identity_tenant_version" \
+      '{expectedVersion:($version | tonumber)}')" \
+    "$identity_tenant_file"
 fi
 require_value "reference Identity tenant" "$identity_tenant_id"
 
 applications_file="$temporary_directory/applications.json"
-api_get "/api/v1/tenants/$identity_tenant_id/applications?pageSize=100&query=passport-demo" \
+api_get "/api/v1/tenants/$identity_tenant_id/applications?pageSize=100&query=passport-demo&includeArchived=true" \
   "$applications_file"
 identity_application_id="$(jq --raw-output \
   '.applications[]? | select(.slug == "passport-demo") | .id' \
+  "$applications_file" | head -n 1)"
+identity_application_version="$(jq --raw-output \
+  '.applications[]? | select(.slug == "passport-demo") | .version' \
+  "$applications_file" | head -n 1)"
+identity_application_archived_at="$(jq --raw-output \
+  '.applications[]? | select(.slug == "passport-demo") | .archivedAt // empty' \
   "$applications_file" | head -n 1)"
 if [[ -z "$identity_application_id" ]]; then
   identity_application_file="$temporary_directory/identity-application.json"
@@ -175,6 +193,12 @@ if [[ -z "$identity_application_id" ]]; then
     '{"slug":"passport-demo","displayName":"Passport Business Integration Demo"}' \
     "$identity_application_file"
   identity_application_id="$(jq --raw-output '.id' "$identity_application_file")"
+elif [[ -n "$identity_application_archived_at" ]]; then
+  identity_application_file="$temporary_directory/identity-application-restore.json"
+  api_mutate POST "/api/v1/tenants/$identity_tenant_id/applications/$identity_application_id:restore" \
+    "$(jq -cn --arg version "$identity_application_version" \
+      '{expectedVersion:($version | tonumber)}')" \
+    "$identity_application_file"
 fi
 require_value "reference Identity application" "$identity_application_id"
 
