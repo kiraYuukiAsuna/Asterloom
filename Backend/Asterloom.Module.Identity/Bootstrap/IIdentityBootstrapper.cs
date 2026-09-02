@@ -56,8 +56,17 @@ internal sealed class IdentityBootstrapper(
     private async Task RemoveLegacyPasswordGrantPermissionsAsync(
         CancellationToken cancellationToken)
     {
+        // Materialize the query before updating applications. OpenIddict streams
+        // ListAsync from the EF Core data reader, and Npgsql does not allow an
+        // UPDATE on the same connection while that reader is still active.
+        var applications = new List<object>();
         await foreach (var application in applicationManager.ListAsync(
             cancellationToken: cancellationToken))
+        {
+            applications.Add(application);
+        }
+
+        foreach (var application in applications)
         {
             var descriptor = new OpenIddictApplicationDescriptor();
             await applicationManager.PopulateAsync(

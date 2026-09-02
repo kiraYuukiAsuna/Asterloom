@@ -125,31 +125,40 @@ public sealed partial class IdentityProtocolTests
     [Fact]
     public async Task BootstrapRemovesLegacyPasswordGrantPermissions()
     {
-        var clientId = "legacy-password-" + Guid.NewGuid().ToString("N");
+        var clientIds = Enumerable.Range(0, 2)
+            .Select(_ => "legacy-password-" + Guid.NewGuid().ToString("N"))
+            .ToArray();
         using var scope = _factory.Services.CreateScope();
         var applications = scope.ServiceProvider
             .GetRequiredService<IOpenIddictApplicationManager>();
-        await applications.CreateAsync(new OpenIddictApplicationDescriptor
+        foreach (var clientId in clientIds)
         {
-            ClientId = clientId,
-            ClientSecret = "legacy-test-secret",
-            ClientType = ClientTypes.Confidential,
-            DisplayName = "Legacy password client",
-            Permissions =
+            await applications.CreateAsync(new OpenIddictApplicationDescriptor
             {
-                Permissions.Endpoints.Token,
-                Permissions.GrantTypes.Password,
-            },
-        });
+                ClientId = clientId,
+                ClientSecret = "legacy-test-secret",
+                ClientType = ClientTypes.Confidential,
+                DisplayName = "Legacy password client",
+                Permissions =
+                {
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.Password,
+                },
+            });
+        }
 
         await scope.ServiceProvider.GetRequiredService<IIdentityBootstrapper>()
             .BootstrapAsync(CancellationToken.None);
 
-        var application = await applications.FindByClientIdAsync(clientId)
-            ?? throw new InvalidOperationException("The legacy test client was not found.");
-        Assert.DoesNotContain(
-            Permissions.GrantTypes.Password,
-            await applications.GetPermissionsAsync(application));
+        foreach (var clientId in clientIds)
+        {
+            var application = await applications.FindByClientIdAsync(clientId)
+                ?? throw new InvalidOperationException(
+                    "The legacy test client was not found.");
+            Assert.DoesNotContain(
+                Permissions.GrantTypes.Password,
+                await applications.GetPermissionsAsync(application));
+        }
     }
 
     [Fact]
