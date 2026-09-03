@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Asterloom.Sdk.Authorization;
 using Asterloom.Targeting;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Asterloom.ReferenceApp.Backend;
 
@@ -19,7 +20,7 @@ internal static class ReferenceBusinessAuthorizationEndpoints
     private static async Task<IResult> SeedFixtureAsync(
         AuthorizationFixtureRequest request,
         ClaimsPrincipal user,
-        ReferenceAppStore store,
+        [FromServices] ReferenceAppStore store,
         CancellationToken cancellationToken)
     {
         var subjectId = RequireSubject(user);
@@ -42,9 +43,9 @@ internal static class ReferenceBusinessAuthorizationEndpoints
     private static async Task<IResult> AuthorizeRefundAsync(
         string orderId,
         ClaimsPrincipal user,
-        ReferenceAppStore store,
-        ReferenceIdentityGateway gateway,
-        ReferenceResourceServerOptions options,
+        [FromServices] ReferenceAppStore store,
+        [FromServices] ReferenceIdentityGateway gateway,
+        [FromServices] ReferenceResourceServerOptions options,
         CancellationToken cancellationToken)
     {
         var subjectId = RequireSubject(user);
