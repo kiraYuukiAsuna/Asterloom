@@ -26,6 +26,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -1137,20 +1138,18 @@ function ScopeSelect({
   value: string;
 }) {
   return (
-    <select
-      aria-label={ariaLabel}
+    <SearchableSelect
+      ariaLabel={ariaLabel}
       className={inputClassName}
       disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
+      emptyLabel={placeholder}
+      onChange={onChange}
+      options={options.map((option) => ({
+        label: `${option.displayName} (${option.slug})`,
+        value: option.id,
+      }))}
       value={value}
-    >
-      <option value="">{placeholder}</option>
-      {options.map((option) => (
-        <option key={option.id} value={option.id}>
-          {option.displayName} ({option.slug})
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 

@@ -37,13 +37,13 @@ test("manages and simulates targeting segments through every admin API", async (
 
   await page
     .getByLabel("Targeting tenant")
-    .selectOption({ label: `Targeting E2E Tenant (${tenantSlug})` });
+    .fill(`Targeting E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Targeting application")
-    .selectOption({ label: `Targeting E2E App (${applicationSlug})` });
+    .fill(`Targeting E2E App (${applicationSlug})`);
   await page
     .getByLabel("Targeting environment")
-    .selectOption({ label: `Targeting E2E Environment (${environmentSlug})` });
+    .fill(`Targeting E2E Environment (${environmentSlug})`);
 
   const segmentList = page.locator('[data-ui-action="list-segments"]');
   await expect(segmentList).toBeVisible();

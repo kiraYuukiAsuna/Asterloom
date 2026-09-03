@@ -56,16 +56,25 @@ test("manages the complete authorization surface through the Web Console", async
     },
   );
   expect(environmentResponse.ok()).toBeTruthy();
-  const environment = (await environmentResponse.json()) as { id: string };
+  await page.reload();
+  await expect(page.locator("[data-authorization-workspace]")).toHaveAttribute(
+    "data-hydrated",
+    "true",
+  );
 
-  const tenantId = tenant.id;
-  const applicationId = application.id;
-  const environmentId = environment.id;
-  await page.locator('input[name="authorizationTenantId"]').fill(tenantId);
-  await page.locator('input[name="authorizationApplicationId"]').fill(applicationId);
+  const tenantLabel = `Authorization E2E Tenant (authorization-${suffix})`;
+  const applicationLabel = `Authorization E2E Application (authorization-${suffix})`;
+  const environmentLabel = `Authorization E2E Environment (authorization-${suffix})`;
+  await page.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
+  await page.getByLabel("Application", { exact: true }).fill(applicationLabel);
 
   await expect(page.locator('[data-ui-action="list-roles"]')).toBeVisible();
   await expect(page.locator('[data-ui-action="list-permissions"]')).toBeVisible();
+  await expect(
+    page
+      .locator('[data-ui-action="list-permissions"]')
+      .getByText("platform.environment.read", { exact: true }),
+  ).toBeVisible();
 
   const roleKey = `auth-e2e-${suffix}`;
   const actorId = `authorization-e2e-actor-${suffix}`;
@@ -138,12 +147,10 @@ test("manages the complete authorization surface through the Web Console", async
   const bindingForm = page.locator('[data-ui-action="set-role-binding"]');
   await bindingForm.locator('input[name="bindingActorId"]').fill(actorId);
   await bindingForm
-    .locator('select[name="bindingRoleId"]')
-    .selectOption({ label: `E2E Release Operator Updated (${roleKey})` });
-  await bindingForm.locator('input[name="bindingTenantId"]').fill(tenantId);
-  await bindingForm
-    .locator('input[name="bindingApplicationId"]')
-    .fill(applicationId);
+    .getByLabel("Role", { exact: true })
+    .fill(`E2E Release Operator Updated (${roleKey})`);
+  await bindingForm.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
+  await bindingForm.getByLabel("Application", { exact: true }).fill(applicationLabel);
   const [createBindingResponse] = await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -183,10 +190,8 @@ test("manages the complete authorization surface through the Web Console", async
   await createPolicyCard
     .locator('input[name="authorizationPolicyConditionConditionValue"]')
     .fill("finance");
-  await createPolicyCard.locator('input[name="policyTenantId"]').fill(tenantId);
-  await createPolicyCard
-    .locator('input[name="policyApplicationId"]')
-    .fill(applicationId);
+  await createPolicyCard.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
+  await createPolicyCard.getByLabel("Application", { exact: true }).fill(applicationLabel);
   await createPolicyCard.getByRole("button", { name: "Create policy" }).click();
 
   const policyRow = page
@@ -224,13 +229,9 @@ test("manages the complete authorization surface through the Web Console", async
   await simulator
     .locator('input[name="simulationPermission"]')
     .fill("platform.environment.update");
-  await simulator.locator('input[name="simulationTenantId"]').fill(tenantId);
-  await simulator
-    .locator('input[name="simulationApplicationId"]')
-    .fill(applicationId);
-  await simulator
-    .locator('input[name="simulationEnvironmentId"]')
-    .fill(environmentId);
+  await simulator.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
+  await simulator.getByLabel("Application", { exact: true }).fill(applicationLabel);
+  await simulator.getByLabel("Environment", { exact: true }).fill(environmentLabel);
   await simulator.locator('input[name="simulationResourceType"]').fill("order");
   await simulator.locator('input[name="simulationResourceId"]').fill("order-42");
   await simulator.getByRole("button", { name: "Simulate", exact: true }).click();

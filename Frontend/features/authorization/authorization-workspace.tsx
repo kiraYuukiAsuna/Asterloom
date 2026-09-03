@@ -24,6 +24,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -71,6 +72,11 @@ import {
   type TargetingRuleDraft,
 } from "@/features/targeting/rule-editor";
 import type { TargetingValueInput } from "@/lib/api/targeting-management";
+import {
+  listApplications,
+  listEnvironments,
+  listTenants,
+} from "@/lib/api/platform-management";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { translate } from "@/lib/i18n/locale";
@@ -105,6 +111,7 @@ const emptyScope: ScopeFieldsValue = {
   environmentId: "",
   tenantId: "",
 };
+const platformPage = { includeArchived: false, pageSize: 100, pageToken: "", query: "" };
 
 export function AuthorizationWorkspace({
   actorId,
@@ -128,6 +135,14 @@ export function AuthorizationWorkspace({
   const [includeArchivedPolicies, setIncludeArchivedPolicies] = useState(false);
   const [revisionResourceType, setRevisionResourceType] = useState("");
   const [revisionResourceId, setRevisionResourceId] = useState("");
+
+  const scopeTenants = useSWR(hydrated ? "authorization-scope-tenants" : null, () =>
+    listTenants(platformPage),
+  );
+  const scopeApplications = useSWR(
+    scopeTenantId ? ["authorization-scope-applications", scopeTenantId] : null,
+    () => listApplications(scopeTenantId, platformPage),
+  );
 
   const systemPermissions = useSWR(
     ["authorization-system-permissions", permissionQuery],
@@ -276,24 +291,37 @@ export function AuthorizationWorkspace({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
-          <Field label={translate("Tenant UUID")}>
-            <input
-              className={inputClassName}
-              name="authorizationTenantId"
-              onChange={(event) => setScopeTenantId(event.target.value.trim())}
-              placeholder={translate("Required for application authorization")}
-              value={scopeTenantId}
-            />
-          </Field>
-          <Field label={translate("Application UUID")}>
-            <input
-              className={inputClassName}
-              name="authorizationApplicationId"
-              onChange={(event) => setScopeApplicationId(event.target.value.trim())}
-              placeholder={translate("Required for application authorization")}
-              value={scopeApplicationId}
-            />
-          </Field>
+          <SearchableSelect
+            ariaLabel={translate("Tenant")}
+            className={inputClassName}
+            emptyLabel={translate("Choose a tenant")}
+            label={translate("Tenant")}
+            labelClassName={labelClassName}
+            name="authorizationTenantId"
+            onChange={(tenantId) => {
+              setScopeTenantId(tenantId);
+              setScopeApplicationId("");
+            }}
+            options={(scopeTenants.data?.tenants ?? []).map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))}
+            value={scopeTenantId}
+          />
+          <SearchableSelect
+            ariaLabel={translate("Application")}
+            className={inputClassName}
+            disabled={!scopeTenantId}
+            emptyLabel={translate("Choose an application")}
+            label={translate("Application")}
+            labelClassName={labelClassName}
+            name="authorizationApplicationId"
+            onChange={setScopeApplicationId}
+            options={(scopeApplications.data?.applications ?? []).map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))}
+            value={scopeApplicationId}
+          />
+          {(scopeTenants.error ?? scopeApplications.error) && (
+            <div className="sm:col-span-2">
+              <ResourceError error={scopeTenants.error ?? scopeApplications.error} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -511,7 +539,7 @@ function PermissionsPanel({
         <CardContent>
           {!validScope && (
             <p className="mb-4 rounded-lg border border-amber-400/15 bg-amber-400/[0.06] p-3 text-xs text-amber-300">
-              {translate("Enter valid tenant and application UUIDs above first.")}
+              {translate("Select a tenant and application above first.")}
             </p>
           )}
           <form className="space-y-4" onSubmit={submitCreate}>
@@ -1063,23 +1091,19 @@ function BindingsPanel({
                 value={actorId}
               />
             </Field>
-            <Field label={translate("Role")}>
-              <select
-                className={inputClassName}
-                name="bindingRoleId"
-                onChange={(event) => setRoleId(event.target.value)}
-                value={roleId}
-              >
-                <option value="">{translate("Select a role")}</option>
-                {roles
-                  .filter((role) => role.status === activeStatus)
-                  .map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.displayName} ({role.key})
-                    </option>
-                  ))}
-              </select>
-            </Field>
+            <SearchableSelect
+              ariaLabel={translate("Role")}
+              className={inputClassName}
+              emptyLabel={translate("Select a role")}
+              label={translate("Role")}
+              labelClassName={labelClassName}
+              name="bindingRoleId"
+              onChange={setRoleId}
+              options={roles
+                .filter((role) => role.status === activeStatus)
+                .map((role) => ({ label: `${role.displayName} (${role.key})`, value: role.id }))}
+              value={roleId}
+            />
             <ScopeFields onChange={setScope} prefix="binding" value={scope} />
             <div className="flex justify-end gap-2">
               {editing && (
@@ -1785,35 +1809,59 @@ function ScopeFields({
   prefix: string;
   value: ScopeFieldsValue;
 }) {
+  const tenants = useSWR("authorization-field-tenants", () => listTenants(platformPage));
+  const applications = useSWR(
+    value.tenantId ? ["authorization-field-applications", value.tenantId] : null,
+    () => listApplications(value.tenantId, platformPage),
+  );
+  const environments = useSWR(
+    value.tenantId && value.applicationId
+      ? ["authorization-field-environments", value.tenantId, value.applicationId]
+      : null,
+    () => listEnvironments(value.tenantId, value.applicationId, platformPage),
+  );
+
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
       <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-600">
         {translate("Scope (optional)")}</legend>
       <div className="grid gap-3">
-        <Field label={translate("Tenant UUID")}>
-          <input
-            className={inputClassName}
-            name={`${prefix}TenantId`}
-            onChange={(event) => onChange({ ...value, tenantId: event.target.value })}
-            value={value.tenantId}
-          />
-        </Field>
-        <Field label={translate("Application UUID")}>
-          <input
-            className={inputClassName}
-            name={`${prefix}ApplicationId`}
-            onChange={(event) => onChange({ ...value, applicationId: event.target.value })}
-            value={value.applicationId}
-          />
-        </Field>
-        <Field label={translate("Environment UUID")}>
-          <input
-            className={inputClassName}
-            name={`${prefix}EnvironmentId`}
-            onChange={(event) => onChange({ ...value, environmentId: event.target.value })}
-            value={value.environmentId}
-          />
-        </Field>
+        <SearchableSelect
+          ariaLabel={translate("Tenant")}
+          className={inputClassName}
+          emptyLabel={translate("Global")}
+          label={translate("Tenant")}
+          labelClassName={labelClassName}
+          name={`${prefix}TenantId`}
+          onChange={(tenantId) => onChange({ applicationId: "", environmentId: "", tenantId })}
+          options={(tenants.data?.tenants ?? []).map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))}
+          value={value.tenantId}
+        />
+        <SearchableSelect
+          ariaLabel={translate("Application")}
+          className={inputClassName}
+          disabled={!value.tenantId}
+          emptyLabel={translate("None")}
+          label={translate("Application")}
+          labelClassName={labelClassName}
+          name={`${prefix}ApplicationId`}
+          onChange={(applicationId) => onChange({ ...value, applicationId, environmentId: "" })}
+          options={(applications.data?.applications ?? []).map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))}
+          value={value.applicationId}
+        />
+        <SearchableSelect
+          ariaLabel={translate("Environment")}
+          className={inputClassName}
+          disabled={!value.applicationId}
+          emptyLabel={translate("None")}
+          label={translate("Environment")}
+          labelClassName={labelClassName}
+          name={`${prefix}EnvironmentId`}
+          onChange={(environmentId) => onChange({ ...value, environmentId })}
+          options={(environments.data?.environments ?? []).map((environment) => ({ label: `${environment.displayName} (${environment.slug})`, value: environment.id }))}
+          value={value.environmentId}
+        />
+        <ResourceError error={tenants.error ?? applications.error ?? environments.error} />
       </div>
     </fieldset>
   );

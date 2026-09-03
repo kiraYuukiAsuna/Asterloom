@@ -24,6 +24,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -61,6 +62,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { translate } from "@/lib/i18n/locale";
+import { listUsers } from "@/lib/api/identity-management";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -440,6 +442,9 @@ function TenantPanel({
               testId={"tenant-" + tenant.slug}
               title={tenant.displayName}
             >
+              <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                {tenant.id}
+              </p>
               {editingId === tenant.id ? (
                 <form
                   className="mt-3 flex gap-2"
@@ -669,6 +674,9 @@ function ApplicationPanel({
               testId={"application-" + application.slug}
               title={application.displayName}
             >
+              <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                {application.id}
+              </p>
               {editingId === application.id ? (
                 <form
                   className="mt-3 flex gap-2"
@@ -921,6 +929,9 @@ function EnvironmentPanel({
               testId={"environment-" + environment.slug}
               title={environment.displayName}
             >
+              <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                {environment.id}
+              </p>
               <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.12em] text-slate-500">
                 <span>{environmentLabel(environment.environmentType)}</span>
                 {environment.isProtected && (
@@ -1118,6 +1129,9 @@ function MembershipPanel({
   tenant?: TenantRecord;
 }) {
   const [actorId, setActorId] = useState("");
+  const users = useSWR("platform-membership-users", () =>
+    listUsers({ includeArchived: false, pageSize: 100, query: "" }),
+  );
 
   if (!tenant) {
     return (
@@ -1256,17 +1270,26 @@ function MembershipPanel({
           <Pagination cursor={cursor} nextPageToken={page?.nextPageToken} />
         </div>
         <CreateFormShell onSubmit={submitMembership} title={translate("Add membership")}>
-          <FormField label={translate("Actor ID")} name="membership-actor-id">
-            <input
-              className={inputClassName}
-              disabled={tenant.status !== activeStatus}
-              id="membership-actor-id"
-              name="membership-actor-id"
-              onChange={(event) => setActorId(event.target.value)}
-              placeholder="00000000-0000-0000-0000-000000000000"
-              value={actorId}
-            />
-          </FormField>
+          <SearchableSelect
+            ariaLabel={translate("User")}
+            className={inputClassName}
+            disabled={tenant.status !== activeStatus}
+            emptyLabel={translate("Select user")}
+            id="membership-actor-id"
+            label={translate("User")}
+            labelClassName={labelClassName}
+            name="membership-actor-id"
+            onChange={setActorId}
+            options={(users.data?.users ?? []).map((user) => ({
+              label: `${user.displayName} (${user.email})`,
+              value: user.id,
+            }))}
+            required
+            value={actorId}
+          />
+          {users.error && (
+            <p className="text-xs text-rose-300">{translate(platformErrorMessage(users.error))}</p>
+          )}
           <p className="text-xs leading-5 text-slate-500">
             {translate("Use the immutable Passport subject identifier. Removed members are reactivated without losing history.")}</p>
           <Button

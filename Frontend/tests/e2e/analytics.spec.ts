@@ -136,9 +136,9 @@ async function selectScope(
   applicationSlug: string,
   environmentSlug: string,
 ) {
-  await page.getByLabel("Analytics tenant").selectOption({ label: `Analytics E2E Tenant (${tenantSlug})` });
-  await page.getByLabel("Analytics application").selectOption({ label: `Analytics E2E App (${applicationSlug})` });
-  await page.getByLabel("Analytics environment").selectOption({ label: `Analytics E2E Environment (${environmentSlug})` });
+  await page.getByLabel("Analytics tenant").fill(`Analytics E2E Tenant (${tenantSlug})`);
+  await page.getByLabel("Analytics application").fill(`Analytics E2E App (${applicationSlug})`);
+  await page.getByLabel("Analytics environment").fill(`Analytics E2E Environment (${environmentSlug})`);
 }
 
 async function createScope(

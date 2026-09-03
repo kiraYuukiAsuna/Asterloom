@@ -22,6 +22,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -591,56 +592,38 @@ function ScopeSelector({
           {translate("Segments are isolated to one application environment.")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-3">
-        <label>
-          <span className={labelClassName}>{translate("Tenant")}</span>
-          <select
-            aria-label={translate("Targeting tenant")}
-            className={inputClassName}
-            onChange={(event) => onTenant(event.target.value)}
-            value={tenantId}
-          >
-            <option value="">{translate("Select tenant")}</option>
-            {tenants.map((tenant) => (
-              <option key={tenant.id} value={tenant.id}>
-                {tenant.displayName} ({tenant.slug})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className={labelClassName}>{translate("Application")}</span>
-          <select
-            aria-label={translate("Targeting application")}
-            className={inputClassName}
-            disabled={!tenantId}
-            onChange={(event) => onApplication(event.target.value)}
-            value={applicationId}
-          >
-            <option value="">{translate("Select application")}</option>
-            {applications.map((application) => (
-              <option key={application.id} value={application.id}>
-                {application.displayName} ({application.slug})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className={labelClassName}>{translate("Environment")}</span>
-          <select
-            aria-label={translate("Targeting environment")}
-            className={inputClassName}
-            disabled={!applicationId}
-            onChange={(event) => onEnvironment(event.target.value)}
-            value={environmentId}
-          >
-            <option value="">{translate("Select environment")}</option>
-            {environments.map((environment) => (
-              <option key={environment.id} value={environment.id}>
-                {environment.displayName} ({environment.slug})
-              </option>
-            ))}
-          </select>
-        </label>
+        <SearchableSelect
+          ariaLabel={translate("Targeting tenant")}
+          className={inputClassName}
+          emptyLabel={translate("Select tenant")}
+          label={translate("Tenant")}
+          labelClassName={labelClassName}
+          onChange={onTenant}
+          options={tenants.map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))}
+          value={tenantId}
+        />
+        <SearchableSelect
+          ariaLabel={translate("Targeting application")}
+          className={inputClassName}
+          disabled={!tenantId}
+          emptyLabel={translate("Select application")}
+          label={translate("Application")}
+          labelClassName={labelClassName}
+          onChange={onApplication}
+          options={applications.map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))}
+          value={applicationId}
+        />
+        <SearchableSelect
+          ariaLabel={translate("Targeting environment")}
+          className={inputClassName}
+          disabled={!applicationId}
+          emptyLabel={translate("Select environment")}
+          label={translate("Environment")}
+          labelClassName={labelClassName}
+          onChange={onEnvironment}
+          options={environments.map((environment) => ({ label: `${environment.displayName} (${environment.slug})`, value: environment.id }))}
+          value={environmentId}
+        />
       </CardContent>
     </Card>
   );

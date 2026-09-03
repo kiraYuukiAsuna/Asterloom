@@ -35,6 +35,7 @@ test("manages the complete platform hierarchy through the Web Console", async ({
 
   const tenantRow = page.getByTestId("tenant-" + tenantSlug);
   await expect(tenantRow).toContainText("E2E Tenant");
+  await expect(tenantRow).toContainText(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   await tenantRow.getByRole("button", { name: /edit tenant/i }).click();
   await tenantRow.getByLabel("Tenant display name").fill("E2E Tenant Updated");
   await tenantRow.locator('[data-ui-action="update-tenant"]').click();
@@ -110,7 +111,7 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   );
   await expect(membershipPanel).toBeVisible();
   await membershipPanel.getByLabel("Show removed memberships").check();
-  await membershipPanel.getByLabel("Actor ID").fill(session.actor.subject);
+  await membershipPanel.getByLabel("User", { exact: true }).fill("E2E Administrator (admin@asterloom.test)");
   await membershipPanel
     .locator("form")
     .locator('[data-ui-action="set-tenant-membership"]')

@@ -143,9 +143,11 @@ test("manages the complete Identity surface through the Web Console", async ({ b
 
   await page.getByTestId("identity-tab-memberships").click();
   const setMembership = page.locator('[data-ui-action="set-application-membership"]');
-  await setMembership.getByLabel("User UUID").fill(userId!);
-  await setMembership.getByLabel("Tenant UUID").fill(tenant.id);
-  await setMembership.getByLabel("Application UUID").fill(application.id);
+  await setMembership
+    .getByLabel("User", { exact: true })
+    .fill(`Identity E2E User Updated (${email})`);
+  await setMembership.getByLabel("Tenant", { exact: true }).fill(`Identity E2E Tenant (identity-${suffix})`);
+  await setMembership.getByLabel("Application", { exact: true }).fill(`Identity E2E Application (identity-${suffix})`);
   await setMembership.getByRole("button", { name: "Save membership" }).click();
   const membershipList = page.locator('[data-ui-action="list-application-memberships"]');
   await membershipList.getByLabel("Include removed memberships").check();
@@ -179,8 +181,8 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await createClient.getByLabel("Refresh token").uncheck();
   await createClient.getByLabel("Client credentials").check();
   await expect(createClient.getByLabel("Trusted backend password")).toHaveCount(0);
-  await createClient.getByLabel("Tenant UUID (optional)").fill(tenant.id);
-  await createClient.getByLabel("Application UUID (optional)").fill(application.id);
+  await createClient.getByLabel("Tenant", { exact: true }).fill(`Identity E2E Tenant (identity-${suffix})`);
+  await createClient.getByLabel("Application", { exact: true }).fill(`Identity E2E Application (identity-${suffix})`);
   await createClient.getByLabel("Allow trusted backend registration").check();
   await createClient.getByLabel("Auto-join existing accounts on login").check();
   await createClient.getByLabel("Scopes (comma separated)").fill("asterloom.api");

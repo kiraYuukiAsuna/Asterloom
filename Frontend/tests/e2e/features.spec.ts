@@ -36,13 +36,13 @@ test("manages feature flags through every admin and runtime API", async ({
 
   await page
     .getByLabel("Feature tenant")
-    .selectOption({ label: `Feature E2E Tenant (${tenantSlug})` });
+    .fill(`Feature E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Feature application")
-    .selectOption({ label: `Feature E2E App (${applicationSlug})` });
+    .fill(`Feature E2E App (${applicationSlug})`);
   await page
     .getByLabel("Feature environment")
-    .selectOption({ label: `Feature E2E Environment (${environmentSlug})` });
+    .fill(`Feature E2E Environment (${environmentSlug})`);
 
   const list = page.locator('[data-ui-action="list-flags"]');
   await expect(list).toBeVisible();
@@ -133,13 +133,13 @@ async function createFeatureSegment(
   await expect(page).toHaveURL(webUrl("/targeting/segments"));
   await page
     .getByLabel("Targeting tenant")
-    .selectOption({ label: `Feature E2E Tenant (${tenantSlug})` });
+    .fill(`Feature E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Targeting application")
-    .selectOption({ label: `Feature E2E App (${applicationSlug})` });
+    .fill(`Feature E2E App (${applicationSlug})`);
   await page
     .getByLabel("Targeting environment")
-    .selectOption({ label: `Feature E2E Environment (${environmentSlug})` });
+    .fill(`Feature E2E Environment (${environmentSlug})`);
   const create = page.locator('[data-ui-action="create-segment"]');
   await create.locator('input[name="segmentKey"]').fill(segmentKey);
   await create

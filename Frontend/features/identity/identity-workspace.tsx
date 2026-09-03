@@ -26,6 +26,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -75,6 +76,7 @@ import {
   type OidcScopeRecord,
   type PassportRole,
 } from "@/lib/api/identity-management";
+import { listApplications, listTenants } from "@/lib/api/platform-management";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { cn } from "@/lib/utils/cn";
 import { translate } from "@/lib/i18n/locale";
@@ -98,6 +100,7 @@ const authorizationCode = "OIDC_GRANT_TYPE_AUTHORIZATION_CODE";
 const clientCredentials = "OIDC_GRANT_TYPE_CLIENT_CREDENTIALS";
 const refreshToken = "OIDC_GRANT_TYPE_REFRESH_TOKEN";
 const removedMembership = "APPLICATION_MEMBERSHIP_STATUS_REMOVED";
+const platformPage = { includeArchived: false, pageSize: 100, pageToken: "", query: "" };
 
 type WorkspaceTab = "users" | "memberships" | "clients" | "scopes";
 type Reveal = {
@@ -142,21 +145,14 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
     selectedUserId ? ["identity-user-sessions", selectedUserId] : null,
     () => listUserSessions(selectedUserId, { includeRevoked: true, pageSize: 100 }),
   );
-  const membershipFiltersValid = [
-    membershipUserId,
-    membershipTenantId,
-    membershipApplicationId,
-  ].every((value) => value === "" || isUuid(value));
   const memberships = useSWR(
-    membershipFiltersValid
-      ? [
-          "identity-application-memberships",
-          membershipUserId,
-          membershipTenantId,
-          membershipApplicationId,
-          includeRemovedMemberships,
-        ]
-      : null,
+    [
+      "identity-application-memberships",
+      membershipUserId,
+      membershipTenantId,
+      membershipApplicationId,
+      includeRemovedMemberships,
+    ],
     () =>
       listApplicationMemberships({
         applicationId: membershipApplicationId,
@@ -302,12 +298,14 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
           applicationId={membershipApplicationId}
           csrfToken={csrfToken}
           error={memberships.error}
-          filtersValid={membershipFiltersValid}
           includeRemoved={includeRemovedMemberships}
           memberships={memberships.data?.memberships ?? []}
           onApplicationIdChange={setMembershipApplicationId}
           onIncludeRemovedChange={setIncludeRemovedMemberships}
-          onTenantIdChange={setMembershipTenantId}
+          onTenantIdChange={(tenantId) => {
+            setMembershipTenantId(tenantId);
+            setMembershipApplicationId("");
+          }}
           onUserIdChange={setMembershipUserId}
           pending={pending}
           reloadMemberships={memberships.mutate}
@@ -940,7 +938,6 @@ function MembershipsPanel({
   applicationId,
   csrfToken,
   error,
-  filtersValid,
   includeRemoved,
   memberships,
   onApplicationIdChange,
@@ -956,7 +953,6 @@ function MembershipsPanel({
   applicationId: string;
   csrfToken: string;
   error: unknown;
-  filtersValid: boolean;
   includeRemoved: boolean;
   memberships: ApplicationMembershipRecord[];
   onApplicationIdChange: (value: string) => void;
@@ -973,6 +969,18 @@ function MembershipsPanel({
   const [setTenantId, setSetTenantId] = useState("");
   const [setApplicationId, setSetApplicationId] = useState("");
   const [expectedVersion, setExpectedVersion] = useState(0);
+  const users = useSWR("identity-membership-users", () =>
+    listUsers({ includeArchived: false, pageSize: 100, query: "" }),
+  );
+  const tenants = useSWR("identity-membership-tenants", () => listTenants(platformPage));
+  const setApplications = useSWR(
+    setTenantId ? ["identity-membership-applications", setTenantId] : null,
+    () => listApplications(setTenantId, platformPage),
+  );
+  const filterApplications = useSWR(
+    tenantId ? ["identity-membership-applications", tenantId] : null,
+    () => listApplications(tenantId, platformPage),
+  );
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[0.8fr_1.2fr]">
@@ -1002,15 +1010,52 @@ function MembershipsPanel({
               );
             }}
           >
-            <Field label={translate("User UUID")}>
-              <input className={inputClassName} onChange={(event) => setSetUserId(event.target.value)} required value={setUserId} />
-            </Field>
-            <Field label={translate("Tenant UUID")}>
-              <input className={inputClassName} onChange={(event) => setSetTenantId(event.target.value)} required value={setTenantId} />
-            </Field>
-            <Field label={translate("Application UUID")}>
-              <input className={inputClassName} onChange={(event) => setSetApplicationId(event.target.value)} required value={setApplicationId} />
-            </Field>
+            <SearchableSelect
+              ariaLabel={translate("User")}
+              className={inputClassName}
+              emptyLabel={translate("Select user")}
+              label={translate("User")}
+              labelClassName={labelClassName}
+              onChange={setSetUserId}
+              options={(users.data?.users ?? []).map((user) => ({
+                label: `${user.displayName} (${user.email})`,
+                value: user.id,
+              }))}
+              required
+              value={setUserId}
+            />
+            <SearchableSelect
+              ariaLabel={translate("Tenant")}
+              className={inputClassName}
+              emptyLabel={translate("Choose a tenant")}
+              label={translate("Tenant")}
+              labelClassName={labelClassName}
+              onChange={(tenantId) => {
+                setSetTenantId(tenantId);
+                setSetApplicationId("");
+              }}
+              options={(tenants.data?.tenants ?? []).map((tenant) => ({
+                label: `${tenant.displayName} (${tenant.slug})`,
+                value: tenant.id,
+              }))}
+              required
+              value={setTenantId}
+            />
+            <SearchableSelect
+              ariaLabel={translate("Application")}
+              className={inputClassName}
+              disabled={!setTenantId}
+              emptyLabel={translate("Choose an application")}
+              label={translate("Application")}
+              labelClassName={labelClassName}
+              onChange={setSetApplicationId}
+              options={(setApplications.data?.applications ?? []).map((application) => ({
+                label: `${application.displayName} (${application.slug})`,
+                value: application.id,
+              }))}
+              required
+              value={setApplicationId}
+            />
             <Field label={translate("Expected version") }>
               <input
                 className={inputClassName}
@@ -1038,15 +1083,46 @@ function MembershipsPanel({
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-3">
-            <Field label={translate("User UUID filter")}>
-              <input className={inputClassName} onChange={(event) => onUserIdChange(event.target.value.trim())} value={userId} />
-            </Field>
-            <Field label={translate("Tenant UUID filter")}>
-              <input className={inputClassName} onChange={(event) => onTenantIdChange(event.target.value.trim())} value={tenantId} />
-            </Field>
-            <Field label={translate("Application UUID filter")}>
-              <input className={inputClassName} onChange={(event) => onApplicationIdChange(event.target.value.trim())} value={applicationId} />
-            </Field>
+            <SearchableSelect
+              ariaLabel={translate("User")}
+              className={inputClassName}
+              emptyLabel={translate("All users")}
+              label={translate("User")}
+              labelClassName={labelClassName}
+              onChange={onUserIdChange}
+              options={(users.data?.users ?? []).map((user) => ({
+                label: `${user.displayName} (${user.email})`,
+                value: user.id,
+              }))}
+              value={userId}
+            />
+            <SearchableSelect
+              ariaLabel={translate("Tenant")}
+              className={inputClassName}
+              emptyLabel={translate("All tenants")}
+              label={translate("Tenant")}
+              labelClassName={labelClassName}
+              onChange={onTenantIdChange}
+              options={(tenants.data?.tenants ?? []).map((tenant) => ({
+                label: `${tenant.displayName} (${tenant.slug})`,
+                value: tenant.id,
+              }))}
+              value={tenantId}
+            />
+            <SearchableSelect
+              ariaLabel={translate("Application")}
+              className={inputClassName}
+              disabled={!tenantId}
+              emptyLabel={translate("All applications")}
+              label={translate("Application")}
+              labelClassName={labelClassName}
+              onChange={onApplicationIdChange}
+              options={(filterApplications.data?.applications ?? []).map((application) => ({
+                label: `${application.displayName} (${application.slug})`,
+                value: application.id,
+              }))}
+              value={applicationId}
+            />
           </div>
           <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
             <input
@@ -1057,12 +1133,15 @@ function MembershipsPanel({
             />
             {translate("Include removed memberships")}
           </label>
-          {!filtersValid && (
-            <div className="mt-4 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] p-3 text-xs text-amber-300">
-              {translate("Membership filters must be complete UUIDs.")}
-            </div>
-          )}
-          <ResourceError error={error} />
+          <ResourceError
+            error={
+              error ??
+              users.error ??
+              tenants.error ??
+              setApplications.error ??
+              filterApplications.error
+            }
+          />
           <div className="mt-4 space-y-2">
             {memberships.map((membership) => (
               <div
@@ -1130,7 +1209,7 @@ function MembershipsPanel({
                 </p>
               </div>
             ))}
-            {filtersValid && memberships.length === 0 && (
+            {memberships.length === 0 && (
               <EmptyState text={translate("No application memberships match this view.")} />
             )}
           </div>
@@ -1885,6 +1964,12 @@ function ClientBindingFields({
   registrationAvailable: boolean;
   tenantId: string;
 }) {
+  const tenants = useSWR("identity-client-binding-tenants", () => listTenants(platformPage));
+  const applications = useSWR(
+    tenantId ? ["identity-client-binding-applications", tenantId] : null,
+    () => listApplications(tenantId, platformPage),
+  );
+
   return (
     <fieldset className="rounded-xl border border-white/8 p-3">
       <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
@@ -1894,23 +1979,38 @@ function ClientBindingFields({
         {translate("Bound clients issue application-scoped tokens and enforce application membership.")}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={translate("Tenant UUID (optional)")}>
-          <input
-            className={inputClassName}
-            onChange={(event) => onTenantIdChange(event.target.value.trim())}
-            placeholder="00000000-0000-0000-0000-000000000000"
-            value={tenantId}
-          />
-        </Field>
-        <Field label={translate("Application UUID (optional)")}>
-          <input
-            className={inputClassName}
-            onChange={(event) => onApplicationIdChange(event.target.value.trim())}
-            placeholder="00000000-0000-0000-0000-000000000000"
-            value={applicationId}
-          />
-        </Field>
+        <SearchableSelect
+          ariaLabel={translate("Tenant")}
+          className={inputClassName}
+          emptyLabel={translate("None")}
+          label={translate("Tenant (optional)")}
+          labelClassName={labelClassName}
+          onChange={(tenantId) => {
+            onTenantIdChange(tenantId);
+            onApplicationIdChange("");
+          }}
+          options={(tenants.data?.tenants ?? []).map((tenant) => ({
+            label: `${tenant.displayName} (${tenant.slug})`,
+            value: tenant.id,
+          }))}
+          value={tenantId}
+        />
+        <SearchableSelect
+          ariaLabel={translate("Application")}
+          className={inputClassName}
+          disabled={!tenantId}
+          emptyLabel={translate("None")}
+          label={translate("Application (optional)")}
+          labelClassName={labelClassName}
+          onChange={onApplicationIdChange}
+          options={(applications.data?.applications ?? []).map((application) => ({
+            label: `${application.displayName} (${application.slug})`,
+            value: application.id,
+          }))}
+          value={applicationId}
+        />
       </div>
+      <ResourceError error={tenants.error ?? applications.error} />
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-xs text-slate-400">
           <input
@@ -2045,12 +2145,6 @@ function parseCsv(value: string): string[] {
 
 function parseLines(value: string): string[] {
   return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
 }
 
 function formatTime(value: string): string {

@@ -31,7 +31,7 @@ test("manages buckets and verified objects through every Storage admin API", asy
   await expect(page.locator('[data-ui-action="list-storage-buckets"]')).toBeVisible();
   await page
     .getByLabel("Storage tenant", { exact: true })
-    .selectOption({ label: `Storage E2E Tenant (${tenantSlug})` });
+    .fill(`Storage E2E Tenant (${tenantSlug})`);
 
   await page.locator('input[name="bucketKey"]').fill(bucketKey);
   await page.locator('input[name="bucketDisplayName"]').fill("Storage E2E Bucket");
@@ -63,10 +63,10 @@ test("manages buckets and verified objects through every Storage admin API", asy
     .selectOption({ label: `Storage E2E Bucket Updated (${bucketKey})` });
   await page
     .getByLabel("Upload application", { exact: true })
-    .selectOption({ label: `Storage E2E App (${applicationSlug})` });
+    .fill(`Storage E2E App (${applicationSlug})`);
   await page
     .getByLabel("Upload environment", { exact: true })
-    .selectOption({ label: `Storage E2E Environment (${environmentSlug})` });
+    .fill(`Storage E2E Environment (${environmentSlug})`);
   await page.locator('input[name="storageFile"]').setInputFiles({
     buffer: Buffer.from(`Asterloom storage E2E ${suffix}`, "utf8"),
     mimeType: "text/plain",

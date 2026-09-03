@@ -241,6 +241,7 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
     "权限键归应用所有，请使用 orders.refund 这类点分业务名称。",
   "Enter valid tenant and application UUIDs above first.":
     "请先在上方输入有效的租户和应用 UUID。",
+  "Select a tenant and application above first.": "请先在上方选择租户和应用。",
   "Permission key": "权限键",
   "Create permission": "创建权限",
   "Application permission catalog": "应用权限目录",

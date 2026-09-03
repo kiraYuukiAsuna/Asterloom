@@ -346,13 +346,13 @@ async function selectScope(
 ) {
   await page
     .getByLabel("Release tenant")
-    .selectOption({ label: `Release E2E Tenant (${tenantSlug})` });
+    .fill(`Release E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Release application")
-    .selectOption({ label: `Release E2E App (${applicationSlug})` });
+    .fill(`Release E2E App (${applicationSlug})`);
   await page
     .getByLabel("Release environment")
-    .selectOption({ label: `Release E2E Environment (${environmentSlug})` });
+    .fill(`Release E2E Environment (${environmentSlug})`);
 }
 
 async function createScope(

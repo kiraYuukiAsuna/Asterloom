@@ -7,6 +7,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listApplications, listEnvironments, listTenants } from "@/lib/api/platform-management";
 import type { TelemetryScope } from "@/lib/api/telemetry-management";
@@ -68,21 +69,9 @@ export function TelemetryWorkspace({ csrfToken, view }: { csrfToken: string; vie
             <RefreshCw aria-hidden="true" className="size-3.5" /> {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <label className={telemetryLabelClassName}>{translate("Tenant")}<select aria-label={translate("Telemetry tenant")} className={telemetryInputClassName} onChange={(event) => selection.selectTenant(event.target.value)} value={selection.tenantId}>
-              <option value="">{translate("Choose a tenant")}</option>
-              {(tenants.data?.tenants ?? []).map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.displayName} ({tenant.slug})</option>)}
-            </select>
-          </label>
-          <label className={telemetryLabelClassName}>{translate("Application")}<select aria-label={translate("Telemetry application")} className={telemetryInputClassName} disabled={!selection.tenantId} onChange={(event) => selection.selectApplication(event.target.value)} value={selection.applicationId}>
-              <option value="">{translate("Choose an application")}</option>
-              {(applications.data?.applications ?? []).map((application) => <option key={application.id} value={application.id}>{application.displayName} ({application.slug})</option>)}
-            </select>
-          </label>
-          <label className={telemetryLabelClassName}>{translate("Environment")}<select aria-label={translate("Telemetry environment")} className={telemetryInputClassName} disabled={!selection.applicationId} onChange={(event) => selection.selectEnvironment(event.target.value)} value={selection.environmentId}>
-              <option value="">{translate("Choose an environment")}</option>
-              {(environments.data?.environments ?? []).map((environment) => <option key={environment.id} value={environment.id}>{environment.displayName} ({environment.slug})</option>)}
-            </select>
-          </label>
+          <SearchableSelect ariaLabel={translate("Telemetry tenant")} className={telemetryInputClassName} emptyLabel={translate("Choose a tenant")} label={translate("Tenant")} labelClassName={telemetryLabelClassName} onChange={selection.selectTenant} options={(tenants.data?.tenants ?? []).map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))} value={selection.tenantId} />
+          <SearchableSelect ariaLabel={translate("Telemetry application")} className={telemetryInputClassName} disabled={!selection.tenantId} emptyLabel={translate("Choose an application")} label={translate("Application")} labelClassName={telemetryLabelClassName} onChange={selection.selectApplication} options={(applications.data?.applications ?? []).map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))} value={selection.applicationId} />
+          <SearchableSelect ariaLabel={translate("Telemetry environment")} className={telemetryInputClassName} disabled={!selection.applicationId} emptyLabel={translate("Choose an environment")} label={translate("Environment")} labelClassName={telemetryLabelClassName} onChange={selection.selectEnvironment} options={(environments.data?.environments ?? []).map((environment) => ({ label: `${environment.displayName} (${environment.slug})`, value: environment.id }))} value={selection.environmentId} />
           {scopeError && <div className="md:col-span-3"><TelemetryError error={scopeError} /></div>}
         </CardContent>
       </Card>

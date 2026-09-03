@@ -28,13 +28,13 @@ test("manages dynamic configuration through every admin and runtime API", async 
   );
   await page
     .getByLabel("Configuration tenant")
-    .selectOption({ label: `Config E2E Tenant (${tenantSlug})` });
+    .fill(`Config E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Configuration application")
-    .selectOption({ label: `Config E2E App (${applicationSlug})` });
+    .fill(`Config E2E App (${applicationSlug})`);
   await page
     .getByLabel("Configuration environment")
-    .selectOption({ label: `Config E2E Environment (${environmentSlug})` });
+    .fill(`Config E2E Environment (${environmentSlug})`);
 
   const list = page.locator('[data-ui-action="list-config-entries"]');
   await expect(list).toBeVisible();
@@ -119,13 +119,13 @@ async function createSegment(
   await page.getByRole("link", { name: "Targeting" }).click();
   await page
     .getByLabel("Targeting tenant")
-    .selectOption({ label: `Config E2E Tenant (${tenantSlug})` });
+    .fill(`Config E2E Tenant (${tenantSlug})`);
   await page
     .getByLabel("Targeting application")
-    .selectOption({ label: `Config E2E App (${applicationSlug})` });
+    .fill(`Config E2E App (${applicationSlug})`);
   await page
     .getByLabel("Targeting environment")
-    .selectOption({ label: `Config E2E Environment (${environmentSlug})` });
+    .fill(`Config E2E Environment (${environmentSlug})`);
   const create = page.locator('[data-ui-action="create-segment"]');
   await create.locator('input[name="segmentKey"]').fill(segmentKey);
   await create.locator('input[name="segmentDisplayName"]').fill("Config users");

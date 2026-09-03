@@ -26,6 +26,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -146,22 +147,17 @@ export function StorageWorkspace({
             {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent>
-          <label className={labelClassName}>
-            {translate("Storage tenant")}<select
-              aria-label={translate("Storage tenant")}
-              className={inputClassName}
-              disabled={tenantsQuery.isLoading || tenants.length === 0}
-              onChange={(event) => selection.selectTenant(event.target.value)}
-              value={tenantId}
-            >
-              {tenants.length === 0 && <option value="">{translate("No active tenant")}</option>}
-              {tenants.map((tenant) => (
-                <option key={tenant.id} value={tenant.id}>
-                  {tenant.displayName} ({tenant.slug})
-                </option>
-              ))}
-            </select>
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Storage tenant")}
+            className={inputClassName}
+            disabled={tenantsQuery.isLoading || tenants.length === 0}
+            emptyLabel={translate("No active tenant")}
+            label={translate("Storage tenant")}
+            labelClassName={labelClassName}
+            onChange={selection.selectTenant}
+            options={tenants.map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))}
+            value={tenantId}
+          />
           {tenantsQuery.error && (
             <p className="mt-3 text-sm text-rose-300">
               {translate(storageErrorMessage(tenantsQuery.error))}
@@ -1087,37 +1083,27 @@ function UploadPanel({
               value={contentType}
             />
           </label>
-          <label className={labelClassName}>
-            {translate("Upload application (optional)")}<select
-              aria-label={translate("Upload application")}
-              className={inputClassName}
-              onChange={(event) => selection.selectApplication(event.target.value)}
-              value={applicationId}
-            >
-              <option value="">{translate("Tenant-level object")}</option>
-              {applications.map((application) => (
-                <option key={application.id} value={application.id}>
-                  {application.displayName} ({application.slug})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={labelClassName}>
-            {translate("Upload environment (optional)")}<select
-              aria-label={translate("Upload environment")}
-              className={inputClassName}
-              disabled={!applicationId}
-              onChange={(event) => selection.selectEnvironment(event.target.value)}
-              value={environmentId}
-            >
-              <option value="">{translate("Application-level object")}</option>
-              {environments.map((environment) => (
-                <option key={environment.id} value={environment.id}>
-                  {environment.displayName} ({environment.slug})
-                </option>
-              ))}
-            </select>
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Upload application")}
+            className={inputClassName}
+            emptyLabel={translate("Tenant-level object")}
+            label={translate("Upload application (optional)")}
+            labelClassName={labelClassName}
+            onChange={selection.selectApplication}
+            options={applications.map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))}
+            value={applicationId}
+          />
+          <SearchableSelect
+            ariaLabel={translate("Upload environment")}
+            className={inputClassName}
+            disabled={!applicationId}
+            emptyLabel={translate("Application-level object")}
+            label={translate("Upload environment (optional)")}
+            labelClassName={labelClassName}
+            onChange={selection.selectEnvironment}
+            options={environments.map((environment) => ({ label: `${environment.displayName} (${environment.slug})`, value: environment.id }))}
+            value={environmentId}
+          />
           <label className={cn(labelClassName, "sm:col-span-2")}>
             {translate("Custom metadata (one key=value per line)")}<textarea
               className={textAreaClassName}

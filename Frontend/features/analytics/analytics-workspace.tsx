@@ -7,6 +7,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -103,47 +104,38 @@ export function AnalyticsWorkspace({
             {translate("Refresh")}</Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <label className={analyticsLabelClassName}>
-            {translate("Tenant")}<select
-              aria-label={translate("Analytics tenant")}
-              className={analyticsInputClassName}
-              onChange={(event) => selection.selectTenant(event.target.value)}
-              value={selection.tenantId}
-            >
-              <option value="">{translate("Choose a tenant")}</option>
-              {(tenants.data?.tenants ?? []).map((tenant) => (
-                <option key={tenant.id} value={tenant.id}>{tenant.displayName} ({tenant.slug})</option>
-              ))}
-            </select>
-          </label>
-          <label className={analyticsLabelClassName}>
-            {translate("Application")}<select
-              aria-label={translate("Analytics application")}
-              className={analyticsInputClassName}
-              disabled={!selection.tenantId}
-              onChange={(event) => selection.selectApplication(event.target.value)}
-              value={selection.applicationId}
-            >
-              <option value="">{translate("Choose an application")}</option>
-              {(applications.data?.applications ?? []).map((application) => (
-                <option key={application.id} value={application.id}>{application.displayName} ({application.slug})</option>
-              ))}
-            </select>
-          </label>
-          <label className={analyticsLabelClassName}>
-            {translate("Environment")}<select
-              aria-label={translate("Analytics environment")}
-              className={analyticsInputClassName}
-              disabled={!selection.applicationId}
-              onChange={(event) => selection.selectEnvironment(event.target.value)}
-              value={selection.environmentId}
-            >
-              <option value="">{translate("Choose an environment")}</option>
-              {(environments.data?.environments ?? []).map((environment) => (
-                <option key={environment.id} value={environment.id}>{environment.displayName} ({environment.slug})</option>
-              ))}
-            </select>
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Analytics tenant")}
+            className={analyticsInputClassName}
+            emptyLabel={translate("Choose a tenant")}
+            label={translate("Tenant")}
+            labelClassName={analyticsLabelClassName}
+            onChange={selection.selectTenant}
+            options={(tenants.data?.tenants ?? []).map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))}
+            value={selection.tenantId}
+          />
+          <SearchableSelect
+            ariaLabel={translate("Analytics application")}
+            className={analyticsInputClassName}
+            disabled={!selection.tenantId}
+            emptyLabel={translate("Choose an application")}
+            label={translate("Application")}
+            labelClassName={analyticsLabelClassName}
+            onChange={selection.selectApplication}
+            options={(applications.data?.applications ?? []).map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))}
+            value={selection.applicationId}
+          />
+          <SearchableSelect
+            ariaLabel={translate("Analytics environment")}
+            className={analyticsInputClassName}
+            disabled={!selection.applicationId}
+            emptyLabel={translate("Choose an environment")}
+            label={translate("Environment")}
+            labelClassName={analyticsLabelClassName}
+            onChange={selection.selectEnvironment}
+            options={(environments.data?.environments ?? []).map((environment) => ({ label: `${environment.displayName} (${environment.slug})`, value: environment.id }))}
+            value={selection.environmentId}
+          />
           {scopeError && <div className="md:col-span-3"><AnalyticsError error={scopeError} /></div>}
         </CardContent>
       </Card>

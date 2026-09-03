@@ -20,6 +20,7 @@ import useSWR from "swr";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   archiveSmtpAccount,
@@ -94,18 +95,8 @@ export function MailWorkspace({ csrfToken, view }: { csrfToken: string; view: "a
           </Button>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <label className={labelClassName}>{t("Tenant")}
-            <select aria-label={t("Mail tenant")} className={inputClassName} onChange={(event) => selection.selectTenant(event.target.value)} value={selection.tenantId}>
-              <option value="">{t("Choose a tenant")}</option>
-              {(tenants.data?.tenants ?? []).map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.displayName} ({tenant.slug})</option>)}
-            </select>
-          </label>
-          <label className={labelClassName}>{t("Application")}
-            <select aria-label={t("Mail application")} className={inputClassName} disabled={!selection.tenantId} onChange={(event) => selection.selectApplication(event.target.value)} value={selection.applicationId}>
-              <option value="">{t("Choose an application")}</option>
-              {(applications.data?.applications ?? []).map((application) => <option key={application.id} value={application.id}>{application.displayName} ({application.slug})</option>)}
-            </select>
-          </label>
+          <SearchableSelect ariaLabel={t("Mail tenant")} className={inputClassName} emptyLabel={t("Choose a tenant")} label={t("Tenant")} labelClassName={labelClassName} onChange={selection.selectTenant} options={(tenants.data?.tenants ?? []).map((tenant) => ({ label: `${tenant.displayName} (${tenant.slug})`, value: tenant.id }))} value={selection.tenantId} />
+          <SearchableSelect ariaLabel={t("Mail application")} className={inputClassName} disabled={!selection.tenantId} emptyLabel={t("Choose an application")} label={t("Application")} labelClassName={labelClassName} onChange={selection.selectApplication} options={(applications.data?.applications ?? []).map((application) => ({ label: `${application.displayName} (${application.slug})`, value: application.id }))} value={selection.applicationId} />
           {(tenants.error ?? applications.error) && <div className="md:col-span-2"><MailError error={tenants.error ?? applications.error} /></div>}
         </CardContent>
       </Card>

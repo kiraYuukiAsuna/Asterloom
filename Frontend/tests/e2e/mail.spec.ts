@@ -66,8 +66,8 @@ test("manages SMTP accounts and mail delivery through every Mail API", async ({ 
 });
 
 async function selectScope(page: Page, tenantSlug: string, applicationSlug: string) {
-  await page.getByLabel("Mail tenant", { exact: true }).selectOption({ label: `Mail E2E Tenant (${tenantSlug})` });
-  await page.getByLabel("Mail application", { exact: true }).selectOption({ label: `Mail E2E App (${applicationSlug})` });
+  await page.getByLabel("Mail tenant", { exact: true }).fill(`Mail E2E Tenant (${tenantSlug})`);
+  await page.getByLabel("Mail application", { exact: true }).fill(`Mail E2E App (${applicationSlug})`);
 }
 
 async function createScope(page: Page, tenantSlug: string, applicationSlug: string) {

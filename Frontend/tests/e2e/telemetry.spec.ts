@@ -67,9 +67,9 @@ test("manages every Telemetry API through the Web Console", async ({ page }) => 
 });
 
 async function selectScope(page: Page, tenantSlug: string, applicationSlug: string, environmentSlug: string) {
-  await page.getByLabel("Telemetry tenant").selectOption({ label: `Telemetry E2E Tenant (${tenantSlug})` });
-  await page.getByLabel("Telemetry application").selectOption({ label: `Telemetry E2E App (${applicationSlug})` });
-  await page.getByLabel("Telemetry environment").selectOption({ label: `Telemetry E2E Environment (${environmentSlug})` });
+  await page.getByLabel("Telemetry tenant").fill(`Telemetry E2E Tenant (${tenantSlug})`);
+  await page.getByLabel("Telemetry application").fill(`Telemetry E2E App (${applicationSlug})`);
+  await page.getByLabel("Telemetry environment").fill(`Telemetry E2E Environment (${environmentSlug})`);
 }
 
 async function createScope(page: Page, tenantSlug: string, applicationSlug: string, environmentSlug: string) {

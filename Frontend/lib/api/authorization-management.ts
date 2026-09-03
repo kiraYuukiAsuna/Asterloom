@@ -11,7 +11,7 @@ import { targetingRuleSchema, targetingValueSchema } from "./targeting-managemen
 
 const keyPattern = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 const timestampSchema = z.string().min(1);
-const idSchema = z.string().uuid();
+const idSchema = z.guid();
 const versionSchema = z.number().int().positive();
 const expectedVersionSchema = z.number().int().nonnegative();
 const resourceStatusSchema = z.enum([
