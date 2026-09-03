@@ -102,6 +102,12 @@ public sealed class TelemetryTests
                 "TracerProvider",
                 StringComparison.Ordinal) == true);
 
+        options.ExporterEndpoint = new Uri("http://localhost:4318/otlp");
+        options.ExporterProtocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+        Assert.Equal(
+            new Uri("http://localhost:4318/otlp/v1/traces"),
+            AsterloomTelemetryServiceCollectionExtensions.ResolveExporterEndpoint(options, "traces"));
+
         options.SamplingRatio = 1.1;
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new ServiceCollection().AddAsterloomTelemetry(options));

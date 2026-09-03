@@ -78,7 +78,9 @@ rather than host-published ports:
 | `minio` S3 API | `9000` | `60003` | S3-compatible object transfer. |
 | `minio` Console | `9001` | not published | Compose-network only. |
 | `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | not published | Compose-network-only OpenTelemetry ingestion. |
+| `otel-collector` ReferenceApp OTLP gRPC | `14317` | not published | Isolated ReferenceApp delivery-verification receiver. |
 | `otel-collector` health | `13133` | not published | Compose-network only. |
+| `otel-collector` internal metrics | `8888` | not published | Compose-network-only delivery verification. |
 | `migrations` / `reference-client` | none | none | One-shot command containers with no network listener. |
 
 Common lifecycle commands:
@@ -187,9 +189,9 @@ Docker network only
 ```
 
 Nginx does not run in a container. The production override binds application
-ports only to `127.0.0.1`; PostgreSQL, Redis, the Collector, and the MinIO Console
-are not directly exposed to the host or Internet. Normally only `80/tcp`,
-`443/tcp`, and the required SSH port should be publicly reachable.
+ports only to `127.0.0.1`; Collector OTLP/HTTP is also loopback-only, while
+PostgreSQL, Redis, and the MinIO Console have no host binding. Normally only
+`80/tcp`, `443/tcp`, and the required SSH port should be publicly reachable.
 
 The production container ports and host bindings are:
 
@@ -204,8 +206,10 @@ The production container ports and host bindings are:
 | `minio` Console | `9001` | not published | Compose-network only; no public administration UI. |
 | `postgres` | `5432` | not published | Compose-network only. |
 | `redis` | `6379` | not published | Compose-network only. |
-| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | not published | Compose-network only. |
+| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | not published / `127.0.0.1:60006` | HTTP is available only through host loopback, for example through an SSH tunnel. |
+| `otel-collector` ReferenceApp OTLP gRPC | `14317` | not published | Isolated ReferenceApp delivery-verification receiver. |
 | `otel-collector` health | `13133` | not published | Compose-network only. |
+| `otel-collector` internal metrics | `8888` | not published | Compose-network-only delivery verification. |
 | `migrations` / `reference-client` | none | none | One-shot containers with no listener. |
 
 “Not published” means only that no host port exists. Containers on the Compose
@@ -402,7 +406,7 @@ sudo bash Deploy/Scripts/Provision-Reference-App.sh
 docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
-  up -d --force-recreate reference-backend
+  up -d --force-recreate otel-collector reference-backend
 
 docker compose \
   -f docker-compose.yml \
@@ -480,6 +484,7 @@ At minimum, back up or have a tested reconstruction plan for:
 - `Deploy/Secrets/*.pfx`;
 - `.data/dataprotection-keys/`;
 - `.data/reference-app/reference.env` and `state/` when using the reference app;
+- the `asterloom-production_otel-collector-data` named volume;
 - the host's `/etc/letsencrypt/` and Nginx site configuration.
 
 Redis primarily contains disposable BFF sessions, but include it in recovery if
@@ -487,10 +492,11 @@ seamless session continuity is required. Never use `docker compose down -v` as a
 routine stop command; it removes production named volumes. Database migrations
 are forward-applied, so evaluate schema compatibility before rolling code back.
 
-The current Collector uses only the `debug` exporter. It writes traces, metrics,
-and logs to Collector output and is not a durable observability backend. Update
-`OpenTelemetry/otel-collector.yaml` and provide the required network and secrets
-when connecting OTLP, Prometheus, Loki, or another backend.
+The Collector writes rotating `traces.json`, `metrics.json`, and `logs.json` files
+to the `asterloom-production_otel-collector-data` named volume. The defaults are
+100 MiB per file, 10 backups, and seven days. Back up or export that volume before
+its retention window expires. Add OTLP, Prometheus, Loki, or another backend only
+when indexed querying, alerting, or longer retention is required.
 
 The Mail module opens outbound connections directly from the Server container
 to SMTP hosts configured in the console; it adds no inbound or host-mapped
@@ -531,7 +537,7 @@ into a container and must not be installed without rendering.
 
 | File | Purpose |
 | --- | --- |
-| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | Enables OTLP gRPC 4317, OTLP HTTP 4318, and health 13133, with a memory limiter and batch processor. It currently exports only to `debug`. |
+| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | Enables OTLP gRPC 4317, OTLP HTTP 4318, and health 13133, with a memory limiter, batch processor, diagnostic `debug` output, and persistent rotating JSON file exporters. |
 
 ### 6.4 Scripts
 

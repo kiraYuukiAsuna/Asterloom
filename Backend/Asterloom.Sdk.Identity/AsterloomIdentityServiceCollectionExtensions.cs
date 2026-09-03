@@ -57,7 +57,8 @@ public static class AsterloomIdentityServiceCollectionExtensions
 
                 options.AddEphemeralEncryptionKey()
                     .AddEphemeralSigningKey();
-                var integration = options.UseSystemIntegration();
+                var integration = options.UseSystemIntegration()
+                    .EnableEmbeddedWebServer();
                 if (configuration.AllowedEmbeddedWebServerPorts.Count > 0)
                 {
                     integration.SetAllowedEmbeddedWebServerPorts(
@@ -145,6 +146,12 @@ public static class AsterloomIdentityServiceCollectionExtensions
             ValidateRedirectUri(
                 options.PostLogoutRedirectUri,
                 nameof(options.PostLogoutRedirectUri));
+            if (options.RedirectUri == options.PostLogoutRedirectUri)
+            {
+                throw new ArgumentException(
+                    "RedirectUri and PostLogoutRedirectUri must be different.",
+                    nameof(options));
+            }
         }
 
         if (options.EnableServiceCredentials)

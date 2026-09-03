@@ -185,7 +185,7 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await createClient.getByLabel("Application", { exact: true }).fill(`Identity E2E Application (identity-${suffix})`);
   await createClient.getByLabel("Allow trusted backend registration").check();
   await createClient.getByLabel("Auto-join existing accounts on login").check();
-  await createClient.getByLabel("Scopes (comma separated)").fill("asterloom.api");
+  await createClient.getByLabel("Add scope").fill("asterloom.api");
   await createClient.getByRole("button", { name: "Register client" }).click();
   await expect(page.getByTestId("identity-credential-reveal")).toContainText(clientId);
   await page

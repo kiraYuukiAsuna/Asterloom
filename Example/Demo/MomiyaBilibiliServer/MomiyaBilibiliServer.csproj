@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>MomiyaBilibiliServer</AssemblyName>
+    <RootNamespace>MomiyaBilibiliServer</RootNamespace>
+    <IncludeHttpRuleProtos>true</IncludeHttpRuleProtos>
+    <IncludeGoogleApiCommonProtos>true</IncludeGoogleApiCommonProtos>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Api.CommonProtos" Version="2.17.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.36.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Grpc.JsonTranscoding" Version="10.0.11" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity.AspNetCore/Asterloom.Sdk.Identity.AspNetCore.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Mail/Asterloom.Sdk.Mail.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="../Protos/momiya_bilibili.proto" GrpcServices="Server" Link="Protos/momiya_bilibili.proto" />
+  </ItemGroup>
+</Project>

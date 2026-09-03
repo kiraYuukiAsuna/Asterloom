@@ -152,14 +152,28 @@ public sealed class StorageContractTests : IClassFixture<WebApplicationFactory<P
             new { expectedVersion = source.Version }));
         Assert.Equal("STORAGE_RESOURCE_STATUS_ACTIVE", source.Status);
 
+        var application = await SendAsync<ResourceJson>(client.PostAsJsonAsync(
+            $"/api/v1/tenants/{tenant.Id}/applications",
+            new { slug = "storage-" + suffix, displayName = "Storage application" }));
+        var environment = await SendAsync<ResourceJson>(client.PostAsJsonAsync(
+            $"/api/v1/tenants/{tenant.Id}/applications/{application.Id}/environments",
+            new
+            {
+                slug = "test",
+                displayName = "Test",
+                environmentType = "ENVIRONMENT_TYPE_TEST",
+            }));
+        using var applicationClient = await CreateApplicationAuthorizedClientAsync(
+            Guid.Parse(tenant.Id),
+            Guid.Parse(application.Id));
         using var sdk = new AsterloomStorageClient(
-            client,
+            applicationClient,
             new AsterloomStorageClientOptions
             {
                 Scope = new AsterloomStorageScope(Guid.Parse(tenant.Id)),
                 AllowInsecureTransferUrls = true,
             },
-            client);
+            applicationClient);
         var sdkBytes = "Asterloom storage SDK"u8.ToArray();
         var sdkHash = Convert.ToHexString(SHA256.HashData(sdkBytes)).ToLowerInvariant();
         var sdkObject = await sdk.UploadAsync(
@@ -169,7 +183,9 @@ public sealed class StorageContractTests : IClassFixture<WebApplicationFactory<P
                 "sdk-package.nupkg",
                 "application/octet-stream",
                 sdkBytes.LongLength,
-                sdkHash),
+                sdkHash,
+                Guid.Parse(application.Id),
+                Guid.Parse(environment.Id)),
             new MemoryStream(sdkBytes, writable: false));
         using var sdkDownload = new MemoryStream();
         await sdk.DownloadToAsync(sdkObject, sdkDownload, TimeSpan.FromSeconds(60));
@@ -222,6 +238,61 @@ public sealed class StorageContractTests : IClassFixture<WebApplicationFactory<P
                     CancellationToken.None);
             }
         }
+        var client = _factory.CreateClient();
+        using var tokenResponse = await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                [Parameters.GrantType] = GrantTypes.ClientCredentials,
+                [Parameters.ClientId] = clientId,
+                [Parameters.ClientSecret] = clientSecret,
+                [Parameters.Scope] = "asterloom.api",
+            }));
+        tokenResponse.EnsureSuccessStatusCode();
+        var token = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token.GetProperty(Parameters.AccessToken).GetString());
+        return client;
+    }
+
+    private async Task<HttpClient> CreateApplicationAuthorizedClientAsync(
+        Guid tenantId,
+        Guid applicationId)
+    {
+        var clientId = "storage-application-" + Guid.NewGuid().ToString("N");
+        const string clientSecret = "Storage-Application-Secret!2026";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+            var descriptor = new OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+                ClientType = ClientTypes.Confidential,
+                DisplayName = "Storage application contract test",
+                Permissions =
+                {
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.ClientCredentials,
+                    Permissions.Prefixes.Scope + "asterloom.api",
+                },
+            };
+            descriptor.Properties["asterloom:tenant_id"] =
+                JsonSerializer.SerializeToElement(tenantId.ToString("D"));
+            descriptor.Properties["asterloom:application_id"] =
+                JsonSerializer.SerializeToElement(applicationId.ToString("D"));
+            await manager.CreateAsync(descriptor);
+            var management = scope.ServiceProvider.GetRequiredService<AuthorizationManagementService>();
+            await management.SetRoleBindingAsync(
+                Guid.NewGuid().ToString(),
+                clientId,
+                AuthorizationCatalog.FindSystemRole("developer")!.Id.ToString(),
+                new AuthorizationScope(tenantId, applicationId, null),
+                0,
+                CancellationToken.None);
+        }
+
         var client = _factory.CreateClient();
         using var tokenResponse = await client.PostAsync(
             "/connect/token",

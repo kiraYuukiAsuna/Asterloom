@@ -9,6 +9,10 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+  otlp/reference:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14317
 
 processors:
   batch:
@@ -20,20 +24,60 @@ processors:
 exporters:
   debug:
     verbosity: basic
+  debug/reference:
+    verbosity: basic
+  file/traces:
+    path: /var/lib/otelcol/traces.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 10
+  file/metrics:
+    path: /var/lib/otelcol/metrics.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 10
+  file/logs:
+    path: /var/lib/otelcol/logs.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 10
 
 service:
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
   extensions:
     - health_check
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [debug, file/traces]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [debug, file/metrics]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [debug, file/logs]
+    traces/reference:
+      receivers: [otlp/reference]
+      processors: [memory_limiter, batch]
+      exporters: [debug/reference, file/traces]
+    metrics/reference:
+      receivers: [otlp/reference]
+      processors: [memory_limiter, batch]
+      exporters: [debug/reference, file/metrics]
+    logs/reference:
+      receivers: [otlp/reference]
+      processors: [memory_limiter, batch]
+      exporters: [debug/reference, file/logs]

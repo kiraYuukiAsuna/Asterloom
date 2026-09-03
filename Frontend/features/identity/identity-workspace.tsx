@@ -26,6 +26,7 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
@@ -173,14 +174,18 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
     () => getClient(selectedClientId),
   );
   const scopes = useSWR(
-    ["identity-scopes", scopeQuery],
-    () => listScopes({ pageSize: 100, query: scopeQuery }),
+    "identity-scopes",
+    () => listScopes({ pageSize: 100, query: "" }),
     { keepPreviousData: true },
   );
   const scope = useSWR(
     selectedScopeId ? ["identity-scope", selectedScopeId] : null,
     () => getScope(selectedScopeId),
   );
+  const visibleScopes = (scopes.data?.scopes ?? []).filter((item) => {
+    const query = scopeQuery.trim().toLowerCase();
+    return !query || `${item.name} ${item.displayName} ${item.description}`.toLowerCase().includes(query);
+  });
 
   async function runMutation<T>(
     key: string,
@@ -325,7 +330,7 @@ export function IdentityWorkspace({ csrfToken }: { csrfToken: string }) {
           reloadScope={scope.mutate}
           reloadScopes={scopes.mutate}
           runMutation={runMutation}
-          scopes={scopes.data?.scopes ?? []}
+          scopes={visibleScopes}
           selectedScope={scope.data}
         />
       )}
@@ -2061,10 +2066,16 @@ function ClientTextFields({
       <Field label={translate("Post-logout redirect URIs (one per line)")}>
         <textarea className={textAreaClassName} onChange={(e) => onPostLogoutRedirectsChange(e.target.value)} value={postLogoutRedirects} />
       </Field>
-      <Field label={translate("Scopes (comma separated)")}>
-        <input className={inputClassName} list="identity-scope-names" onChange={(e) => onScopesChange(e.target.value)} value={scopes} />
-        <datalist id="identity-scope-names">{scopeNames.map((name) => <option key={name} value={name} />)}</datalist>
-      </Field>
+      <SearchableMultiSelect
+        ariaLabel={translate("Add scope")}
+        className={inputClassName}
+        emptyLabel={translate("Select a scope")}
+        label={translate("Scopes")}
+        labelClassName={labelClassName}
+        onChange={(value) => onScopesChange(value.join(", "))}
+        options={scopeNames.map((name) => ({ label: name, value: name }))}
+        value={parseCsv(scopes)}
+      />
     </>
   );
 }

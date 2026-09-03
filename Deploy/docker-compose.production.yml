@@ -47,7 +47,8 @@ services:
       - "127.0.0.1:60003:9000"
 
   otel-collector:
-    ports: !override []
+    ports: !override
+      - "127.0.0.1:60006:4318"
 
   reference-backend:
     ports: !override
@@ -64,7 +65,7 @@ services:
       ASTERLOOM_REFERENCE_BACKEND_URL: http://reference-backend:5090/
       ASTERLOOM_REFERENCE_BACKEND_GRPC_URL: http://reference-backend:5091/
       ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:14317
     volumes: !override
       - ./.data/reference-app/state:/var/lib/asterloom-reference
 

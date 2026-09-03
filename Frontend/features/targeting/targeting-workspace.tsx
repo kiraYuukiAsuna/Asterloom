@@ -972,7 +972,8 @@ function EditSegmentPanel({
         <div>
           <CardTitle>{translate("Selected segment ·")}{" "}{segment.key}</CardTitle>
           <CardDescription>
-            {translate("Loaded through GetSegment · version")} {segment.version}
+            <span className="block">{translate("Loaded through GetSegment · version")} {segment.version}</span>
+            <span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{segment.id}</span>
           </CardDescription>
         </div>
         <Badge variant={active ? "success" : "planned"}>

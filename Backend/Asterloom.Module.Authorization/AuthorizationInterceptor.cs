@@ -3,6 +3,8 @@ using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Errors;
 using Asterloom.Modules.Identity;
+using Asterloom.Modules.Storage.Model;
+using Asterloom.Modules.Storage.Persistence;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -16,6 +18,12 @@ using AuthorizationRestorePermissionRequest = Asterloom.Protocol.Authorization.A
 using AuthorizationRestoreRoleRequest = Asterloom.Protocol.Authorization.Admin.V1.RestoreRoleRequest;
 using AuthorizationUpdatePermissionRequest = Asterloom.Protocol.Authorization.Admin.V1.UpdatePermissionRequest;
 using AuthorizationUpdateRoleRequest = Asterloom.Protocol.Authorization.Admin.V1.UpdateRoleRequest;
+using StorageCompleteUploadRequest = Asterloom.Protocol.Storage.Admin.V1.CompleteUploadRequest;
+using StorageCopyObjectRequest = Asterloom.Protocol.Storage.Admin.V1.CopyObjectRequest;
+using StorageCreateDownloadUrlRequest = Asterloom.Protocol.Storage.Admin.V1.CreateDownloadUrlRequest;
+using StorageDeleteObjectRequest = Asterloom.Protocol.Storage.Admin.V1.DeleteObjectRequest;
+using StorageGetObjectRequest = Asterloom.Protocol.Storage.Admin.V1.GetObjectRequest;
+using StorageUpdateObjectMetadataRequest = Asterloom.Protocol.Storage.Admin.V1.UpdateObjectMetadataRequest;
 
 namespace Asterloom.Modules.Authorization;
 
@@ -342,6 +350,60 @@ internal sealed class AuthorizationInterceptor(
                 cancellationToken);
         }
 
+        if (request is StorageCompleteUploadRequest completeUpload)
+        {
+            return await ResolveStorageUploadScopeAsync(
+                completeUpload.TenantId,
+                completeUpload.BucketId,
+                completeUpload.UploadSessionId,
+                cancellationToken);
+        }
+
+        if (request is StorageGetObjectRequest storageObject)
+        {
+            return await ResolveStorageObjectScopeAsync(
+                storageObject.TenantId,
+                storageObject.BucketId,
+                storageObject.ObjectId,
+                cancellationToken);
+        }
+
+        if (request is StorageUpdateObjectMetadataRequest updateStorageObject)
+        {
+            return await ResolveStorageObjectScopeAsync(
+                updateStorageObject.TenantId,
+                updateStorageObject.BucketId,
+                updateStorageObject.ObjectId,
+                cancellationToken);
+        }
+
+        if (request is StorageCreateDownloadUrlRequest downloadStorageObject)
+        {
+            return await ResolveStorageObjectScopeAsync(
+                downloadStorageObject.TenantId,
+                downloadStorageObject.BucketId,
+                downloadStorageObject.ObjectId,
+                cancellationToken);
+        }
+
+        if (request is StorageCopyObjectRequest copyStorageObject)
+        {
+            return await ResolveStorageObjectScopeAsync(
+                copyStorageObject.TenantId,
+                copyStorageObject.BucketId,
+                copyStorageObject.ObjectId,
+                cancellationToken);
+        }
+
+        if (request is StorageDeleteObjectRequest deleteStorageObject)
+        {
+            return await ResolveStorageObjectScopeAsync(
+                deleteStorageObject.TenantId,
+                deleteStorageObject.BucketId,
+                deleteStorageObject.ObjectId,
+                cancellationToken);
+        }
+
         if (request is not IMessage message)
         {
             return AuthorizationScope.Global;
@@ -355,6 +417,57 @@ internal sealed class AuthorizationInterceptor(
             ParseOptionalId(ReadString(source, "application_id"), "applicationId"),
             ParseOptionalId(ReadString(source, "environment_id"), "environmentId"));
     }
+
+    private async Task<AuthorizationScope> ResolveStorageUploadScopeAsync(
+        string tenantId,
+        string bucketId,
+        string uploadSessionId,
+        CancellationToken cancellationToken)
+    {
+        var tenant = ParseRequiredId(tenantId, "tenantId");
+        var bucket = ParseRequiredId(bucketId, "bucketId");
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var storage = scope.ServiceProvider.GetRequiredService<IStorageStore>();
+        var upload = await storage.GetUploadSessionAsync(
+            tenant,
+            bucket,
+            ParseRequiredId(uploadSessionId, "uploadSessionId"),
+            cancellationToken);
+        return upload is null
+            ? new AuthorizationScope(tenant, null, null)
+            : ToAuthorizationScope(await storage.GetObjectAsync(
+                tenant,
+                bucket,
+                upload.ObjectId,
+                cancellationToken), tenant);
+    }
+
+    private async Task<AuthorizationScope> ResolveStorageObjectScopeAsync(
+        string tenantId,
+        string bucketId,
+        string objectId,
+        CancellationToken cancellationToken)
+    {
+        var tenant = ParseRequiredId(tenantId, "tenantId");
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var storageObject = await scope.ServiceProvider
+            .GetRequiredService<IStorageStore>()
+            .GetObjectAsync(
+                tenant,
+                ParseRequiredId(bucketId, "bucketId"),
+                ParseRequiredId(objectId, "objectId"),
+                cancellationToken);
+        return ToAuthorizationScope(storageObject, tenant);
+    }
+
+    private static AuthorizationScope ToAuthorizationScope(
+        StorageObject? storageObject,
+        Guid tenantId) => storageObject is null
+            ? new AuthorizationScope(tenantId, null, null)
+            : new AuthorizationScope(
+                storageObject.TenantId,
+                storageObject.ApplicationId,
+                storageObject.EnvironmentId);
 
     private async Task<AuthorizationScope> ResolvePolicyScopeAsync(
         string policyRuleId,

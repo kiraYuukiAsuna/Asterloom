@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MomiyaBilibiliServer/MomiyaBilibiliServer.csproj" />
+  <Project Path="MomiyaBilibiliClient/MomiyaBilibiliClient.csproj" />
+</Solution>

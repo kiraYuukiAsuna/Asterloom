@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import useSWR from "swr";
 
 import { Button } from "@/components/ui/button";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
+import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -17,6 +19,7 @@ import {
   analyticsErrorMessage,
   exportAnalyticsEvents,
   getAnalyticsEvent,
+  listAnalyticsSchemas,
   listAnalyticsEvents,
   queryAnalytics,
   type AnalyticsAggregationBucket,
@@ -62,6 +65,13 @@ export function AnalyticsExplorerPanel({
   const [filters, setFilters] = useState<EventFilters>(emptyFilters);
   const [selected, setSelected] = useState<AnalyticsEventRecord | null>(null);
   const [gettingId, setGettingId] = useState("");
+  const schemas = useSWR(
+    ["analytics-event-options", scope.tenantId, scope.applicationId, scope.environmentId],
+    () => listAnalyticsSchemas(scope, { includeArchived: true, pageSize: 100 }),
+  );
+  const eventOptions: SearchableSelectOption[] = (schemas.data?.eventSchemas ?? []).map(
+    (schema) => ({ label: `${schema.displayName} (${schema.key})`, value: schema.key }),
+  );
   const events = useSWR(
     ["analytics-events", scope.tenantId, scope.applicationId, scope.environmentId, filters],
     () =>
@@ -103,7 +113,7 @@ export function AnalyticsExplorerPanel({
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={applyFilters}>
-              <FilterInput label={translate("Event name")} name="analyticsEventName" onChange={(value) => setDraft((current) => ({ ...current, eventName: value }))} placeholder={translate("checkout.completed")} value={draft.eventName} />
+              <SearchableSelect ariaLabel={translate("Event name")} className={analyticsInputClassName} emptyLabel={translate("All events")} label={translate("Event name")} labelClassName={analyticsLabelClassName} onChange={(value) => setDraft((current) => ({ ...current, eventName: value }))} options={eventOptions} value={draft.eventName} />
               <FilterInput label={translate("Actor / anonymous ID")} name="analyticsActor" onChange={(value) => setDraft((current) => ({ ...current, actorId: value }))} placeholder={translate("user-123")} value={draft.actorId} />
               <FilterInput label={translate("Event ID")} name="analyticsEventId" onChange={(value) => setDraft((current) => ({ ...current, eventId: value }))} placeholder={translate("SDK idempotency ID")} value={draft.eventId} />
               <FilterInput label={translate("From")} name="analyticsFrom" onChange={(value) => setDraft((current) => ({ ...current, fromAt: value }))} type="datetime-local" value={draft.fromAt} />
@@ -162,8 +172,8 @@ export function AnalyticsExplorerPanel({
         {selected ? <EventInspector event={selected} /> : <AnalyticsEmpty message={translate("Select an event to inspect its redacted properties and context.")} />}
       </div>
 
-      <AnalyticsQueryCard csrfToken={csrfToken} scope={scope} />
-      <AnalyticsExportCard csrfToken={csrfToken} scope={scope} />
+      <AnalyticsQueryCard csrfToken={csrfToken} eventOptions={eventOptions} scope={scope} />
+      <AnalyticsExportCard csrfToken={csrfToken} eventOptions={eventOptions} scope={scope} />
     </div>
   );
 }
@@ -173,7 +183,10 @@ function EventInspector({ event }: { event: AnalyticsEventRecord }) {
     <Card className="h-fit xl:sticky xl:top-24">
       <CardHeader>
         <CardTitle className="font-mono text-cyan-200">{event.eventName}</CardTitle>
-        <CardDescription>{event.eventId}</CardDescription>
+        <CardDescription>
+          <span className="block">{event.eventId}</span>
+          <span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{event.id}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">
@@ -189,7 +202,7 @@ function EventInspector({ event }: { event: AnalyticsEventRecord }) {
   );
 }
 
-function AnalyticsQueryCard({ csrfToken, scope }: { csrfToken: string; scope: AnalyticsScope }) {
+function AnalyticsQueryCard({ csrfToken, eventOptions, scope }: { csrfToken: string; eventOptions: SearchableSelectOption[]; scope: AnalyticsScope }) {
   const defaults = defaultRange();
   const [eventNames, setEventNames] = useState("");
   const [fromAt, setFromAt] = useState(defaults.fromAt);
@@ -226,7 +239,7 @@ function AnalyticsQueryCard({ csrfToken, scope }: { csrfToken: string; scope: An
       </CardHeader>
       <CardContent className="space-y-5">
         <form className="grid gap-3 md:grid-cols-4" onSubmit={submit}>
-          <FilterInput label={translate("Event names (comma separated)")} name="queryEventNames" onChange={setEventNames} placeholder={translate("checkout.completed")} value={eventNames} />
+          <SearchableMultiSelect ariaLabel={translate("Add event name")} className={analyticsInputClassName} emptyLabel={translate("Select an event name")} label={translate("Event names")} labelClassName={analyticsLabelClassName} onChange={(value) => setEventNames(value.join(", "))} options={eventOptions} required value={eventNames.split(",").map((item) => item.trim()).filter(Boolean)} />
           <FilterInput label={translate("From")} name="queryFrom" onChange={setFromAt} type="datetime-local" value={fromAt} />
           <FilterInput label={translate("To")} name="queryTo" onChange={setToAt} type="datetime-local" value={toAt} />
           <label className={analyticsLabelClassName}>{translate("Interval")}<select className={analyticsInputClassName} onChange={(event) => setInterval(event.target.value as typeof interval)} value={interval}><option value="hour">{translate("Hour")}</option><option value="day">{translate("Day")}</option><option value="week">{translate("Week")}</option></select></label>
@@ -252,7 +265,7 @@ function AnalyticsQueryCard({ csrfToken, scope }: { csrfToken: string; scope: An
   );
 }
 
-function AnalyticsExportCard({ csrfToken, scope }: { csrfToken: string; scope: AnalyticsScope }) {
+function AnalyticsExportCard({ csrfToken, eventOptions, scope }: { csrfToken: string; eventOptions: SearchableSelectOption[]; scope: AnalyticsScope }) {
   const [eventName, setEventName] = useState("");
   const [actorId, setActorId] = useState("");
   const [maximumRows, setMaximumRows] = useState(1_000);
@@ -280,7 +293,7 @@ function AnalyticsExportCard({ csrfToken, scope }: { csrfToken: string; scope: A
       </CardHeader>
       <CardContent>
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={exportEvents}>
-          <FilterInput label={translate("Event name")} name="exportEventName" onChange={setEventName} placeholder={translate("Optional")} value={eventName} />
+          <SearchableSelect ariaLabel={translate("Export event name")} className={analyticsInputClassName} emptyLabel={translate("All events")} label={translate("Event name")} labelClassName={analyticsLabelClassName} onChange={setEventName} options={eventOptions} value={eventName} />
           <FilterInput label={translate("Actor ID")} name="exportActor" onChange={setActorId} placeholder={translate("Optional")} value={actorId} />
           <label className={analyticsLabelClassName}>{translate("Maximum rows")}<input className={analyticsInputClassName} max={10000} min={1} onChange={(event) => setMaximumRows(event.target.valueAsNumber)} type="number" value={maximumRows} /></label>
           <div className="sm:col-span-3">

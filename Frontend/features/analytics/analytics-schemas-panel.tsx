@@ -299,7 +299,10 @@ function SchemaInspector({
           <CardTitle>{schema.displayName}</CardTitle>
           <AnalyticsStatusBadge status={schema.status} />
         </div>
-        <CardDescription className="font-mono">{schema.key}</CardDescription>
+        <CardDescription>
+          <span className="block font-mono">{schema.key}</span>
+          <span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{schema.id}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <label className={analyticsLabelClassName}>{translate("Display name")}<input className={analyticsInputClassName} disabled={!active} name="editAnalyticsSchemaDisplayName" onChange={(event) => setDisplayName(event.target.value)} value={displayName} /></label>
@@ -458,6 +461,7 @@ function WriteKeysCard({
                   <p className="mt-3 text-xs text-slate-500">
                     {translate("Last used")} {key.lastUsedAt ? formatDateTime(key.lastUsedAt) : translate("never")}
                   </p>
+                  <p className="mt-2 break-all font-mono text-[10px] text-slate-600">{key.id}</p>
                   {active && (
                     <div className="mt-4 flex gap-2">
                       <Button data-ui-action="rotate-analytics-write-key" disabled={Boolean(busy)} onClick={() => void perform(key, "rotate")} size="sm" type="button" variant="outline">

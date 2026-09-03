@@ -107,6 +107,9 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Redirect URIs (one per line)": "重定向 URI（每行一个）",
   "Post-logout redirect URIs (one per line)": "退出后重定向 URI（每行一个）",
   "Scopes (comma separated)": "Scope（逗号分隔）",
+  "Scopes": "Scope",
+  "Add scope": "添加 Scope",
+  "Select a scope": "选择 Scope",
   "Copied to clipboard.": "已复制到剪贴板。",
   "This value is returned once. Copy it now and store it in an approved secret channel.":
     "此值仅返回一次。请立即复制并保存到获准的密钥渠道。",
@@ -151,6 +154,10 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Edit role binding": "编辑角色绑定",
   "Edit policy rule": "编辑策略规则",
   "Permission keys (comma separated)": "权限键（逗号分隔）",
+  "Permissions": "权限",
+  "Add permission": "添加权限",
+  "Select a permission": "选择权限",
+  "All permissions (*)": "所有权限（*）",
   "Save role": "保存角色",
   "Create custom role": "创建自定义角色",
   "Keys are stable; permission sets remain editable.": "角色键保持稳定，权限集合可继续编辑。",
@@ -163,6 +170,7 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Empty scope means global. Application and environment scopes must remain nested.":
     "空作用域表示全局；应用与环境作用域必须保持正确的嵌套关系。",
   "Actor ID": "主体 ID",
+  "Actor": "主体",
   "Role": "角色",
   "Select a role": "选择角色",
   "Save binding": "保存绑定",
@@ -196,6 +204,9 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Test any actor and optional trusted Passport role without changing policy.":
     "无需更改策略，即可测试任意主体及可选的可信 Passport 角色。",
   "Trusted roles (simulation only, comma separated)": "可信角色（仅模拟，逗号分隔）",
+  "Trusted roles (simulation only)": "可信角色（仅模拟）",
+  "Add trusted role": "添加可信角色",
+  "Select a trusted role": "选择可信角色",
   "Check my access": "检查我的权限",
   "Simulate": "模拟",
   "Simulation": "模拟结果",

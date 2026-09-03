@@ -137,10 +137,12 @@ test("manages every signed Release API through the Web Console", async ({ page }
   await page.locator('[data-ui-action="promote-desktop-release"]').click();
   await expect(firstRelease).toContainText("published", { ignoreCase: true });
 
-  await page.locator('input[name="simulationChannelKey"]').fill(channelKey);
-  await page.locator('input[name="simulationCurrentVersion"]').fill("0.9.0");
-  await page.locator('input[name="simulationTargetingKey"]').fill(`user-${suffix}`);
-  await page.locator('[data-ui-action="simulate-release-update"]').click();
+  const simulator = page.getByRole("heading", { name: "Update decision simulator" }).locator("../..");
+  await simulator.getByLabel("Channel", { exact: true }).fill(`Stable E2E Updated (${channelKey})`);
+  await simulator.locator('input[name="simulationCurrentVersion"]').fill("0.9.0");
+  await simulator.getByLabel("Target runtime").fill("win-x64");
+  await simulator.locator('input[name="simulationTargetingKey"]').fill(`user-${suffix}`);
+  await simulator.locator('[data-ui-action="simulate-release-update"]').click();
   await expect(page.getByText("Update available", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Artifacts & keys", exact: true }).click();

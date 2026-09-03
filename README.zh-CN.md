@@ -125,7 +125,9 @@ Secret Manager 注入。
 | MinIO Console | `9001` | 不映射到宿主机 |
 | Reference HTTP / gRPC | `5090` / `5091` | `http://localhost:60004` / `http://localhost:60005` |
 | OTLP gRPC / HTTP | `4317` / `4318` | 不映射到宿主机 |
+| ReferenceApp OTLP gRPC | `14317` | 不映射到宿主机 |
 | Collector Health | `13133` | 不映射到宿主机 |
+| Collector 内部指标 | `8888` | 不映射到宿主机 |
 
 宿主机端口统一保留 `60000–60010`，其中 `60006–60010` 暂未分配。完整的本地及生产
 容器端口、回环绑定和公网 Nginx 路由见

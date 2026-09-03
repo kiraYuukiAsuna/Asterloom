@@ -5,6 +5,9 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Asterloom.UnitTests")]
 
 namespace Asterloom.Sdk.Telemetry;
 
@@ -51,7 +54,7 @@ public static class AsterloomTelemetryServiceCollectionExtensions
                     tracing.AddSource([.. options.ActivitySourceNames]);
                 }
 
-                tracing.AddOtlpExporter(exporter => ConfigureExporter(exporter, options));
+                tracing.AddOtlpExporter(exporter => ConfigureExporter(exporter, options, "traces"));
             });
         }
 
@@ -75,7 +78,7 @@ public static class AsterloomTelemetryServiceCollectionExtensions
                     metrics.AddMeter([.. options.MeterNames]);
                 }
 
-                metrics.AddOtlpExporter(exporter => ConfigureExporter(exporter, options));
+                metrics.AddOtlpExporter(exporter => ConfigureExporter(exporter, options, "metrics"));
             });
         }
 
@@ -99,7 +102,7 @@ public static class AsterloomTelemetryServiceCollectionExtensions
             openTelemetry.IncludeScopes = true;
             openTelemetry.ParseStateValues = true;
             openTelemetry.SetResourceBuilder(ConfigureResource(ResourceBuilder.CreateDefault(), options));
-            openTelemetry.AddOtlpExporter(exporter => ConfigureExporter(exporter, options));
+            openTelemetry.AddOtlpExporter(exporter => ConfigureExporter(exporter, options, "logs"));
         });
         return logging;
     }
@@ -124,10 +127,27 @@ public static class AsterloomTelemetryServiceCollectionExtensions
 
     private static void ConfigureExporter(
         OtlpExporterOptions exporter,
-        AsterloomTelemetryOptions options)
+        AsterloomTelemetryOptions options,
+        string signal)
     {
-        exporter.Endpoint = options.ExporterEndpoint;
+        exporter.Endpoint = ResolveExporterEndpoint(options, signal);
         exporter.Protocol = options.ExporterProtocol;
+    }
+
+    internal static Uri ResolveExporterEndpoint(
+        AsterloomTelemetryOptions options,
+        string signal)
+    {
+        if (options.ExporterProtocol != OtlpExportProtocol.HttpProtobuf)
+        {
+            return options.ExporterEndpoint;
+        }
+
+        var endpoint = new UriBuilder(options.ExporterEndpoint)
+        {
+            Path = $"{options.ExporterEndpoint.AbsolutePath.TrimEnd('/')}/v1/{signal}",
+        };
+        return endpoint.Uri;
     }
 
     private static void Validate(AsterloomTelemetryOptions options)

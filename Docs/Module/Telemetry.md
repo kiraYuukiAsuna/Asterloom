@@ -12,11 +12,12 @@ diagnostic links. Product behavior and conversion events belong in [Analytics](A
   → OpenTelemetry instrumentation + Asterloom resource attributes
   → OTLP gRPC :4317 or HTTP/protobuf :4318
   → OpenTelemetry Collector
-  → production observability backend (Tempo/Jaeger/Prometheus/Loki/vendor)
+  → rotating JSON files and optional observability backend
 ```
 
-The Compose Collector uses only a `debug` exporter by default. It validates the pipeline but is not production
-retention. Configure a real backend, retention, authentication, and capacity controls for production.
+The Compose Collector writes traces, metrics, and logs to a persistent named volume as rotating JSON files
+(100 MiB per file, 10 backups, seven days) while retaining the `debug` exporter for diagnostics. This supports raw
+export without a dashboard; add a query backend only when indexed search, alerts, or Trace Pivot links are needed.
 
 ## 2. Web administration
 
@@ -111,7 +112,7 @@ TLS/mTLS or a controlled gateway; never expose unauthenticated 4317/4318 publicl
 
 ## 7. Production checklist
 
-- [ ] The production Collector uses a durable or managed exporter, not `debug`.
+- [ ] The Collector file volume is included in backup/export operations, or a managed exporter is configured.
 - [ ] OTLP endpoint, protocol, TLS, and network policy are verified.
 - [ ] Service name, version, Environment, and Asterloom scope resources are complete.
 - [ ] Sampling balances diagnostic requirements and cost.

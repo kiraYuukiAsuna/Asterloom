@@ -122,8 +122,14 @@ test("manages the complete authorization surface through the Web Console", async
     .locator('textarea[name="roleDescription"]')
     .fill("Role exercised by the browser contract.");
   await createRoleCard
-    .locator('textarea[name="rolePermissions"]')
-    .fill(`${permissionKey}, platform.environment.read, platform.environment.update`);
+    .getByLabel("Add permission")
+    .fill(`Refund E2E orders updated (${permissionKey})`);
+  await createRoleCard
+    .getByLabel("Add permission")
+    .fill("Read environments (platform.environment.read)");
+  await createRoleCard
+    .getByLabel("Add permission")
+    .fill("Update environments (platform.environment.update)");
   await createRoleCard.getByRole("button", { name: "Create role" }).click();
 
   const roleRow = page.getByTestId(`authorization-role-${roleKey}`);
@@ -179,8 +185,8 @@ test("manages the complete authorization surface through the Web Console", async
   await createPolicyCard.locator('input[name="policyName"]').fill(policyName);
   await createPolicyCard.locator('input[name="policySubject"]').fill(actorId);
   await createPolicyCard
-    .locator('input[name="policyPermission"]')
-    .fill("platform.environment.update");
+    .getByLabel("Permission")
+    .fill("Update environments (platform.environment.update)");
   await createPolicyCard.locator('input[name="policyResourceType"]').fill("order");
   await createPolicyCard.locator('input[name="policyResourceId"]').fill("order-42");
   await createPolicyCard.getByLabel("Enable ABAC attribute condition").check();
@@ -227,8 +233,8 @@ test("manages the complete authorization surface through the Web Console", async
   const simulator = page.locator('[data-ui-action="simulate-authorization"]');
   await simulator.locator('input[name="simulationActorId"]').fill(actorId);
   await simulator
-    .locator('input[name="simulationPermission"]')
-    .fill("platform.environment.update");
+    .getByLabel("Permission")
+    .fill("Update environments (platform.environment.update)");
   await simulator.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
   await simulator.getByLabel("Application", { exact: true }).fill(applicationLabel);
   await simulator.getByLabel("Environment", { exact: true }).fill(environmentLabel);

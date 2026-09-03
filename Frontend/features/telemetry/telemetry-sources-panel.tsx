@@ -160,7 +160,7 @@ function SourceInspector({ csrfToken, onChanged, source }: { csrfToken: string; 
   }
   return (
     <Card className="h-fit xl:sticky xl:top-24">
-      <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{source.displayName}</CardTitle><TelemetryStatusBadge status={source.status} /></div><CardDescription className="font-mono">{source.key}</CardDescription></CardHeader>
+      <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{source.displayName}</CardTitle><TelemetryStatusBadge status={source.status} /></div><CardDescription><span className="block font-mono">{source.key}</span><span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{source.id}</span></CardDescription></CardHeader>
       <CardContent className="space-y-4">
         <label className={telemetryLabelClassName}>{translate("Display name")}<input className={telemetryInputClassName} disabled={!active} name="editTelemetrySourceDisplayName" onChange={(event) => setDisplayName(event.target.value)} value={displayName} /></label>
         <label className={telemetryLabelClassName}>{translate("Service name")}<input className={telemetryInputClassName} disabled={!active} name="editTelemetrySourceServiceName" onChange={(event) => setServiceName(event.target.value)} value={serviceName} /></label>

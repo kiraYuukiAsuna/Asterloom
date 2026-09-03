@@ -74,6 +74,8 @@ export const featureTargetingConfigZhCnMessages: Readonly<Record<string, string>
   "Add prerequisite": "添加前置依赖",
   "Prerequisites": "前置依赖",
   "Expected variant": "期望变体",
+  "Select a published flag": "选择已发布功能开关",
+  "Select an expected variant": "选择期望变体",
   "Published dependencies must resolve to the expected variant.": "已发布依赖必须求值为期望变体。",
   "No prerequisites. This flag evaluates independently.": "没有前置依赖，此功能开关将独立求值。",
   "Add segment rule": "添加分群规则",

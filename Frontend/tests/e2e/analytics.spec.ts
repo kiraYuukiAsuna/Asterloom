@@ -112,11 +112,15 @@ test("manages every Analytics API through the Web Console", async ({ page, reque
   await eventRow.locator('[data-ui-action="get-analytics-event"]').click();
   await expect(page.getByText("[REDACTED]", { exact: false })).toBeVisible();
 
-  await page.locator('input[name="queryEventNames"]').fill(eventName);
+  await page
+    .getByLabel("Add event name")
+    .fill(`Checkout completed E2E updated (${eventName})`);
   await page.locator('[data-ui-action="query-analytics-aggregation"]').click();
   await expect(page.getByTestId("analytics-query-results")).toContainText(eventName);
 
-  await page.locator('input[name="exportEventName"]').fill(eventName);
+  await page
+    .getByLabel("Export event name")
+    .fill(`Checkout completed E2E updated (${eventName})`);
   const downloadPromise = page.waitForEvent("download");
   await page.locator('[data-ui-action="export-analytics-events"]').click();
   const download = await downloadPromise;

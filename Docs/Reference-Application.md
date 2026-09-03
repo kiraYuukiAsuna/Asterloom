@@ -111,6 +111,7 @@ ApplicationId。修改 Scope Resource、Application 绑定或域名后必须重�
 | `ASTERLOOM_REFERENCE_RELEASE_TARGET_FULL` | 真实更新测试 | 目标 Full `.nupkg` 路径。 |
 | `ASTERLOOM_REFERENCE_RELEASE_TARGET_DELTA` | 真实更新测试 | 从基线到目标的 Delta `.nupkg` 路径。 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | 否 | OTLP Collector 地址；未设置时禁用导出。 |
+| `ASTERLOOM_REFERENCE_OTEL_METRICS_URL` | `doctor` 的 Telemetry 项 | Collector 内部 Prometheus 指标地址；用于断言三类信号已被 Receiver 接收并由 Exporter 输出。 |
 
 除显式启用的 loopback 开发环境外，Passport 和平台地址必须使用 HTTPS。
 
@@ -126,7 +127,7 @@ ApplicationId。修改 Scope Resource、Application 绑定或域名后必须重�
 | Dynamic Config | `AsterloomConfigClient` snapshot/typed getter | CN context 返回目标值，snapshot 包含配置 key。 |
 | Desktop Update | 真实 `vpk` Full/Delta、`AsterloomVelopackUpdateSource`、安装态 `UpdateManager` | Delta 下载并逐字节还原目标 Full；真实安装程序从基线更新、替换、重启到目标版本；可强制验证 Full 回退。 |
 | Analytics | `AsterloomAnalyticsClient.TrackAsync/FlushAsync` | Schema 校验通过且 accepted=1、remaining=0。 |
-| Telemetry | 自定义 Activity/Meter/Log + OTLP；读取 source/collector health | 三类信号均生成，Collector 管理 API 可访问。 |
+| Telemetry | 自定义 Activity/Meter/Log + OTLP；读取 source/collector health 和 Collector 内部计数器 | Collector 必须为 Healthy，且三类信号的 Receiver accepted 与 Exporter sent 计数均增加。 |
 | Mail | 注册后由 Reference Backend 提交确认邮件；受保护测试端点提交业务邮件 | 使用绑定应用的 SMTP 账号返回 `SENT`，投递历史可从控制台查看。 |
 | RPC | 调用参考后台 `RecordHeartbeat` | 原生 HTTP/2 gRPC 成功返回 heartbeat ID。 |
 | HTTP | 调用同一 protobuf 的 JSON 路由 | HTTP/1.1 POST/GET 成功，证明浏览器可用 Transcoding。 |
@@ -171,7 +172,7 @@ Asterloom.ReferenceApp.Client.exe update "$env:TEMP/full-result.json" --force-fu
 
 ```bash
 bash Deploy/Scripts/Provision-Reference-App.sh
-docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml up -d --force-recreate reference-backend
+docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml up -d --force-recreate otel-collector reference-backend
 docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \
   --profile reference run --rm --no-deps reference-client provision --json
 docker compose -f docker-compose.yml -f Deploy/docker-compose.production.yml \

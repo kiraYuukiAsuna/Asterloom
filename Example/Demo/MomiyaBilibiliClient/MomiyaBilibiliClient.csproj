@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>MomiyaBilibiliClient</AssemblyName>
+    <RootNamespace>MomiyaBilibiliClient</RootNamespace>
+    <Version>1.0.0</Version>
+    <IncludeHttpRuleProtos>true</IncludeHttpRuleProtos>
+    <IncludeGoogleApiCommonProtos>true</IncludeGoogleApiCommonProtos>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Api.CommonProtos" Version="2.17.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.36.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.83.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Analytics/Asterloom.Sdk.Analytics.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Config/Asterloom.Sdk.Config.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Feature/Asterloom.Sdk.Feature.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Release/Asterloom.Sdk.Release.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Storage/Asterloom.Sdk.Storage.csproj" />
+    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="../Protos/momiya_bilibili.proto" GrpcServices="Client" Link="Protos/momiya_bilibili.proto" />
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="release-public-key.pem" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

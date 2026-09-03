@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Asterloom.Module\Asterloom.Module.csproj" />
+    <ProjectReference Include="..\Asterloom.Module.Storage\Asterloom.Module.Storage.csproj" />
     <ProjectReference Include="..\Asterloom.Shared\Asterloom.Shared.csproj" />
   </ItemGroup>
 

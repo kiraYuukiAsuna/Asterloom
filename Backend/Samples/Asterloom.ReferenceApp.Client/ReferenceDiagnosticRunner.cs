@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,6 +28,15 @@ internal sealed class ReferenceDiagnosticRunner(
     ReferenceClientInstrumentation instrumentation,
     ILogger<ReferenceDiagnosticRunner> logger)
 {
+    private static readonly (string Name, string Component)[] CollectorSignalCounters =
+    [
+        ("otelcol_receiver_accepted_spans", "receiver=\"otlp/reference\""),
+        ("otelcol_receiver_accepted_metric_points", "receiver=\"otlp/reference\""),
+        ("otelcol_receiver_accepted_log_records", "receiver=\"otlp/reference\""),
+        ("otelcol_exporter_sent_spans", "exporter=\"debug/reference\""),
+        ("otelcol_exporter_sent_metric_points", "exporter=\"debug/reference\""),
+        ("otelcol_exporter_sent_log_records", "exporter=\"debug/reference\""),
+    ];
     private static readonly Action<ILogger, string, Exception?> LogTelemetryProbe =
         LoggerMessage.Define<string>(
             LogLevel.Information,
@@ -284,24 +294,69 @@ internal sealed class ReferenceDiagnosticRunner(
 
     private async Task<string> TestTelemetryAsync(CancellationToken cancellationToken)
     {
+        var metricsAddress = settings.TelemetryCollectorMetricsAddress
+            ?? throw new InvalidOperationException(
+                "ASTERLOOM_REFERENCE_OTEL_METRICS_URL is required to verify OTLP delivery.");
+        var path = ScopePath() + "/telemetry";
+        using var health = await platform.HttpClient.GetAsync(
+            path + "/collector/health",
+            cancellationToken);
+        await EnsureSuccessAsync(health, cancellationToken);
+        var healthBody = await health.Content.ReadAsStringAsync(cancellationToken);
+        using var healthDocument = JsonDocument.Parse(healthBody);
+        var healthStatus = healthDocument.RootElement.GetProperty("status").GetString();
+        if (!string.Equals(
+                healthStatus,
+                "COLLECTOR_HEALTH_STATUS_HEALTHY",
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Collector health is {healthStatus ?? "missing"}: {Compact(healthBody)}");
+        }
+
+        using var metricsClient = new HttpClient();
+        var before = await ReadCollectorSignalCountersAsync(
+            metricsClient,
+            metricsAddress,
+            cancellationToken);
         using (var activity = instrumentation.ActivitySource.StartActivity("reference.diagnostic.telemetry"))
         {
             activity?.SetTag("asterloom.reference.run_id", state.RunId);
             activity?.AddEvent(new ActivityEvent("reference.telemetry.probe"));
             LogTelemetryProbe(logger, state.RunId, null);
         }
+        instrumentation.Diagnostics.Add(
+            1,
+            new KeyValuePair<string, object?>("capability", "Telemetry probe"),
+            new KeyValuePair<string, object?>("outcome", "success"));
 
-        var path = ScopePath() + "/telemetry";
         using var sources = await platform.HttpClient.GetAsync(
             path + "/sources?pageSize=100",
             cancellationToken);
         await EnsureSuccessAsync(sources, cancellationToken);
-        using var health = await platform.HttpClient.GetAsync(
-            path + "/collector/health",
-            cancellationToken);
-        await EnsureSuccessAsync(health, cancellationToken);
-        var body = await health.Content.ReadAsStringAsync(cancellationToken);
-        return "Trace/metric/log emitted; Collector health API returned " + Compact(body) + ".";
+
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+        IReadOnlyDictionary<string, double> after;
+        do
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+            after = await ReadCollectorSignalCountersAsync(
+                metricsClient,
+                metricsAddress,
+                cancellationToken);
+            if (CollectorSignalCounters.All(counter =>
+                    after[counter.Name] > before[counter.Name]))
+            {
+                return "Collector received and exported Trace, Metric and Log through OTLP.";
+            }
+        }
+        while (DateTimeOffset.UtcNow < deadline);
+
+        var missing = CollectorSignalCounters
+            .Where(counter => after[counter.Name] <= before[counter.Name])
+            .Select(counter => counter.Name);
+        throw new InvalidOperationException(
+            "Collector counters did not increase for: " + string.Join(", ", missing) + ".");
     }
 
     private async Task<string> TestRpcAsync(CancellationToken cancellationToken)
@@ -497,5 +552,61 @@ internal sealed class ReferenceDiagnosticRunner(
     {
         var compact = string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         return compact.Length <= 180 ? compact : compact[..180] + "…";
+    }
+
+    private static async Task<IReadOnlyDictionary<string, double>> ReadCollectorSignalCountersAsync(
+        HttpClient client,
+        Uri address,
+        CancellationToken cancellationToken)
+    {
+        using var response = await client.GetAsync(address, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        return CollectorSignalCounters.ToDictionary(
+            counter => counter.Name,
+            counter => ReadPrometheusCounter(payload, counter.Name, counter.Component),
+            StringComparer.Ordinal);
+    }
+
+    private static double ReadPrometheusCounter(
+        string payload,
+        string counter,
+        string component)
+    {
+        var value = 0d;
+        foreach (var line in payload.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line[0] == '#')
+            {
+                continue;
+            }
+
+            var nameEnd = line.IndexOfAny(['{', ' ']);
+            if (nameEnd < 0)
+            {
+                continue;
+            }
+
+            var name = line[..nameEnd];
+            if ((!string.Equals(name, counter, StringComparison.Ordinal)
+                    && !string.Equals(name, counter + "_total", StringComparison.Ordinal))
+                || !line.Contains(component, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var valueStart = line.LastIndexOf(' ');
+            if (valueStart >= 0
+                && double.TryParse(
+                    line.AsSpan(valueStart + 1),
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out var sample))
+            {
+                value += sample;
+            }
+        }
+
+        return value;
     }
 }

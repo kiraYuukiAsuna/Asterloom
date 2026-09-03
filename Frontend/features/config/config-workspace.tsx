@@ -730,8 +730,9 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                           </Badge>
                         </div>
                         <CardDescription className="mt-1 font-mono text-xs text-violet-300">
-                          {selectedEntry.key} {" "}{translate("· version")}{" "}{selectedEntry.version} {" "}{translate("· snapshot")}{" "}
-                          {selectedEntry.publishedSnapshotVersion || translate("unpublished")}
+                          <span className="block">{selectedEntry.key} {" "}{translate("· version")}{" "}{selectedEntry.version} {" "}{translate("· snapshot")}{" "}
+                            {selectedEntry.publishedSnapshotVersion || translate("unpublished")}</span>
+                          <span className="mt-1 block break-all text-[10px] text-slate-600">{selectedEntry.id}</span>
                         </CardDescription>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -902,6 +903,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                                 ? ` · from revision ${revision.sourceRevision}`
                                 : "")}
                             </p>
+                            <p className="mt-1 break-all font-mono text-[10px] text-slate-700">{revision.id}</p>
                           </div>
                           <Button
                             data-ui-action="rollback-config-entry"
@@ -1054,6 +1056,7 @@ export function ConfigWorkspace({ csrfToken }: { csrfToken: string }) {
                       <p className="mt-1 text-[10px] text-slate-600">
                         {formatDateTime(snapshot.createdAt)}
                       </p>
+                      <p className="mt-1 break-all font-mono text-[10px] text-slate-700">{snapshot.id}</p>
                     </div>
                   ))}
                   {!snapshots.isLoading && (snapshots.data?.snapshots.length ?? 0) === 0 && (

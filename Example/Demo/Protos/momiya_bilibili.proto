@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package momiya.bilibili.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Momiya.Bilibili.Protocol.V1";
+
+service MomiyaBilibiliService {
+  rpc Subscribe(SubscribeRequest) returns (SubscribeReply) {
+    option (google.api.http) = {
+      post: "/api/momiya/v1/subscriptions"
+      body: "*"
+    };
+  }
+
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsReply) {
+    option (google.api.http) = {
+      get: "/api/momiya/v1/subscriptions"
+    };
+  }
+}
+
+message SubscribeRequest {
+  string creator_mid = 1;
+  string creator_name = 2;
+}
+
+message SubscribeReply {
+  Subscription subscription = 1;
+  string authorization_reason = 2;
+  string mail_status = 3;
+}
+
+message ListSubscriptionsRequest {}
+
+message ListSubscriptionsReply {
+  repeated Subscription subscriptions = 1;
+}
+
+message Subscription {
+  string creator_mid = 1;
+  string creator_name = 2;
+  google.protobuf.Timestamp created_at = 3;
+}

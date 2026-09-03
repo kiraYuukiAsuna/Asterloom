@@ -3,6 +3,7 @@
 import { KeyRound, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { FeatureValueKindObject } from "@/lib/api/generated/models";
 import {
   featureDefinitionSchema,
@@ -25,6 +26,12 @@ export type FeatureDefinitionDraft = {
   prerequisites: Array<{ expectedVariantKey: string; flagKey: string }>;
   targetingRules: Array<{ id: string; segmentId: string; variantKey: string }>;
   variants: Array<{ displayName: string; key: string; rawValue: string }>;
+};
+
+export type PrerequisiteFlagOption = {
+  displayName: string;
+  key: string;
+  variants: Array<{ displayName: string; key: string }>;
 };
 
 export function createFeatureDefinitionDraft(
@@ -136,15 +143,21 @@ export function FeatureDefinitionEditor({
   draft,
   idPrefix,
   onChange,
+  prerequisiteFlags,
   segments,
   valueKind,
 }: {
   draft: FeatureDefinitionDraft;
   idPrefix: string;
   onChange: (draft: FeatureDefinitionDraft) => void;
+  prerequisiteFlags: PrerequisiteFlagOption[];
   segments: Array<{ displayName: string; id: string; key: string }>;
   valueKind: FeatureValueKind;
 }) {
+  const unusedPrerequisiteFlags = prerequisiteFlags.filter(
+    (flag) => !draft.prerequisites.some((prerequisite) => prerequisite.flagKey === flag.key),
+  );
+
   function updateVariant(
     index: number,
     update: Partial<FeatureDefinitionDraft["variants"][number]>,
@@ -276,15 +289,18 @@ export function FeatureDefinitionEditor({
       <EditorSection
         action={
           <Button
-            onClick={() =>
+            disabled={unusedPrerequisiteFlags.length === 0}
+            onClick={() => {
+              const flag = unusedPrerequisiteFlags[0];
+              if (!flag) return;
               onChange({
                 ...draft,
                 prerequisites: [
                   ...draft.prerequisites,
-                  { expectedVariantKey: "on", flagKey: "" },
+                  { expectedVariantKey: flag.variants[0]?.key ?? "", flagKey: flag.key },
                 ],
-              })
-            }
+              });
+            }}
             size="sm"
             type="button"
             variant="outline"
@@ -302,22 +318,45 @@ export function FeatureDefinitionEditor({
               className="grid gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-4 sm:grid-cols-[1fr_1fr_auto]"
               key={index}
             >
-              <TextField
+              <SearchableSelect
+                ariaLabel={translate(`${idPrefix} prerequisite ${index + 1} flag`)}
+                className={inputClassName}
+                emptyLabel={translate("Select a published flag")}
                 label={translate("Flag key")}
+                labelClassName={labelClassName}
                 name={`${idPrefix}PrerequisiteFlagKey`}
                 onChange={(value) =>
                   onChange({
                     ...draft,
                     prerequisites: replaceAt(draft.prerequisites, index, {
-                      ...prerequisite,
+                      expectedVariantKey:
+                        prerequisiteFlags.find((flag) => flag.key === value)?.variants[0]?.key ?? "",
                       flagKey: value,
                     }),
                   })
                 }
+                options={prerequisiteFlags
+                  .filter(
+                    (flag) =>
+                      flag.key === prerequisite.flagKey ||
+                      !draft.prerequisites.some(
+                        (item, candidate) => candidate !== index && item.flagKey === flag.key,
+                      ),
+                  )
+                  .map((flag) => ({
+                    label: `${flag.displayName} (${flag.key})`,
+                    value: flag.key,
+                  }))}
+                required
                 value={prerequisite.flagKey}
               />
-              <TextField
+              <SearchableSelect
+                ariaLabel={translate(`${idPrefix} prerequisite ${index + 1} expected variant`)}
+                className={inputClassName}
+                disabled={!prerequisite.flagKey}
+                emptyLabel={translate("Select an expected variant")}
                 label={translate("Expected variant")}
+                labelClassName={labelClassName}
                 name={`${idPrefix}PrerequisiteVariantKey`}
                 onChange={(value) =>
                   onChange({
@@ -328,6 +367,12 @@ export function FeatureDefinitionEditor({
                     }),
                   })
                 }
+                options={(prerequisiteFlags.find((flag) => flag.key === prerequisite.flagKey)
+                  ?.variants ?? []).map((variant) => ({
+                  label: `${variant.displayName} (${variant.key})`,
+                  value: variant.key,
+                }))}
+                required
                 value={prerequisite.expectedVariantKey}
               />
               <RemoveButton

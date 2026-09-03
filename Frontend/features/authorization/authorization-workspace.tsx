@@ -24,7 +24,11 @@ import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
+import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -72,6 +76,7 @@ import {
   type TargetingRuleDraft,
 } from "@/features/targeting/rule-editor";
 import type { TargetingValueInput } from "@/lib/api/targeting-management";
+import { passportRoles } from "@/lib/api/identity-management";
 import {
   listApplications,
   listEnvironments,
@@ -145,9 +150,8 @@ export function AuthorizationWorkspace({
   );
 
   const systemPermissions = useSWR(
-    ["authorization-system-permissions", permissionQuery],
-    () => listAllPermissions({ query: permissionQuery }),
-    { keepPreviousData: true },
+    "authorization-system-permissions",
+    () => listAllPermissions({ query: "" }),
   );
   const hasApplicationScope = isUuid(scopeTenantId) && isUuid(scopeApplicationId);
   const applicationPermissions = useSWR(
@@ -156,7 +160,6 @@ export function AuthorizationWorkspace({
           "authorization-application-permissions",
           scopeTenantId,
           scopeApplicationId,
-          permissionQuery,
           includeArchivedPermissions,
         ]
       : null,
@@ -164,19 +167,35 @@ export function AuthorizationWorkspace({
       listAllPermissions({
         applicationId: scopeApplicationId,
         includeArchived: includeArchivedPermissions,
-        query: permissionQuery,
+        query: "",
         tenantId: scopeTenantId,
       }),
     { keepPreviousData: true },
   );
-  const permissions = [
+  const normalizedPermissionQuery = permissionQuery.trim().toLowerCase();
+  const matchesPermissionQuery = (permission: PermissionRecord) =>
+    !normalizedPermissionQuery ||
+    `${permission.key} ${permission.displayName} ${permission.description}`
+      .toLowerCase()
+      .includes(normalizedPermissionQuery);
+  const visibleApplicationPermissions = (applicationPermissions.data?.permissions ?? []).filter(
+    matchesPermissionQuery,
+  );
+  const visiblePermissions = [
     ...(applicationPermissions.data?.permissions ?? []),
     ...(systemPermissions.data?.permissions ?? []),
-  ];
+  ].filter(matchesPermissionQuery);
+  const selectablePermissions = [
+    ...(applicationPermissions.data?.permissions ?? []),
+    ...(systemPermissions.data?.permissions ?? []),
+  ].filter(
+    (permission, index, items) =>
+      permission.status === activeStatus &&
+      items.findIndex((candidate) => candidate.key === permission.key) === index,
+  );
   const roles = useSWR(
     [
       "authorization-roles",
-      roleQuery,
       includeArchivedRoles,
       hasApplicationScope ? scopeTenantId : "",
       hasApplicationScope ? scopeApplicationId : "",
@@ -185,11 +204,22 @@ export function AuthorizationWorkspace({
       listRoles({
         includeArchived: includeArchivedRoles,
         pageSize: 100,
-        query: roleQuery,
+        query: "",
         tenantId: hasApplicationScope ? scopeTenantId : "",
         applicationId: hasApplicationScope ? scopeApplicationId : "",
       }),
     { keepPreviousData: true },
+  );
+  const normalizedRoleQuery = roleQuery.trim().toLowerCase();
+  const visibleRoles = (roles.data?.roles ?? []).filter(
+    (role) =>
+      !normalizedRoleQuery ||
+      `${role.key} ${role.displayName} ${role.description}`
+        .toLowerCase()
+        .includes(normalizedRoleQuery),
+  );
+  const selectableRoles = (roles.data?.roles ?? []).filter(
+    (role) => role.status === activeStatus,
   );
   const bindings = useSWR(
     [
@@ -360,7 +390,7 @@ export function AuthorizationWorkspace({
           onIncludeArchivedChange={setIncludeArchivedPermissions}
           onQueryChange={setPermissionQuery}
           pending={pending}
-          permissions={applicationPermissions.data?.permissions ?? []}
+          permissions={visibleApplicationPermissions}
           query={permissionQuery}
           reloadPermissions={applicationPermissions.mutate}
           reloadRevisions={revisions.mutate}
@@ -379,14 +409,15 @@ export function AuthorizationWorkspace({
           pending={pending}
           permissionQuery={permissionQuery}
           applicationId={scopeApplicationId}
-          permissions={permissions}
+          permissions={visiblePermissions}
           permissionsError={systemPermissions.error ?? applicationPermissions.error}
           reloadRevisions={revisions.mutate}
           reloadRoles={roles.mutate}
           roleQuery={roleQuery}
-          roles={roles.data?.roles ?? []}
+          roles={visibleRoles}
           rolesError={roles.error}
           runMutation={runMutation}
+          selectablePermissions={selectablePermissions}
           tenantId={scopeTenantId}
         />
       )}
@@ -402,7 +433,7 @@ export function AuthorizationWorkspace({
           pending={pending}
           reloadBindings={bindings.mutate}
           reloadRevisions={revisions.mutate}
-          roles={roles.data?.roles ?? []}
+          roles={selectableRoles}
           runMutation={runMutation}
           applicationId={scopeApplicationId}
           tenantId={scopeTenantId}
@@ -416,11 +447,12 @@ export function AuthorizationWorkspace({
           onIncludeArchivedChange={setIncludeArchivedPolicies}
           onQueryChange={setPolicyQuery}
           pending={pending}
-          permissions={permissions}
+          permissions={selectablePermissions}
           policies={policies.data?.policyRules ?? []}
           query={policyQuery}
           reloadPolicies={policies.mutate}
           reloadRevisions={revisions.mutate}
+          roles={selectableRoles}
           runMutation={runMutation}
           applicationId={scopeApplicationId}
           tenantId={scopeTenantId}
@@ -434,7 +466,7 @@ export function AuthorizationWorkspace({
           onRevisionResourceIdChange={setRevisionResourceId}
           onRevisionResourceTypeChange={setRevisionResourceType}
           pending={pending}
-          permissions={permissions}
+          permissions={selectablePermissions}
           revisionResourceId={revisionResourceId}
           revisionResourceType={revisionResourceType}
           revisions={revisions.data?.revisions ?? []}
@@ -608,6 +640,7 @@ function PermissionsPanel({
                     </div>
                     <p className="mt-2 text-sm font-medium text-slate-200">{permission.displayName}</p>
                     <p className="mt-1 text-xs text-slate-500">{permission.description}</p>
+                    {permission.id && <p className="mt-2 break-all font-mono text-[10px] text-slate-600">{permission.id}</p>}
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button onClick={() => beginEdit(permission)} size="sm" type="button" variant="ghost">
@@ -689,6 +722,7 @@ function RolesPanel({
   roles,
   rolesError,
   runMutation,
+  selectablePermissions,
   tenantId,
 }: {
   applicationId: string;
@@ -707,6 +741,7 @@ function RolesPanel({
   roles: AuthorizationRoleRecord[];
   rolesError: unknown;
   runMutation: MutationRunner;
+  selectablePermissions: PermissionRecord[];
   tenantId: string;
 }) {
   const [key, setKey] = useState("");
@@ -802,6 +837,7 @@ function RolesPanel({
                       <p className="mt-2 text-xs leading-5 text-slate-500">
                         {role.description || translate("No description")} {" "}{translate("· v")} {role.version}
                       </p>
+                      <p className="mt-2 break-all font-mono text-[10px] text-slate-600">{role.id}</p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {role.permissions.map((permission) => (
                           <span
@@ -883,14 +919,17 @@ function RolesPanel({
                           value={editDescription}
                         />
                       </Field>
-                      <Field label={translate("Permission keys (comma separated)")}>
-                        <textarea
-                          className={textAreaClassName}
-                          name="editRolePermissions"
-                          onChange={(event) => setEditPermissions(event.target.value)}
-                          value={editPermissions}
-                        />
-                      </Field>
+                      <SearchableMultiSelect
+                        ariaLabel={translate("Add permission")}
+                        className={inputClassName}
+                        emptyLabel={translate("Select a permission")}
+                        label={translate("Permissions")}
+                        labelClassName={labelClassName}
+                        onChange={(value) => setEditPermissions(value.join(", "))}
+                        options={permissionOptions(selectablePermissions)}
+                        required
+                        value={parseCsv(editPermissions)}
+                      />
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => setEditing(undefined)} type="button" variant="ghost">
                           {translate("Cancel")}</Button>
@@ -939,15 +978,19 @@ function RolesPanel({
                   value={description}
                 />
               </Field>
-              <Field className="sm:col-span-2" label={translate("Permission keys (comma separated)")}>
-                <textarea
-                  className={textAreaClassName}
-                  name="rolePermissions"
-                  onChange={(event) => setPermissionKeys(event.target.value)}
-                  placeholder={translate("platform.environment.read, platform.environment.update")}
-                  value={permissionKeys}
+              <div className="sm:col-span-2">
+                <SearchableMultiSelect
+                  ariaLabel={translate("Add permission")}
+                  className={inputClassName}
+                  emptyLabel={translate("Select a permission")}
+                  label={translate("Permissions")}
+                  labelClassName={labelClassName}
+                  onChange={(value) => setPermissionKeys(value.join(", "))}
+                  options={permissionOptions(selectablePermissions)}
+                  required
+                  value={parseCsv(permissionKeys)}
                 />
-              </Field>
+              </div>
               <div className="sm:col-span-2 sm:justify-self-end">
                 <Button disabled={pending !== "" || !isUuid(tenantId) || !isUuid(applicationId)} type="submit">
                   {pending === "create-role" ? (
@@ -989,11 +1032,6 @@ function RolesPanel({
               </div>
             ))}
           </div>
-          <datalist id="authorization-permission-keys">
-            {permissions.map((permission) => (
-              <option key={permission.key} value={permission.key} />
-            ))}
-          </datalist>
         </CardContent>
       </Card>
     </div>
@@ -1163,7 +1201,9 @@ function BindingsPanel({
                       {binding.roleKey}
                     </p>
                     <ScopeSummary scope={binding.scope} />
-                    <p className="mt-2 text-[11px] text-slate-600">{translate("v")}{binding.version}</p>
+                    <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                      {binding.id} {translate("· v")}{binding.version}
+                    </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button onClick={() => beginEdit(binding)} size="sm" type="button" variant="ghost">
@@ -1220,6 +1260,7 @@ function PoliciesPanel({
   query,
   reloadPolicies,
   reloadRevisions,
+  roles,
   runMutation,
   tenantId,
 }: {
@@ -1235,6 +1276,7 @@ function PoliciesPanel({
   query: string;
   reloadPolicies: () => Promise<unknown>;
   reloadRevisions: () => Promise<unknown>;
+  roles: AuthorizationRoleRecord[];
   runMutation: MutationRunner;
   tenantId: string;
 }) {
@@ -1341,9 +1383,10 @@ function PoliciesPanel({
                 <select
                   className={inputClassName}
                   name="policySubjectType"
-                  onChange={(event) =>
-                    setSubjectType(event.target.value as PolicySubjectType)
-                  }
+                  onChange={(event) => {
+                    setSubjectType(event.target.value as PolicySubjectType);
+                    setSubject("");
+                  }}
                   value={subjectType}
                 >
                   <option value={actorSubject}>{translate("Actor")}</option>
@@ -1352,30 +1395,46 @@ function PoliciesPanel({
                 </select>
               </Field>
             </div>
-            <Field label={translate("Policy subject")}>
-              <input
+            {subjectType === roleSubject ? (
+              <SearchableSelect
+                ariaLabel={translate("Policy subject")}
                 className={inputClassName}
-                disabled={subjectType === anySubject}
+                emptyLabel={translate("Select a role")}
+                label={translate("Policy subject")}
+                labelClassName={labelClassName}
                 name="policySubject"
-                onChange={(event) => setSubject(event.target.value)}
-                placeholder={translate(subjectType === anySubject ? "*" : "actor ID or role key")}
-                value={subjectType === anySubject ? "*" : subject}
+                onChange={setSubject}
+                options={roles.map((role) => ({
+                  label: `${role.displayName} (${role.key})`,
+                  value: role.key,
+                }))}
+                required
+                value={subject}
               />
-            </Field>
-            <Field label={translate("Permission")}>
-              <input
-                className={inputClassName}
-                list="policy-permission-keys"
-                name="policyPermission"
-                onChange={(event) => setPermission(event.target.value)}
-                value={permission}
-              />
-              <datalist id="policy-permission-keys">
-                {permissions.map((item) => (
-                  <option key={item.key} value={item.key} />
-                ))}
-              </datalist>
-            </Field>
+            ) : (
+              <Field label={translate("Policy subject")}>
+                <input
+                  className={inputClassName}
+                  disabled={subjectType === anySubject}
+                  name="policySubject"
+                  onChange={(event) => setSubject(event.target.value)}
+                  placeholder={translate(subjectType === anySubject ? "*" : "Actor ID")}
+                  value={subjectType === anySubject ? "*" : subject}
+                />
+              </Field>
+            )}
+            <SearchableSelect
+              ariaLabel={translate("Permission")}
+              className={inputClassName}
+              emptyLabel={translate("Select a permission")}
+              label={translate("Permission")}
+              labelClassName={labelClassName}
+              name="policyPermission"
+              onChange={setPermission}
+              options={permissionOptions(permissions)}
+              required
+              value={permission}
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={translate("Resource type (ACL, optional)")}>
                 <input
@@ -1490,7 +1549,9 @@ function PoliciesPanel({
                       </p>
                     )}
                     <ScopeSummary scope={policy.scope} />
-                    <p className="mt-2 text-[11px] text-slate-600">{translate("v")}{policy.version}</p>
+                    <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
+                      {policy.id} {translate("· v")}{policy.version}
+                    </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button
@@ -1668,29 +1729,28 @@ function SimulatorPanel({
                 value={simulatedActor}
               />
             </Field>
-            <Field label={translate("Permission")}>
-              <input
-                className={inputClassName}
-                list="simulation-permission-keys"
-                name="simulationPermission"
-                onChange={(event) => setPermission(event.target.value)}
-                value={permission}
-              />
-              <datalist id="simulation-permission-keys">
-                {permissions.map((item) => (
-                  <option key={item.key} value={item.key} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label={translate("Trusted roles (simulation only, comma separated)")}>
-              <input
-                className={inputClassName}
-                name="simulationTrustedRoles"
-                onChange={(event) => setTrustedRoles(event.target.value)}
-                placeholder={translate("SuperAdministrator")}
-                value={trustedRoles}
-              />
-            </Field>
+            <SearchableSelect
+              ariaLabel={translate("Permission")}
+              className={inputClassName}
+              emptyLabel={translate("Select a permission")}
+              label={translate("Permission")}
+              labelClassName={labelClassName}
+              name="simulationPermission"
+              onChange={setPermission}
+              options={permissionOptions(permissions)}
+              required
+              value={permission}
+            />
+            <SearchableMultiSelect
+              ariaLabel={translate("Add trusted role")}
+              className={inputClassName}
+              emptyLabel={translate("Select a trusted role")}
+              label={translate("Trusted roles (simulation only)")}
+              labelClassName={labelClassName}
+              onChange={(value) => setTrustedRoles(value.join(", "))}
+              options={passportRoles.map((role) => ({ label: role, value: role }))}
+              value={parseCsv(trustedRoles)}
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={translate("Resource type (ACL)")}>
                 <input
@@ -1787,6 +1847,7 @@ function SimulatorPanel({
                 <p className="mt-2 break-all font-mono text-[10px] text-slate-600">
                   {revision.resourceType}/{revision.resourceId}
                 </p>
+                <p className="mt-1 break-all font-mono text-[10px] text-slate-700">{revision.id}</p>
                 <p className="mt-2 text-[10px] text-slate-600">
                   {revision.createdBy} · {formatTime(revision.createdAt)}
                 </p>
@@ -2009,6 +2070,16 @@ function EmptyState({ text }: { text: string }) {
       {text}
     </div>
   );
+}
+
+function permissionOptions(permissions: PermissionRecord[]): SearchableSelectOption[] {
+  return [
+    { label: translate("All permissions (*)"), value: "*" },
+    ...permissions.map((permission) => ({
+      label: `${permission.displayName} (${permission.key})`,
+      value: permission.key,
+    })),
+  ];
 }
 
 function parseCsv(value: string): string[] {

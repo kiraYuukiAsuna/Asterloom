@@ -19,7 +19,7 @@ public sealed class AsterloomIdentityClientOptions
     public Uri RedirectUri { get; set; } = new("http://localhost/", UriKind.Absolute);
 
     public Uri PostLogoutRedirectUri { get; set; } =
-        new("http://localhost/", UriKind.Absolute);
+        new("http://localhost/signout-callback-oidc", UriKind.Absolute);
 
     public ICollection<string> Scopes { get; } = new List<string> { "asterloom.api" };
 

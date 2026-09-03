@@ -76,7 +76,9 @@ Password: Asterloom-Local-Admin!2026
 | `minio` S3 API | `9000` | `60003` | S3 兼容对象传输。 |
 | `minio` Console | `9001` | 不映射 | 仅 Compose 网络可达。 |
 | `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | 不映射 | 仅 Compose 网络接收 OpenTelemetry 数据。 |
+| `otel-collector` ReferenceApp OTLP gRPC | `14317` | 不映射 | 隔离的 ReferenceApp 投递验证接收器。 |
 | `otel-collector` Health | `13133` | 不映射 | 仅 Compose 网络可达。 |
+| `otel-collector` 内部指标 | `8888` | 不映射 | 仅 Compose 网络用于验证数据接收与导出。 |
 | `migrations` / `reference-client` | 无 | 无 | 执行命令后退出的一次性容器，不启动网络监听器。 |
 
 常用生命周期命令：
@@ -179,9 +181,9 @@ Docker network only
   └─ OpenTelemetry Collector
 ```
 
-Nginx 不在容器中运行。生产覆盖文件把应用端口只绑定到 `127.0.0.1`；PostgreSQL、Redis、
-Collector 和 MinIO Console 不对宿主机或公网直接开放。公网通常只需开放 `80/tcp`、
-`443/tcp` 和运维所需的 SSH 端口。
+Nginx 不在容器中运行。生产覆盖文件把应用端口只绑定到 `127.0.0.1`；Collector OTLP/HTTP
+同样只绑定回环地址，PostgreSQL、Redis 和 MinIO Console 则没有宿主机绑定。公网通常只需开放
+`80/tcp`、`443/tcp` 和运维所需的 SSH 端口。
 
 生产环境的容器端口及宿主机绑定如下：
 
@@ -196,8 +198,10 @@ Collector 和 MinIO Console 不对宿主机或公网直接开放。公网通常�
 | `minio` Console | `9001` | 不映射 | 仅 Compose 网络可达，不提供公网管理界面。 |
 | `postgres` | `5432` | 不映射 | 仅 Compose 网络可达。 |
 | `redis` | `6379` | 不映射 | 仅 Compose 网络可达。 |
-| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | 不映射 | 仅 Compose 网络可达。 |
+| `otel-collector` OTLP gRPC / HTTP | `4317` / `4318` | 不映射 / `127.0.0.1:60006` | HTTP 仅宿主机回环可达，可通过 SSH 隧道接入。 |
+| `otel-collector` ReferenceApp OTLP gRPC | `14317` | 不映射 | 隔离的 ReferenceApp 投递验证接收器。 |
 | `otel-collector` Health | `13133` | 不映射 | 仅 Compose 网络可达。 |
+| `otel-collector` 内部指标 | `8888` | 不映射 | 仅 Compose 网络用于验证数据接收与导出。 |
 | `migrations` / `reference-client` | 无 | 无 | 一次性容器，无监听端口。 |
 
 “不映射”只表示没有发布到宿主机；同一 Compose 网络内的容器仍可通过
@@ -376,7 +380,7 @@ sudo bash Deploy/Scripts/Provision-Reference-App.sh
 docker compose \
   -f docker-compose.yml \
   -f Deploy/docker-compose.production.yml \
-  up -d --force-recreate reference-backend
+  up -d --force-recreate otel-collector reference-backend
 
 docker compose \
   -f docker-compose.yml \
@@ -450,15 +454,17 @@ sudo journalctl -u nginx --since "30 minutes ago"
 - `Deploy/Secrets/*.pfx`；
 - `.data/dataprotection-keys/`；
 - 使用参考应用时的 `.data/reference-app/reference.env` 与 `state/`；
+- `asterloom-production_otel-collector-data` 命名卷；
 - 宿主机 `/etc/letsencrypt/` 和 Nginx Site 配置。
 
 Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性，也应把它纳入恢复设计。
 不要把 `docker compose down -v` 当作普通停止命令；它会删除生产命名卷。数据库迁移是前向
 执行的，代码回滚前必须单独评估 Schema 兼容性，不能假设回退 Git 提交会自动回退数据库。
 
-当前 Collector 只使用 `debug` exporter，把 Trace、Metric 和 Log 输出到 Collector 日志，
-并不是持久化可观测性后端。正式接入 OTLP、Prometheus、Loki 或其他后端时，应修改
-`OpenTelemetry/otel-collector.yaml` 并配置对应凭据和网络。
+Collector 会把轮转的 `traces.json`、`metrics.json`、`logs.json` 写入
+`asterloom-production_otel-collector-data` 命名卷；默认单文件 100 MiB、保留 10 个备份与七天。
+应在保留期前备份或导出该卷；只有需要索引查询、告警或更长保留期时，才需要另接 OTLP、
+Prometheus、Loki 等后端。
 
 Mail 模块由 Server 容器直接向控制台配置的 SMTP 主机发起出站连接，不新增任何入站或
 宿主机映射端口。生产防火墙需按所用服务商放行出站 SMTP（常见为 465 或 587）；SMTP
@@ -494,7 +500,7 @@ Mail 模块由 Server 容器直接向控制台配置的 SMTP 主机发起出站�
 
 | 文件 | 作用 |
 | --- | --- |
-| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | 开启 OTLP gRPC 4317、OTLP HTTP 4318 和健康检查 13133，使用 memory limiter 与 batch processor；当前只输出到 debug exporter。 |
+| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | 开启 OTLP gRPC 4317、OTLP HTTP 4318 和健康检查 13133，使用 memory limiter、batch processor、诊断用 `debug` 输出与持久化轮转 JSON 文件 exporter。 |
 
 ### 6.4 Scripts
 

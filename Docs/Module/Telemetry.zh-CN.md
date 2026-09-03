@@ -12,11 +12,12 @@ Telemetry 基于 OpenTelemetry 收集应用与平台的技术信号：Trace、Me
   → OpenTelemetry instrumentation + Asterloom resource attributes
   → OTLP gRPC :4317 or HTTP/protobuf :4318
   → OpenTelemetry Collector
-  → production observability backend (Tempo/Jaeger/Prometheus/Loki/vendor)
+  → 轮转 JSON 文件与可选的可观测性后端
 ```
 
-仓库内 Compose Collector 默认只使用 `debug` Exporter，适合验证管道，不是生产长期存储。生产必须
-配置真实后端、保留期、认证和容量限制。
+Compose Collector 会把 Trace、Metric、Log 写入持久命名卷中的轮转 JSON 文件（单文件 100 MiB、
+保留 10 个备份与七天），同时保留 `debug` Exporter 便于诊断。不使用看板也可以直接导出原始数据；
+只有需要索引查询、告警或 Trace Pivot 跳转时才需要另接可观测性后端。
 
 ## 2. Web 管理
 
@@ -109,7 +110,7 @@ Gateway，不能把无认证 4317/4318 暴露到公网。
 
 ## 7. 上线检查
 
-- [ ] 生产 Collector 使用持久/托管 Exporter，不是 `debug`。
+- [ ] Collector 文件卷已纳入备份/导出，或已配置托管 Exporter。
 - [ ] OTLP Endpoint、Protocol、TLS 和网络策略已验证。
 - [ ] Service Name、Version、Environment 和 Asterloom Scope Resource 完整。
 - [ ] Sampling 与成本、故障诊断需求平衡。

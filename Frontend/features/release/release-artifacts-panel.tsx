@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -204,6 +205,7 @@ function SigningKeysPanel({
                         <p className="mt-2 truncate font-mono text-[11px] text-slate-600">
                           {signingKey.fingerprint}
                         </p>
+                        <p className="mt-1 break-all font-mono text-[10px] text-slate-700">{signingKey.id}</p>
                       </div>
                       {active ? (
                         <Button
@@ -349,6 +351,12 @@ function ArtifactsPanel({
   async function changed(artifact: ReleaseArtifactRecord) {
     setSelected(artifact);
     await artifacts.mutate();
+    await mutateGlobal([
+      "release-upload-artifacts",
+      scope.tenantId,
+      scope.applicationId,
+      scope.environmentId,
+    ]);
     await mutateGlobal(
       [
         "release-form-artifacts",
@@ -584,6 +592,21 @@ function ArtifactUploadCard({
       query: "",
     }),
   );
+  const artifacts = useSWR(
+    [
+      "release-upload-artifacts",
+      scope.tenantId,
+      scope.applicationId,
+      scope.environmentId,
+    ],
+    () =>
+      listReleaseArtifacts(scope, {
+        includeArchived: false,
+        pageSize: 100,
+        pageToken: "",
+        query: "",
+      }),
+  );
   const [file, setFile] = useState<File | null>(null);
   const [sha256, setSha256] = useState("");
   const [releaseVersion, setReleaseVersion] = useState("");
@@ -712,7 +735,10 @@ function ArtifactUploadCard({
               className={releaseInputClassName}
               disabled={Boolean(pending)}
               name="artifactRuntimeId"
-              onChange={(event) => setTargetRuntimeId(event.target.value)}
+              onChange={(event) => {
+                setTargetRuntimeId(event.target.value);
+                setDeltaFromVersion("");
+              }}
               required
               value={targetRuntimeId}
             />
@@ -734,19 +760,36 @@ function ArtifactUploadCard({
                 {translate("Delta package")}</option>
             </select>
           </label>
-          <label className={releaseLabelClassName}>
-            {translate("Delta from version")}<input
-              className={releaseInputClassName}
-              disabled={
-                Boolean(pending) ||
-                artifactKind === ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_FULL
-              }
-              name="artifactDeltaFromVersion"
-              onChange={(event) => setDeltaFromVersion(event.target.value)}
-              placeholder="0.9.0"
-              value={deltaFromVersion}
-            />
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Delta from version")}
+            className={releaseInputClassName}
+            disabled={
+              Boolean(pending) ||
+              artifactKind === ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_FULL
+            }
+            emptyLabel={translate("Select a verified full artifact version")}
+            label={translate("Delta from version")}
+            labelClassName={releaseLabelClassName}
+            name="artifactDeltaFromVersion"
+            onChange={setDeltaFromVersion}
+            options={(artifacts.data?.artifacts ?? [])
+              .filter(
+                (artifact) =>
+                  artifact.status ===
+                    ReleaseArtifactStatusObject.RELEASE_ARTIFACT_STATUS_VERIFIED &&
+                  artifact.artifactKind ===
+                    ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_FULL &&
+                  artifact.targetRuntimeId === targetRuntimeId,
+              )
+              .map((artifact) => ({
+                label: `${artifact.releaseVersion} (${artifact.fileName})`,
+                value: artifact.releaseVersion,
+              }))}
+            required={
+              artifactKind === ReleaseArtifactKindObject.RELEASE_ARTIFACT_KIND_DELTA
+            }
+            value={deltaFromVersion}
+          />
           <label className={releaseLabelClassName}>
             {translate("Content type")}<input
               className={releaseInputClassName}

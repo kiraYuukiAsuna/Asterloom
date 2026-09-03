@@ -46,6 +46,7 @@ test("manages buckets and verified objects through every Storage admin API", asy
   const bucketRow = page.getByTestId(`storage-bucket-${bucketKey}`);
   await expect(bucketRow).toContainText("Storage E2E Bucket");
   await bucketRow.locator('[data-ui-action="get-storage-bucket"]').click();
+  await expect(page.getByTestId("storage-bucket-id")).toHaveText(uuidPattern);
   await page
     .locator('input[name="editBucketDisplayName"]')
     .fill("Storage E2E Bucket Updated");
@@ -81,6 +82,7 @@ test("manages buckets and verified objects through every Storage admin API", asy
   const originalRow = page.getByTestId(`storage-object-${objectKey}`);
   await expect(originalRow).toContainText("artifact.txt");
   await originalRow.locator('[data-ui-action="get-storage-object"]').click();
+  await expect(page.getByTestId("storage-object-id")).toHaveText(uuidPattern);
   await page.locator('input[name="editObjectFileName"]').fill("artifact-updated.txt");
   await page
     .locator('textarea[name="editObjectMetadata"]')
@@ -120,6 +122,8 @@ test("manages buckets and verified objects through every Storage admin API", asy
   await page.locator('[data-ui-action="restore-storage-bucket"]').click();
   await expect(bucketRow).toContainText("Active");
 });
+
+const uuidPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 async function createScope(
   page: Page,

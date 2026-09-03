@@ -581,6 +581,7 @@ function BucketInspector({
         </div>
         <CardDescription>
           <span className="font-mono text-sky-300">{bucket.key}</span> {" "}{translate("· version")}{" "}{bucket.version}
+          <span className="mt-1 block break-all font-mono text-[10px] text-slate-600" data-testid="storage-bucket-id">{bucket.id}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -805,6 +806,7 @@ function ObjectWorkspace({ csrfToken, tenantId }: { csrfToken: string; tenantId:
               ))}
             </select>
           </label>
+          {bucketId && <p className="mt-2 break-all font-mono text-[10px] text-slate-600">{bucketId}</p>}
           {bucketsQuery.error && <ErrorState error={bucketsQuery.error} />}
         </CardContent>
       </Card>
@@ -1267,6 +1269,7 @@ function ObjectInspector({
           <span className="break-all font-mono text-sky-300">
             {storageObject.objectKey}
           </span>
+          <span className="mt-1 block break-all font-mono text-[10px] text-slate-600" data-testid="storage-object-id">{storageObject.id}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

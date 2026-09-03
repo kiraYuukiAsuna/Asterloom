@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Card,
   CardContent,
@@ -297,6 +298,7 @@ export function ReleaseReleasesPanel({
       </div>
 
       <ReleaseSimulationCard
+        artifacts={activeArtifacts}
         channels={channels.data?.channels ?? []}
         csrfToken={csrfToken}
         scope={scope}
@@ -664,7 +666,8 @@ function ReleaseInspector({
           <ReleaseStatusBadge status={release.status} />
         </div>
         <CardDescription className="font-mono">
-          {release.releaseVersion} {" "}{translate("· revision")}{" "}{release.revision}
+          <span className="block">{release.releaseVersion} {" "}{translate("· revision")}{" "}{release.revision}</span>
+          <span className="mt-1 block break-all text-[10px] text-slate-600">{release.id}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -1003,26 +1006,28 @@ function ReleaseInspector({
 }
 
 function ReleaseSimulationCard({
+  artifacts,
   channels,
   csrfToken,
   scope,
 }: {
+  artifacts: ReleaseArtifactRecord[];
   channels: ReleaseChannelRecord[];
   csrfToken: string;
   scope: ReleaseScope;
 }) {
   const [channelKey, setChannelKey] = useState("");
   const [currentVersion, setCurrentVersion] = useState("0.0.0");
-  const [targetRuntimeId, setTargetRuntimeId] = useState("win-x64");
+  const [targetRuntimeId, setTargetRuntimeId] = useState("");
   const [targetingKey, setTargetingKey] = useState("preview-user");
   const [userId, setUserId] = useState("");
   const [clientVersion, setClientVersion] = useState("");
   const [region, setRegion] = useState("");
   const [decision, setDecision] = useState<ReleaseDecisionRecord | null>(null);
   const [busy, setBusy] = useState(false);
-  const activeChannelKeys = useMemo(
-    () => channels.map((channel) => channel.key).sort(),
-    [channels],
+  const targetRuntimeIds = useMemo(
+    () => [...new Set(artifacts.map((artifact) => artifact.targetRuntimeId))].sort(),
+    [artifacts],
   );
 
   async function simulate(event: FormEvent) {
@@ -1056,22 +1061,21 @@ function ReleaseSimulationCard({
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.75fr)]">
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={simulate}>
-          <label className={releaseLabelClassName}>
-            {translate("Channel key")}<input
-              className={releaseInputClassName}
-              list="release-channel-keys"
-              name="simulationChannelKey"
-              onChange={(event) => setChannelKey(event.target.value)}
-              placeholder={activeChannelKeys[0] ?? "stable"}
-              required
-              value={channelKey}
-            />
-            <datalist id="release-channel-keys">
-              {activeChannelKeys.map((key) => (
-                <option key={key} value={key} />
-              ))}
-            </datalist>
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Channel")}
+            className={releaseInputClassName}
+            emptyLabel={translate("Choose a channel")}
+            label={translate("Channel")}
+            labelClassName={releaseLabelClassName}
+            name="simulationChannelKey"
+            onChange={setChannelKey}
+            options={channels.map((channel) => ({
+              label: `${channel.displayName} (${channel.key})`,
+              value: channel.key,
+            }))}
+            required
+            value={channelKey}
+          />
           <label className={releaseLabelClassName}>
             {translate("Current version")}<input
               className={releaseInputClassName}
@@ -1081,15 +1085,18 @@ function ReleaseSimulationCard({
               value={currentVersion}
             />
           </label>
-          <label className={releaseLabelClassName}>
-            {translate("Target runtime")}<input
-              className={releaseInputClassName}
-              name="simulationRuntimeId"
-              onChange={(event) => setTargetRuntimeId(event.target.value)}
-              required
-              value={targetRuntimeId}
-            />
-          </label>
+          <SearchableSelect
+            ariaLabel={translate("Target runtime")}
+            className={releaseInputClassName}
+            emptyLabel={translate("Select a target runtime")}
+            label={translate("Target runtime")}
+            labelClassName={releaseLabelClassName}
+            name="simulationRuntimeId"
+            onChange={setTargetRuntimeId}
+            options={targetRuntimeIds.map((runtime) => ({ label: runtime, value: runtime }))}
+            required
+            value={targetRuntimeId}
+          />
           <label className={releaseLabelClassName}>
             {translate("Targeting key")}<input
               className={releaseInputClassName}

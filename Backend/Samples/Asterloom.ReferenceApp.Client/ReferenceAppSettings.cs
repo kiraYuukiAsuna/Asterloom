@@ -11,6 +11,7 @@ internal sealed record ReferenceAppSettings(
     string InteractiveApiScope,
     string StateFile,
     ReferenceDesktopReleaseSettings DesktopRelease,
+    Uri? TelemetryCollectorMetricsAddress,
     bool AllowInsecureDevelopment)
 {
     public (string ClientId, string ClientSecret) RequireServiceCredentials()
@@ -58,8 +59,22 @@ internal sealed record ReferenceAppSettings(
                 ?.Trim() ?? "asterloom.reference.api",
             Path.GetFullPath(stateFile),
             ReferenceDesktopReleaseSettings.Load(),
+            ReadOptionalUri("ASTERLOOM_REFERENCE_OTEL_METRICS_URL"),
             ReadBoolean("ASTERLOOM_ALLOW_INSECURE_DEVELOPMENT")
                 || (baseAddress.IsLoopback && baseAddress.Scheme == Uri.UriSchemeHttp));
+    }
+
+    private static Uri? ReadOptionalUri(string name)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            ? uri
+            : throw new InvalidOperationException($"Environment variable {name} is not a valid URI.");
     }
 
     private static Uri ReadUri(string name, string fallback)

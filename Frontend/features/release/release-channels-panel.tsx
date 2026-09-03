@@ -363,7 +363,10 @@ function ChannelInspector({
           <CardTitle>{channel.displayName}</CardTitle>
           <ReleaseStatusBadge status={channel.status} />
         </div>
-        <CardDescription className="font-mono">{channel.key}</CardDescription>
+        <CardDescription>
+          <span className="block font-mono">{channel.key}</span>
+          <span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{channel.id}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <dl className="grid grid-cols-2 gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs">

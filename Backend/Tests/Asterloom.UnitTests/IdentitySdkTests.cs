@@ -198,6 +198,23 @@ public sealed class IdentitySdkTests
     }
 
     [Fact]
+    public void RegistrationRejectsTheSameSignInAndSignOutCallback()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            services.AddAsterloomIdentityClient(options =>
+            {
+                options.Issuer = new Uri("https://passport.asterloom.test/");
+                options.ClientId = "native-desktop-client";
+                options.EnableInteractiveAuthentication = true;
+                options.PostLogoutRedirectUri = options.RedirectUri;
+            }));
+
+        Assert.Contains("must be different", exception.Message);
+    }
+
+    [Fact]
     public async Task InteractiveRegistrationStartsInsideGenericHost()
     {
         var builder = Host.CreateApplicationBuilder();

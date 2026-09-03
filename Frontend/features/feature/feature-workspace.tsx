@@ -74,6 +74,7 @@ import {
   FeatureDefinitionEditor,
   toFeatureDefinitionInput,
   type FeatureDefinitionDraft,
+  type PrerequisiteFlagOption,
 } from "./definition-editor";
 import { useFeatureSelection } from "./feature-store";
 import { translate } from "@/lib/i18n/locale";
@@ -190,6 +191,23 @@ export function FeatureWorkspace({ csrfToken }: { csrfToken: string }) {
       }),
     { keepPreviousData: true },
   );
+  const prerequisiteFlags = useSWR(
+    scope
+      ? [
+          "feature-prerequisite-flags",
+          scope.tenantId,
+          scope.applicationId,
+          scope.environmentId,
+        ]
+      : null,
+    () =>
+      listFlags(scope!, {
+        includeArchived: false,
+        pageSize: 100,
+        pageToken: "",
+        query: "",
+      }),
+  );
   const segments = useSWR(
     scope
       ? [
@@ -217,6 +235,17 @@ export function FeatureWorkspace({ csrfToken }: { csrfToken: string }) {
   const activeSegments = (segments.data?.segments ?? []).filter(
     (segment) => segment.status.endsWith("_ACTIVE"),
   );
+  const availablePrerequisiteFlags: PrerequisiteFlagOption[] =
+    (prerequisiteFlags.data?.flags ?? [])
+      .filter((flag) => flag.status === activeStatus && flag.publishedDefinition)
+      .map((flag) => ({
+        displayName: flag.displayName,
+        key: flag.key,
+        variants: flag.publishedDefinition!.variants.map((variant) => ({
+          displayName: variant.displayName,
+          key: variant.key,
+        })),
+      }));
 
   function resetCollectionState() {
     setPageTokens([""]);
@@ -257,7 +286,7 @@ export function FeatureWorkspace({ csrfToken }: { csrfToken: string }) {
     setPending(key);
     try {
       const result = await work();
-      await flags.mutate();
+      await Promise.all([flags.mutate(), prerequisiteFlags.mutate()]);
       toast.success(translate(successMessage));
       return result;
     } catch (error) {
@@ -526,6 +555,9 @@ export function FeatureWorkspace({ csrfToken }: { csrfToken: string }) {
                   setCreateDefinition(createFeatureDefinitionDraft(kind));
                 }}
                 onSubmit={submitCreate}
+                prerequisiteFlags={availablePrerequisiteFlags.filter(
+                  (flag) => flag.key !== createKey,
+                )}
                 segments={activeSegments}
                 valueKind={createKind}
               />
@@ -545,6 +577,9 @@ export function FeatureWorkspace({ csrfToken }: { csrfToken: string }) {
                   onSubmit={submitDraft}
                   onValidate={validateDraft}
                   pending={pending}
+                  prerequisiteFlags={availablePrerequisiteFlags.filter(
+                    (item) => item.key !== selectedFlag.key,
+                  )}
                   segments={activeSegments}
                   validation={validation}
                 />
@@ -849,6 +884,7 @@ function CreateFlagPanel({
   onKey,
   onKind,
   onSubmit,
+  prerequisiteFlags,
   segments,
   valueKind,
 }: {
@@ -863,6 +899,7 @@ function CreateFlagPanel({
   onKey: (value: string) => void;
   onKind: (value: FeatureValueKind) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  prerequisiteFlags: PrerequisiteFlagOption[];
   segments: Array<{ displayName: string; id: string; key: string }>;
   valueKind: FeatureValueKind;
 }) {
@@ -905,6 +942,7 @@ function CreateFlagPanel({
             draft={definition}
             idPrefix="create"
             onChange={onDefinition}
+            prerequisiteFlags={prerequisiteFlags}
             segments={segments}
             valueKind={valueKind}
           />
@@ -929,6 +967,7 @@ function DraftPanel({
   onSubmit,
   onValidate,
   pending,
+  prerequisiteFlags,
   segments,
   validation,
 }: {
@@ -943,6 +982,7 @@ function DraftPanel({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onValidate: () => void;
   pending: string;
+  prerequisiteFlags: PrerequisiteFlagOption[];
   segments: Array<{ displayName: string; id: string; key: string }>;
   validation?: FeatureValidationResult;
 }) {
@@ -954,7 +994,8 @@ function DraftPanel({
           <div>
             <CardTitle>{translate("Draft ·")}{" "}{flag.key}</CardTitle>
             <CardDescription>
-              {prettyKind(flag.valueKind)} {" "}{translate("· draft revision")}{" "}{flag.draftRevision} {" "}{translate("· resource version")}{" "}{flag.version}
+              <span className="block">{prettyKind(flag.valueKind)} {" "}{translate("· draft revision")}{" "}{flag.draftRevision} {" "}{translate("· resource version")}{" "}{flag.version}</span>
+              <span className="mt-1 block break-all font-mono text-[10px] text-slate-600">{flag.id}</span>
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -999,6 +1040,7 @@ function DraftPanel({
             draft={definition}
             idPrefix="edit"
             onChange={onDefinition}
+            prerequisiteFlags={prerequisiteFlags}
             segments={segments}
             valueKind={flag.valueKind}
           />

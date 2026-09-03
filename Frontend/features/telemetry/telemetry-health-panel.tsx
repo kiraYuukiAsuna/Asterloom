@@ -81,6 +81,7 @@ export function TelemetryHealthPanel({ csrfToken, scope }: { csrfToken: string; 
                 <article className="rounded-xl border border-white/8 bg-white/[0.02] p-4" data-testid={`telemetry-error-${item.id}`} key={item.id}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium text-rose-200">{item.exceptionType}</p><p className="mt-1 text-sm text-slate-400">{item.message}</p></div><span className="text-xs text-slate-600">{formatDateTime(item.occurredAt)}</span></div>
                   <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3"><div><dt className="text-slate-600">{translate("Service")}</dt><dd className="mt-1 font-mono text-slate-400">{item.serviceName}</dd></div><div><dt className="text-slate-600">{translate("Request")}</dt><dd className="mt-1 break-all font-mono text-slate-400">{item.requestId}</dd></div><div><dt className="text-slate-600">{translate("Trace")}</dt><dd className="mt-1 break-all font-mono text-violet-300">{item.traceId || "not sampled"}</dd></div></dl>
+                  <p className="mt-2 break-all font-mono text-[10px] text-slate-700">{item.id}</p>
                 </article>
               ))}</div>}
         </CardContent>
