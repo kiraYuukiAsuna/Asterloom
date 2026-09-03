@@ -105,7 +105,8 @@ export const analyticsTelemetryZhCnMessages: Readonly<Record<string, string>> = 
     "注册服务、管理 OTLP 采样与导出，并从近期故障跳转到已配置的可观测性后端。",
   "Telemetry views": "遥测视图",
   "Health & errors": "健康与错误",
-  "Sources & export": "数据源与导出",
+  "Sources & storage": "数据源与保存",
+  "Stored signals": "已保存信号",
   "Telemetry boundary": "遥测边界",
   "Source identity and policy are isolated per tenant, application, and environment.": "数据源标识与策略按租户、应用和环境隔离。",
   "Choose a tenant, application, and environment to manage telemetry.": "请选择租户、应用和环境以管理遥测。",
@@ -153,7 +154,6 @@ export const analyticsTelemetryZhCnMessages: Readonly<Record<string, string>> = 
   "Resource attributes": "资源属性",
   "Telemetry source created.": "遥测数据源已创建。",
   "Restore source": "还原数据源",
-  "Sampling and export": "采样与导出",
   "Environment policy consumed by service deployment configuration; changes are versioned and audited.":
     "服务部署配置使用的环境策略；所有更改均有版本记录并接受审计。",
   "Sampling ratio": "采样比例",
@@ -168,4 +168,28 @@ export const analyticsTelemetryZhCnMessages: Readonly<Record<string, string>> = 
   "Telemetry source updated.": "遥测数据源已更新。",
   "Telemetry source archived.": "遥测数据源已归档。",
   "Telemetry source restored.": "遥测数据源已还原。",
+  "Register services, store OTLP signals in PostgreSQL, and query technical telemetry by environment.":
+    "注册服务、将 OTLP 信号保存到 PostgreSQL，并按环境查询技术遥测。",
+  "Stored telemetry": "已保存遥测",
+  "Query traces, metric points, and logs stored in PostgreSQL for this environment.":
+    "查询当前环境中保存到 PostgreSQL 的 Trace、指标数据点和日志。",
+  "Telemetry signal type": "遥测信号类型",
+  "Name, value, or attribute": "名称、值或属性",
+  "Query telemetry": "查询遥测",
+  "Signal records": "信号记录",
+  "Select a record to inspect its normalized attributes and original OTLP payload.":
+    "选择记录以查看规范化属性和原始 OTLP 载荷。",
+  "Refresh telemetry records": "刷新遥测记录",
+  "Loading telemetry records": "正在加载遥测记录",
+  "No telemetry records match these filters.": "没有符合筛选条件的遥测记录。",
+  "Record details": "记录详情",
+  "Attributes": "属性",
+  "OTLP payload": "OTLP 载荷",
+  "Sampling and database storage": "采样与数据库保存",
+  "Controls which signals are retained in PostgreSQL for this environment.":
+    "控制当前环境中哪些信号保留在 PostgreSQL。",
+  "Telemetry sampling and storage settings updated.": "遥测采样与保存设置已更新。",
+  "Unhandled RPC failures captured with request, trace, and span correlation. Stored signals are available in the Web console.":
+    "捕获未处理的 RPC 故障及其请求、Trace 与 Span 关联；已保存信号可在 Web 控制台查询。",
+  "Traces, metric points, and logs stored in PostgreSQL": "保存到 PostgreSQL 的 Trace、指标数据点和日志",
 };

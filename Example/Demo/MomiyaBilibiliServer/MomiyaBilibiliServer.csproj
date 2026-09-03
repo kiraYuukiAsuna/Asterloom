@@ -16,12 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity.AspNetCore/Asterloom.Sdk.Identity.AspNetCore.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Mail/Asterloom.Sdk.Mail.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Identity.AspNetCore/Asterloom.Sdk.Identity.AspNetCore.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Mail/Asterloom.Sdk.Mail.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

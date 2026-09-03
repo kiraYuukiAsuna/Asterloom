@@ -161,7 +161,7 @@ public sealed class StorageContractTests : IClassFixture<WebApplicationFactory<P
             {
                 slug = "test",
                 displayName = "Test",
-                environmentType = "ENVIRONMENT_TYPE_TEST",
+                environmentType = "ENVIRONMENT_TYPE_PRODUCTION",
             }));
         using var applicationClient = await CreateApplicationAuthorizedClientAsync(
             Guid.Parse(tenant.Id),

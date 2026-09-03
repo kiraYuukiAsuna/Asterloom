@@ -12,16 +12,16 @@ diagnostic links. Product behavior and conversion events belong in [Analytics](A
   → OpenTelemetry instrumentation + Asterloom resource attributes
   → OTLP gRPC :4317 or HTTP/protobuf :4318
   → OpenTelemetry Collector
-  → rotating JSON files and optional observability backend
+  → authenticated OTLP/JSON ingestion API
+  → PostgreSQL telemetry.records
 ```
 
-The Compose Collector writes traces, metrics, and logs to a persistent named volume as rotating JSON files
-(100 MiB per file, 10 backups, seven days) while retaining the `debug` exporter for diagnostics. This supports raw
-export without a dashboard; add a query backend only when indexed search, alerts, or Trace Pivot links are needed.
+The Compose Collector forwards traces, metrics, and logs to Asterloom's ingestion API and stores normalized records
+in PostgreSQL for seven days. Add another observability backend only for alerts, longer retention, or advanced analysis.
 
 ## 2. Web administration
 
-Routes: `/telemetry/sources`, `/telemetry/health`
+Routes: `/telemetry/sources`, `/telemetry/signals`, `/telemetry/health`
 
 ### Sources
 
@@ -31,14 +31,14 @@ Routes: `/telemetry/sources`, `/telemetry/health`
 
 ### Settings and health
 
-- Configure sampling ratio, trace/metric/log switches, exporter endpoint/protocol, and diagnostics base URL.
+- Configure database-ingestion sampling, trace/metric/log switches, and the diagnostics base URL.
 - Check the Collector health endpoint and latency.
 - Filter recent Asterloom Server technical errors by service name or trace ID.
+- Query PostgreSQL records by signal type, service name, trace ID, keyword, and time range.
 - Generate an external diagnostic link for a trace ID and time range.
 
-Important current boundary: Telemetry Settings stored in the Web console are not pushed automatically into a
-running C# SDK. Applications still build `AsterloomTelemetryOptions` from deployment configuration; operations
-must keep deployed settings aligned with the control-plane record.
+Signal switches and the trace sampling ratio saved by Web are enforced during ingestion, but they are not pushed
+dynamically into running C# SDKs. The SDK still constructs `AsterloomTelemetryOptions` from deployment configuration.
 
 ## 3. C# SDK integration
 
@@ -105,14 +105,15 @@ or logs, not metrics. Record exception type and necessary context without defaul
 - `telemetry.settings.read/update`
 - `telemetry.health.read`
 - `telemetry.error.read`
+- `telemetry.record.read`
 - `telemetry.diagnostic.read`
 
-These management permissions do not authenticate the OTLP receiver. Isolate the production Collector and use
-TLS/mTLS or a controlled gateway; never expose unauthenticated 4317/4318 publicly.
+Collector-to-Server ingestion uses `TELEMETRY_INGESTION_API_KEY`. Keep the production Collector network-isolated
+and never expose 4317/4318 publicly.
 
 ## 7. Production checklist
 
-- [ ] The Collector file volume is included in backup/export operations, or a managed exporter is configured.
+- [ ] PostgreSQL is backed up and sized for the expected telemetry volume.
 - [ ] OTLP endpoint, protocol, TLS, and network policy are verified.
 - [ ] Service name, version, Environment, and Asterloom scope resources are complete.
 - [ ] Sampling balances diagnostic requirements and cost.

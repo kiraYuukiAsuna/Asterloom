@@ -67,7 +67,7 @@ export function TelemetryHealthPanel({ csrfToken, scope }: { csrfToken: string; 
       </div>
 
       <Card data-ui-action="list-telemetry-errors">
-        <CardHeader><div className="flex items-center gap-2"><TriangleAlert className="size-4 text-amber-300" /><CardTitle>{translate("Recent technical errors")}</CardTitle></div><CardDescription>{translate("Unhandled RPC failures captured with request, trace, and span correlation. Full logs and traces stay in the observability backend.")}</CardDescription></CardHeader>
+        <CardHeader><div className="flex items-center gap-2"><TriangleAlert className="size-4 text-amber-300" /><CardTitle>{translate("Recent technical errors")}</CardTitle></div><CardDescription>{translate("Unhandled RPC failures captured with request, trace, and span correlation. Stored signals are available in the Web console.")}</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           <form className="grid gap-3 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => { event.preventDefault(); setFilters({ serviceName: serviceDraft.trim(), traceId: traceDraft.trim().toLowerCase() }); }}>
             <label className={telemetryLabelClassName}>{translate("Service name")}<input className={telemetryInputClassName} name="telemetryErrorServiceName" onChange={(event) => setServiceDraft(event.target.value)} placeholder={translate("Asterloom.Server")} value={serviceDraft} /></label>

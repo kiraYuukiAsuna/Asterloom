@@ -1425,6 +1425,14 @@ apis:
     uiAction: list-telemetry-errors
     e2eTest: tests/e2e/telemetry.spec.ts
   - service: asterloom.telemetry.admin.v1.TelemetryAdminService
+    rpc: ListTelemetryRecords
+    category: admin
+    http: GET /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/records
+    permission: telemetry.record.read
+    uiRoute: /telemetry/signals
+    uiAction: list-telemetry-records
+    e2eTest: tests/e2e/telemetry.spec.ts
+  - service: asterloom.telemetry.admin.v1.TelemetryAdminService
     rpc: GetDiagnosticLink
     category: admin
     http: POST /api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry:diagnostic-link

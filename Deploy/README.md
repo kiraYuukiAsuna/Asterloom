@@ -315,6 +315,7 @@ securely define at least these values:
 | `ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL` / `ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD` | Initial administrator credentials. |
 | `ASTERLOOM_OIDC_CLIENT_SECRET` | Web BFF confidential OIDC client secret. |
 | `ASTERLOOM_SESSION_ENCRYPTION_KEY` | Base64-encoded 32-byte key that encrypts Redis sessions. |
+| `TELEMETRY_INGESTION_API_KEY` | Shared secret used only between Collector and Server for OTLP database ingestion. |
 | `ASTERLOOM_CERTIFICATE_PASSWORD` | Password for both OpenIddict PFX files; required by the production override. |
 
 Do not use the local `.env.example` as production secrets. The root `.env`,
@@ -484,7 +485,6 @@ At minimum, back up or have a tested reconstruction plan for:
 - `Deploy/Secrets/*.pfx`;
 - `.data/dataprotection-keys/`;
 - `.data/reference-app/reference.env` and `state/` when using the reference app;
-- the `asterloom-production_otel-collector-data` named volume;
 - the host's `/etc/letsencrypt/` and Nginx site configuration.
 
 Redis primarily contains disposable BFF sessions, but include it in recovery if
@@ -492,11 +492,9 @@ seamless session continuity is required. Never use `docker compose down -v` as a
 routine stop command; it removes production named volumes. Database migrations
 are forward-applied, so evaluate schema compatibility before rolling code back.
 
-The Collector writes rotating `traces.json`, `metrics.json`, and `logs.json` files
-to the `asterloom-production_otel-collector-data` named volume. The defaults are
-100 MiB per file, 10 backups, and seven days. Back up or export that volume before
-its retention window expires. Add OTLP, Prometheus, Loki, or another backend only
-when indexed querying, alerting, or longer retention is required.
+The Collector uses a shared ingestion key to forward traces, metrics, and logs to
+the Server, which stores them in PostgreSQL `telemetry.records` for seven days.
+No telemetry file volume is created; PostgreSQL backups must cover these records.
 
 The Mail module opens outbound connections directly from the Server container
 to SMTP hosts configured in the console; it adds no inbound or host-mapped
@@ -537,7 +535,7 @@ into a container and must not be installed without rendering.
 
 | File | Purpose |
 | --- | --- |
-| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | Enables OTLP gRPC 4317, OTLP HTTP 4318, and health 13133, with a memory limiter, batch processor, diagnostic `debug` output, and persistent rotating JSON file exporters. |
+| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | Enables OTLP gRPC 4317, OTLP HTTP 4318, and health 13133, with a memory limiter, batch processor, and authenticated OTLP/JSON export to Server/PostgreSQL. |
 
 ### 6.4 Scripts
 

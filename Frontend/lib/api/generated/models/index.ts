@@ -2435,6 +2435,15 @@ export function createListTargetingAttributesResponseFromDiscriminatorValue(pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ListTelemetryRecordsResponse}
+ */
+// @ts-ignore
+export function createListTelemetryRecordsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoListTelemetryRecordsResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ListTenantMembershipsResponse}
  */
 // @ts-ignore
@@ -3493,6 +3502,15 @@ export function createTargetingValueFromDiscriminatorValue(parseNode: ParseNode 
 // @ts-ignore
 export function createTelemetryErrorFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoTelemetryError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {TelemetryRecord}
+ */
+// @ts-ignore
+export function createTelemetryRecordFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoTelemetryRecord;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -5806,6 +5824,18 @@ export function deserializeIntoListTargetingAttributesResponse(listTargetingAttr
 }
 /**
  * The deserialization information for the current model
+ * @param ListTelemetryRecordsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoListTelemetryRecordsResponse(listTelemetryRecordsResponse: Partial<ListTelemetryRecordsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "nextPageToken": n => { listTelemetryRecordsResponse.nextPageToken = n.getStringValue(); },
+        "records": n => { listTelemetryRecordsResponse.records = n.getCollectionOfObjectValues<TelemetryRecord>(createTelemetryRecordFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ListTenantMembershipsResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7205,6 +7235,30 @@ export function deserializeIntoTelemetryError(telemetryError: Partial<TelemetryE
         "serviceName": n => { telemetryError.serviceName = n.getStringValue(); },
         "spanId": n => { telemetryError.spanId = n.getStringValue(); },
         "traceId": n => { telemetryError.traceId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param TelemetryRecord The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoTelemetryRecord(telemetryRecord: Partial<TelemetryRecord> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "attributesJson": n => { telemetryRecord.attributesJson = n.getStringValue(); },
+        "category": n => { telemetryRecord.category = n.getStringValue(); },
+        "createdAt": n => { telemetryRecord.createdAt = n.getStringValue(); },
+        "durationMilliseconds": n => { telemetryRecord.durationMilliseconds = n.getNumberValue(); },
+        "id": n => { telemetryRecord.id = n.getStringValue(); },
+        "name": n => { telemetryRecord.name = n.getStringValue(); },
+        "observedAt": n => { telemetryRecord.observedAt = n.getStringValue(); },
+        "payloadJson": n => { telemetryRecord.payloadJson = n.getStringValue(); },
+        "scope": n => { telemetryRecord.scope = n.getObjectValue<TelemetryScope>(createTelemetryScopeFromDiscriminatorValue); },
+        "serviceName": n => { telemetryRecord.serviceName = n.getStringValue(); },
+        "signalType": n => { telemetryRecord.signalType = n.getEnumValue<TelemetrySignalType>(TelemetrySignalTypeObject); },
+        "spanId": n => { telemetryRecord.spanId = n.getStringValue(); },
+        "traceId": n => { telemetryRecord.traceId = n.getStringValue(); },
+        "value": n => { telemetryRecord.value = n.getStringValue(); },
     }
 }
 /**
@@ -8935,6 +8989,16 @@ export interface ListTargetingAttributesResponse extends Parsable {
      * The operators property
      */
     operators?: TargetingOperatorDefinition[] | null;
+}
+export interface ListTelemetryRecordsResponse extends Parsable {
+    /**
+     * The nextPageToken property
+     */
+    nextPageToken?: string | null;
+    /**
+     * The records property
+     */
+    records?: TelemetryRecord[] | null;
 }
 export interface ListTenantMembershipsResponse extends Parsable {
     /**
@@ -12476,6 +12540,18 @@ export function serializeListTargetingAttributesResponse(writer: SerializationWr
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ListTelemetryRecordsResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeListTelemetryRecordsResponse(writer: SerializationWriter, listTelemetryRecordsResponse: Partial<ListTelemetryRecordsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!listTelemetryRecordsResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("nextPageToken", listTelemetryRecordsResponse.nextPageToken);
+    writer.writeCollectionOfObjectValues<TelemetryRecord>("records", listTelemetryRecordsResponse.records, serializeTelemetryRecord);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ListTenantMembershipsResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13883,6 +13959,30 @@ export function serializeTelemetryError(writer: SerializationWriter, telemetryEr
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param TelemetryRecord The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeTelemetryRecord(writer: SerializationWriter, telemetryRecord: Partial<TelemetryRecord> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!telemetryRecord || isSerializingDerivedType) { return; }
+    writer.writeStringValue("attributesJson", telemetryRecord.attributesJson);
+    writer.writeStringValue("category", telemetryRecord.category);
+    writer.writeStringValue("createdAt", telemetryRecord.createdAt);
+    writer.writeNumberValue("durationMilliseconds", telemetryRecord.durationMilliseconds);
+    writer.writeStringValue("id", telemetryRecord.id);
+    writer.writeStringValue("name", telemetryRecord.name);
+    writer.writeStringValue("observedAt", telemetryRecord.observedAt);
+    writer.writeStringValue("payloadJson", telemetryRecord.payloadJson);
+    writer.writeObjectValue<TelemetryScope>("scope", telemetryRecord.scope, serializeTelemetryScope);
+    writer.writeStringValue("serviceName", telemetryRecord.serviceName);
+    writer.writeEnumValue<TelemetrySignalType>("signalType", telemetryRecord.signalType);
+    writer.writeStringValue("spanId", telemetryRecord.spanId);
+    writer.writeStringValue("traceId", telemetryRecord.traceId);
+    writer.writeStringValue("value", telemetryRecord.value);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param TelemetryScope The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -15101,6 +15201,64 @@ export interface TelemetryError extends Parsable {
      */
     traceId?: string | null;
 }
+export interface TelemetryRecord extends Parsable {
+    /**
+     * The attributesJson property
+     */
+    attributesJson?: string | null;
+    /**
+     * The category property
+     */
+    category?: string | null;
+    /**
+     * The createdAt property
+     */
+    createdAt?: string | null;
+    /**
+     * The durationMilliseconds property
+     */
+    durationMilliseconds?: number | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The name property
+     */
+    name?: string | null;
+    /**
+     * The observedAt property
+     */
+    observedAt?: string | null;
+    /**
+     * The payloadJson property
+     */
+    payloadJson?: string | null;
+    /**
+     * The scope property
+     */
+    scope?: TelemetryScope | null;
+    /**
+     * The serviceName property
+     */
+    serviceName?: string | null;
+    /**
+     * The signalType property
+     */
+    signalType?: TelemetrySignalType | null;
+    /**
+     * The spanId property
+     */
+    spanId?: string | null;
+    /**
+     * The traceId property
+     */
+    traceId?: string | null;
+    /**
+     * The value property
+     */
+    value?: string | null;
+}
 export type TelemetryResourceStatus = (typeof TelemetryResourceStatusObject)[keyof typeof TelemetryResourceStatusObject];
 export interface TelemetryScope extends Parsable {
     /**
@@ -15158,6 +15316,7 @@ export interface TelemetrySettings extends Parsable {
      */
     version?: number | null;
 }
+export type TelemetrySignalType = (typeof TelemetrySignalTypeObject)[keyof typeof TelemetrySignalTypeObject];
 export interface TelemetrySource extends Parsable {
     /**
      * The archivedAt property
@@ -16378,6 +16537,12 @@ export const TelemetryResourceStatusObject = {
     TELEMETRY_RESOURCE_STATUS_UNSPECIFIED: "TELEMETRY_RESOURCE_STATUS_UNSPECIFIED",
     TELEMETRY_RESOURCE_STATUS_ACTIVE: "TELEMETRY_RESOURCE_STATUS_ACTIVE",
     TELEMETRY_RESOURCE_STATUS_ARCHIVED: "TELEMETRY_RESOURCE_STATUS_ARCHIVED",
+} as const;
+export const TelemetrySignalTypeObject = {
+    TELEMETRY_SIGNAL_TYPE_UNSPECIFIED: "TELEMETRY_SIGNAL_TYPE_UNSPECIFIED",
+    TELEMETRY_SIGNAL_TYPE_TRACE: "TELEMETRY_SIGNAL_TYPE_TRACE",
+    TELEMETRY_SIGNAL_TYPE_METRIC: "TELEMETRY_SIGNAL_TYPE_METRIC",
+    TELEMETRY_SIGNAL_TYPE_LOG: "TELEMETRY_SIGNAL_TYPE_LOG",
 } as const;
 export const UpdateDecisionReasonObject = {
     UPDATE_DECISION_REASON_UNSPECIFIED: "UPDATE_DECISION_REASON_UNSPECIFIED",

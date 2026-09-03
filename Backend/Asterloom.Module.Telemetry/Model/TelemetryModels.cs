@@ -24,6 +24,13 @@ public enum TelemetryCollectorStatus
     Unavailable = 3,
 }
 
+public enum TelemetrySignalType
+{
+    Trace = 1,
+    Metric = 2,
+    Log = 3,
+}
+
 public sealed record TelemetrySource(
     Guid Id,
     TelemetryScope Scope,
@@ -69,6 +76,22 @@ public sealed record TelemetryError(
     string RequestId,
     DateTimeOffset OccurredAt);
 
+public sealed record TelemetryRecord(
+    Guid Id,
+    TelemetryScope Scope,
+    TelemetrySignalType SignalType,
+    string ServiceName,
+    DateTimeOffset ObservedAt,
+    string TraceId,
+    string SpanId,
+    string Name,
+    string Category,
+    string Value,
+    double? DurationMilliseconds,
+    string AttributesJson,
+    string PayloadJson,
+    DateTimeOffset CreatedAt);
+
 public sealed record TelemetryDiagnosticLink(
     string Url,
     string TraceId,
@@ -86,6 +109,16 @@ public sealed record TelemetryErrorFilter(
     int PageSize,
     string ServiceName,
     string TraceId);
+
+public sealed record TelemetryRecordFilter(
+    int Offset,
+    int PageSize,
+    TelemetrySignalType SignalType,
+    string ServiceName,
+    string TraceId,
+    string Query,
+    DateTimeOffset? FromAt,
+    DateTimeOffset? ToAt);
 
 public sealed record TelemetryStorePage<T>(IReadOnlyList<T> Items, bool HasMore);
 

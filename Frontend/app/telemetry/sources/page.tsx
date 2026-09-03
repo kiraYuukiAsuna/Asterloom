@@ -10,7 +10,7 @@ export default async function TelemetrySourcesPage() {
   const session = await readCurrentSession();
   if (!session) redirect("/login?returnTo=%2Ftelemetry%2Fsources");
   return (
-    <ConsoleShell activeRoute="/telemetry/health" actor={session.record.actor} csrfToken={session.record.csrfToken} headerDescription="Service resources, signal policy, sampling, and OTLP export" headerTitle="Telemetry sources">
+    <ConsoleShell activeRoute="/telemetry/health" actor={session.record.actor} csrfToken={session.record.csrfToken} headerDescription="Service resources, sampling, and PostgreSQL storage policy" headerTitle="Telemetry sources">
       <TelemetryWorkspace csrfToken={session.record.csrfToken} view="sources" />
     </ConsoleShell>
   );

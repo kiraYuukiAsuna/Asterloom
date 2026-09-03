@@ -137,6 +137,28 @@ internal sealed class TelemetryAdminGrpcService(
         return response;
     }
 
+    public override async Task<ListTelemetryRecordsResponse> ListTelemetryRecords(
+        ListTelemetryRecordsRequest request,
+        ServerCallContext context)
+    {
+        var result = await managementService.ListRecordsAsync(
+            request.TenantId,
+            request.ApplicationId,
+            request.EnvironmentId,
+            request.SignalType.ToDomain(),
+            request.PageSize,
+            request.PageToken,
+            request.ServiceName,
+            request.TraceId,
+            request.Query,
+            request.FromAt?.ToDateTimeOffset(),
+            request.ToAt?.ToDateTimeOffset(),
+            context.CancellationToken);
+        var response = new ListTelemetryRecordsResponse { NextPageToken = result.NextPageToken };
+        response.Records.AddRange(result.Items.Select(TelemetryProtocolMapper.ToProtocol));
+        return response;
+    }
+
     public override async Task<DiagnosticLink> GetDiagnosticLink(
         GetDiagnosticLinkRequest request,
         ServerCallContext context) =>

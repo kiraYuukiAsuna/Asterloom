@@ -19,6 +19,7 @@ services:
       Identity__WebClient__RedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/callback
       Identity__WebClient__PostLogoutRedirectUri: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}/api/auth/logout/callback
       Storage__PublicEndpoint: https://${ASTERLOOM_DOMAIN:-asterloom.momiya.cloud}
+      Telemetry__IngestionApiKey: ${TELEMETRY_INGESTION_API_KEY:?TELEMETRY_INGESTION_API_KEY is required}
     ports: !override
       - "127.0.0.1:60001:8000"
       - "127.0.0.1:60002:8001"
@@ -47,6 +48,8 @@ services:
       - "127.0.0.1:60003:9000"
 
   otel-collector:
+    environment:
+      TELEMETRY_INGESTION_API_KEY: ${TELEMETRY_INGESTION_API_KEY:?TELEMETRY_INGESTION_API_KEY is required}
     ports: !override
       - "127.0.0.1:60006:4318"
 

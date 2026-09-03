@@ -138,7 +138,7 @@ JSON Schema 使用：
 
 ### 8. Telemetry Sources 与 OTLP
 
-进入 `Telemetry → Sources & export`（`/telemetry/sources`），选择同一 Tenant、Application、Environment。分别在 **Register source** 创建：
+进入 `Telemetry → Sources & storage`（`/telemetry/sources`），选择同一 Tenant、Application、Environment。分别在 **Register source** 创建：
 
 | 字段 | Client Source | Server Source |
 | --- | --- | --- |
@@ -150,7 +150,7 @@ JSON Schema 使用：
 
 Service name 必须逐字匹配代码里的点分名称；不要填成 Key，也不要填 ActivitySource 名 `Momiya.Bilibili.Client/Server`。Source 只是控制面登记，不会替应用安装 SDK，也不会把下方 Settings 自动推送给正在运行的进程。
 
-在同页 **Sampling and export** 为本地验证设置：Sampling ratio `1`、OTLP protocol `HTTP/protobuf`、Exporter endpoint `http://localhost:4318`、Diagnostics base URL 留空，并勾选 Traces、Metrics、Logs。保存后，两个进程仍需设置同样的实际部署配置；本 Demo 的两个 `appsettings.json` 已包含这些值。
+在同页 **Sampling and database storage** 将 Sampling ratio 设为 `1`，Diagnostics base URL 留空，并勾选 Traces、Metrics、Logs。两个进程仍需配置实际的 Collector 地址；本 Demo 的两个 `appsettings.json` 已包含这些值。
 
 远端 Collector 只在服务器回环地址 `127.0.0.1:60006` 接收 HTTP OTLP，不暴露公网端口。运行 Demo 前保持下面的 SSH 隧道开启：
 
@@ -158,14 +158,9 @@ Service name 必须逐字匹配代码里的点分名称；不要填成 Key，也
 ssh -N -L 4318:127.0.0.1:60006 -p 2222 root@&lt;server-ip&gt;
 ```
 
-客户端完成同步后会产生 `subscription.sync` Trace、`momiya.bilibili.syncs` Metric 和一条 Log；服务端会产生 `subscription.upsert` Trace、`momiya.bilibili.subscriptions` Metric 和一条 Log。Collector 会将三类 OTLP JSON 写入持久 volume，并按单文件 100 MiB、最多 10 个备份、最长 7 天轮转。无需看板，可直接导出：
+客户端完成同步后会产生 `subscription.sync` Trace、`momiya.bilibili.syncs` Metric 和一条 Log；服务端会产生 `subscription.upsert` Trace、`momiya.bilibili.subscriptions` Metric 和一条 Log。Collector 会将三类信号写入 PostgreSQL，并保留最近 7 天数据。
 
-```bash
-mkdir -p telemetry-export
-scp -P 2222 -r root@&lt;server-ip&gt;:/var/lib/docker/volumes/asterloom-production_otel-collector-data/_data/ telemetry-export/
-```
-
-导出目录包含 `traces.json`、`metrics.json`、`logs.json` 及其轮转文件。管理台 `Telemetry → Health & errors` 只用于 Collector 健康和 Asterloom 技术错误，不是 Trace/Metric 看板。
+进入 `Telemetry → Stored signals`（`/telemetry/signals`），选择对应作用域后切换 Traces、Metrics、Logs；可按服务名、Trace ID、关键字和时间范围查询，并点开记录查看属性及原始 OTLP 载荷。`Telemetry → Health & errors` 继续用于 Collector 健康和 Asterloom 技术错误。
 
 ### 9. SMTP 与 Server 发信权限
 

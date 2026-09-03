@@ -12483,6 +12483,118 @@
         }
       }
     },
+    "/api/v1/tenants/{tenantId}/applications/{applicationId}/environments/{environmentId}/telemetry/records": {
+      "get": {
+        "tags": [
+          "TelemetryAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "signalType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TelemetrySignalType"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "traceId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromAt",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "toAt",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTelemetryRecordsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenants/{tenantId}/applications/{applicationId}/environments/{environmentId}/telemetry:diagnostic-link": {
       "post": {
         "tags": [
@@ -15690,6 +15802,21 @@
         },
         "additionalProperties": false
       },
+      "ListTelemetryRecordsResponse": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryRecord"
+            }
+          },
+          "nextPageToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ListTenantMembershipsResponse": {
         "type": "object",
         "properties": {
@@ -18206,6 +18333,55 @@
         },
         "additionalProperties": false
       },
+      "TelemetryRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/TelemetryScope"
+          },
+          "signalType": {
+            "$ref": "#/components/schemas/TelemetrySignalType"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "spanId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "durationMilliseconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "attributesJson": {
+            "type": "string"
+          },
+          "payloadJson": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "TelemetryResourceStatus": {
         "enum": [
           "TELEMETRY_RESOURCE_STATUS_UNSPECIFIED",
@@ -18266,6 +18442,15 @@
           }
         },
         "additionalProperties": false
+      },
+      "TelemetrySignalType": {
+        "enum": [
+          "TELEMETRY_SIGNAL_TYPE_UNSPECIFIED",
+          "TELEMETRY_SIGNAL_TYPE_TRACE",
+          "TELEMETRY_SIGNAL_TYPE_METRIC",
+          "TELEMETRY_SIGNAL_TYPE_LOG"
+        ],
+        "type": "string"
       },
       "TelemetrySource": {
         "type": "object",

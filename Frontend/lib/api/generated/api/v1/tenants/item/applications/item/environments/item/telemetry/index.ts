@@ -6,6 +6,8 @@ import { CollectorRequestBuilderNavigationMetadata, type CollectorRequestBuilder
 // @ts-ignore
 import { ErrorsRequestBuilderRequestsMetadata, type ErrorsRequestBuilder } from './errors/index.js';
 // @ts-ignore
+import { RecordsRequestBuilderRequestsMetadata, type RecordsRequestBuilder } from './records/index.js';
+// @ts-ignore
 import { SettingsRequestBuilderRequestsMetadata, type SettingsRequestBuilder } from './settings/index.js';
 // @ts-ignore
 import { SourcesRequestBuilderNavigationMetadata, SourcesRequestBuilderRequestsMetadata, type SourcesRequestBuilder } from './sources/index.js';
@@ -24,6 +26,10 @@ export interface TelemetryRequestBuilder extends BaseRequestBuilder<TelemetryReq
      * The errors property
      */
     get errors(): ErrorsRequestBuilder;
+    /**
+     * The records property
+     */
+    get records(): RecordsRequestBuilder;
     /**
      * The settings property
      */
@@ -46,6 +52,9 @@ export const TelemetryRequestBuilderNavigationMetadata: Record<Exclude<keyof Tel
     },
     errors: {
         requestsMetadata: ErrorsRequestBuilderRequestsMetadata,
+    },
+    records: {
+        requestsMetadata: RecordsRequestBuilderRequestsMetadata,
     },
     settings: {
         requestsMetadata: SettingsRequestBuilderRequestsMetadata,

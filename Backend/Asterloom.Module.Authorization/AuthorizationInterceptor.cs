@@ -227,6 +227,7 @@ internal sealed class AuthorizationInterceptor(
             [TelemetryAdminMethod("UpdateTelemetrySettings")] = "telemetry.settings.update",
             [TelemetryAdminMethod("GetCollectorHealth")] = "telemetry.health.read",
             [TelemetryAdminMethod("ListRecentErrors")] = "telemetry.error.read",
+            [TelemetryAdminMethod("ListTelemetryRecords")] = "telemetry.record.read",
             [TelemetryAdminMethod("GetDiagnosticLink")] = "telemetry.diagnostic.read",
             [OperationsAdminMethod("ListApis")] = "operations.api.read",
             [OperationsAdminMethod("GetOperationsHealth")] = "operations.health.read",

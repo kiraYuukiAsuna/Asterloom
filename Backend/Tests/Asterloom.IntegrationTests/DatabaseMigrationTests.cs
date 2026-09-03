@@ -464,9 +464,9 @@ public sealed class DatabaseMigrationTests
         }
 
         Assert.True(firstRun.IsPersistent);
-        Assert.Equal(13, firstRun.AppliedCount);
+        Assert.Equal(14, firstRun.AppliedCount);
         Assert.Equal(0, secondRun.AppliedCount);
-        Assert.Equal(13, secondRun.PreviouslyAppliedCount);
+        Assert.Equal(14, secondRun.PreviouslyAppliedCount);
         Assert.Contains(
             persistedEnvironments.Items,
             candidate => candidate.Id == environment.Id);
@@ -519,6 +519,7 @@ public sealed class DatabaseMigrationTests
                 AND to_regclass('release.releases') IS NOT NULL
                 AND to_regclass('mail.smtp_accounts') IS NOT NULL
                 AND to_regclass('mail.deliveries') IS NOT NULL
+                AND to_regclass('telemetry.records') IS NOT NULL
                 AND to_regclass('infrastructure.audit_events') IS NOT NULL
                 AND to_regclass('infrastructure.outbox_messages') IS NOT NULL
                 AND to_regclass('infrastructure.inbox_receipts') IS NOT NULL

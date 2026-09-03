@@ -22,28 +22,16 @@ processors:
     limit_mib: 256
 
 exporters:
-  debug:
-    verbosity: basic
-  debug/reference:
-    verbosity: basic
-  file/traces:
-    path: /var/lib/otelcol/traces.json
-    rotation:
-      max_megabytes: 100
-      max_days: 7
-      max_backups: 10
-  file/metrics:
-    path: /var/lib/otelcol/metrics.json
-    rotation:
-      max_megabytes: 100
-      max_days: 7
-      max_backups: 10
-  file/logs:
-    path: /var/lib/otelcol/logs.json
-    rotation:
-      max_megabytes: 100
-      max_days: 7
-      max_backups: 10
+  otlp_http/database:
+    endpoint: http://server:8000/api/v1/telemetry/otlp
+    encoding: json
+    compression: none
+    headers:
+      X-Asterloom-Telemetry-Key: ${env:TELEMETRY_INGESTION_API_KEY}
+    retry_on_failure:
+      enabled: true
+    sending_queue:
+      enabled: true
 
 service:
   telemetry:
@@ -60,24 +48,24 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, file/traces]
+      exporters: [otlp_http/database]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, file/metrics]
+      exporters: [otlp_http/database]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, file/logs]
+      exporters: [otlp_http/database]
     traces/reference:
       receivers: [otlp/reference]
       processors: [memory_limiter, batch]
-      exporters: [debug/reference, file/traces]
+      exporters: [otlp_http/database]
     metrics/reference:
       receivers: [otlp/reference]
       processors: [memory_limiter, batch]
-      exporters: [debug/reference, file/metrics]
+      exporters: [otlp_http/database]
     logs/reference:
       receivers: [otlp/reference]
       processors: [memory_limiter, batch]
-      exporters: [debug/reference, file/logs]
+      exporters: [otlp_http/database]

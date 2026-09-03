@@ -5,7 +5,8 @@ namespace Asterloom.Modules.Telemetry;
 public sealed record TelemetryManagementOptions(
     Uri CollectorHealthEndpoint,
     string DefaultExporterEndpoint,
-    string DefaultDiagnosticsBaseUrl)
+    string DefaultDiagnosticsBaseUrl,
+    string IngestionApiKey)
 {
     public static TelemetryManagementOptions FromConfiguration(IConfiguration configuration)
     {
@@ -23,6 +24,7 @@ public sealed record TelemetryManagementOptions(
             configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
                 ?? configuration["Telemetry:DefaultExporterEndpoint"]
                 ?? "http://localhost:4317",
-            configuration["Telemetry:DiagnosticsBaseUrl"] ?? string.Empty);
+            configuration["Telemetry:DiagnosticsBaseUrl"] ?? string.Empty,
+            configuration["Telemetry:IngestionApiKey"] ?? string.Empty);
     }
 }

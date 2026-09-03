@@ -18,6 +18,10 @@ internal sealed class PostgreSqlTelemetryStore(NpgsqlDataSource dataSource) : IT
     private const string ErrorColumns =
         "id, tenant_id, application_id, environment_id, service_name, exception_type, " +
         "message, grpc_method, trace_id, span_id, request_id, occurred_at";
+    private const string RecordColumns =
+        "id, tenant_id, application_id, environment_id, signal_type, service_name, " +
+        "observed_at, trace_id, span_id, name, category, value, duration_milliseconds, " +
+        "attributes_json::text, payload_json::text, created_at";
 
     public async Task<TelemetryStorePage<TelemetrySource>> ListSourcesAsync(
         TelemetryScope scope,
@@ -65,6 +69,27 @@ internal sealed class PostgreSqlTelemetryStore(NpgsqlDataSource dataSource) : IT
         AddScope(command, scope);
         command.Parameters.AddWithValue("id", sourceId);
         return await ReadOneAsync(command, ReadSource, cancellationToken);
+    }
+
+    public async Task<bool> HasActiveSourceAsync(
+        TelemetryScope scope,
+        string serviceName,
+        CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM telemetry.sources
+                WHERE tenant_id = @tenant_id
+                  AND application_id = @application_id
+                  AND environment_id = @environment_id
+                  AND service_name = @service_name
+                  AND status = 1);
+            """);
+        AddScope(command, scope);
+        command.Parameters.AddWithValue("service_name", serviceName);
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
     }
 
     public async Task<bool> TryCreateSourceAsync(
@@ -218,6 +243,76 @@ internal sealed class PostgreSqlTelemetryStore(NpgsqlDataSource dataSource) : IT
         return await ReadPageAsync(command, filter.PageSize, ReadError, cancellationToken);
     }
 
+    public async Task AppendRecordsAsync(
+        IReadOnlyCollection<TelemetryRecord> records,
+        CancellationToken cancellationToken)
+    {
+        if (records.Count == 0)
+        {
+            return;
+        }
+
+        await using var batch = dataSource.CreateBatch();
+        foreach (var record in records)
+        {
+            var command = new NpgsqlBatchCommand(
+                """
+                INSERT INTO telemetry.records (
+                    id, tenant_id, application_id, environment_id, signal_type,
+                    service_name, observed_at, trace_id, span_id, name, category,
+                    value, duration_milliseconds, attributes_json, payload_json, created_at)
+                VALUES (
+                    @id, @tenant_id, @application_id, @environment_id, @signal_type,
+                    @service_name, @observed_at, @trace_id, @span_id, @name, @category,
+                    @value, @duration_milliseconds, @attributes_json, @payload_json, @created_at)
+                ON CONFLICT (id) DO NOTHING;
+                """);
+            AddRecordParameters(command, record);
+            batch.BatchCommands.Add(command);
+        }
+
+        batch.BatchCommands.Add(new NpgsqlBatchCommand(
+            "DELETE FROM telemetry.records WHERE observed_at < now() - interval '7 days';"));
+        await batch.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<TelemetryStorePage<TelemetryRecord>> ListRecordsAsync(
+        TelemetryScope scope,
+        TelemetryRecordFilter filter,
+        CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            $"""
+            SELECT {RecordColumns}
+            FROM telemetry.records
+            WHERE tenant_id = @tenant_id
+              AND application_id = @application_id
+              AND environment_id = @environment_id
+              AND signal_type = @signal_type
+              AND (@service_name = '' OR service_name = @service_name)
+              AND (@trace_id = '' OR trace_id = @trace_id)
+              AND (@query = '' OR name ILIKE '%' || @query || '%'
+                   OR category ILIKE '%' || @query || '%'
+                   OR value ILIKE '%' || @query || '%'
+                   OR attributes_json::text ILIKE '%' || @query || '%')
+              AND (@from_at IS NULL OR observed_at >= @from_at)
+              AND (@to_at IS NULL OR observed_at <= @to_at)
+            ORDER BY observed_at DESC, id DESC
+            OFFSET @offset
+            LIMIT @limit;
+            """);
+        AddScope(command, scope);
+        command.Parameters.AddWithValue("signal_type", (short)filter.SignalType);
+        command.Parameters.AddWithValue("service_name", filter.ServiceName);
+        command.Parameters.AddWithValue("trace_id", filter.TraceId);
+        command.Parameters.AddWithValue("query", filter.Query);
+        AddNullableTimestamp(command, "from_at", filter.FromAt);
+        AddNullableTimestamp(command, "to_at", filter.ToAt);
+        command.Parameters.AddWithValue("offset", filter.Offset);
+        command.Parameters.AddWithValue("limit", filter.PageSize + 1);
+        return await ReadPageAsync(command, filter.PageSize, ReadRecord, cancellationToken);
+    }
+
     private static void AddScope(NpgsqlCommand command, TelemetryScope scope)
     {
         command.Parameters.AddWithValue("tenant_id", scope.TenantId);
@@ -278,6 +373,36 @@ internal sealed class PostgreSqlTelemetryStore(NpgsqlDataSource dataSource) : IT
         command.Parameters.AddWithValue("occurred_at", telemetryError.OccurredAt.UtcDateTime);
     }
 
+    private static void AddRecordParameters(
+        NpgsqlBatchCommand command,
+        TelemetryRecord record)
+    {
+        command.Parameters.AddWithValue("id", record.Id);
+        command.Parameters.AddWithValue("tenant_id", record.Scope.TenantId);
+        command.Parameters.AddWithValue("application_id", record.Scope.ApplicationId);
+        command.Parameters.AddWithValue("environment_id", record.Scope.EnvironmentId);
+        command.Parameters.AddWithValue("signal_type", (short)record.SignalType);
+        command.Parameters.AddWithValue("service_name", record.ServiceName);
+        command.Parameters.AddWithValue("observed_at", record.ObservedAt.UtcDateTime);
+        command.Parameters.AddWithValue("trace_id", record.TraceId);
+        command.Parameters.AddWithValue("span_id", record.SpanId);
+        command.Parameters.AddWithValue("name", record.Name);
+        command.Parameters.AddWithValue("category", record.Category);
+        command.Parameters.AddWithValue("value", record.Value);
+        command.Parameters.Add(new NpgsqlParameter("duration_milliseconds", NpgsqlDbType.Double)
+        {
+            Value = record.DurationMilliseconds is null
+                ? DBNull.Value
+                : record.DurationMilliseconds.Value,
+        });
+        command.Parameters.AddWithValue(
+            "attributes_json",
+            NpgsqlDbType.Jsonb,
+            record.AttributesJson);
+        command.Parameters.AddWithValue("payload_json", NpgsqlDbType.Jsonb, record.PayloadJson);
+        command.Parameters.AddWithValue("created_at", record.CreatedAt.UtcDateTime);
+    }
+
     private static TelemetrySource ReadSource(NpgsqlDataReader reader) => new(
         reader.GetGuid(0),
         new TelemetryScope(reader.GetGuid(1), reader.GetGuid(2), reader.GetGuid(3)),
@@ -321,6 +446,22 @@ internal sealed class PostgreSqlTelemetryStore(NpgsqlDataSource dataSource) : IT
             reader.GetString(10),
             ReadTimestamp(reader, 11));
     }
+
+    private static TelemetryRecord ReadRecord(NpgsqlDataReader reader) => new(
+        reader.GetGuid(0),
+        new TelemetryScope(reader.GetGuid(1), reader.GetGuid(2), reader.GetGuid(3)),
+        (TelemetrySignalType)reader.GetInt16(4),
+        reader.GetString(5),
+        ReadTimestamp(reader, 6),
+        reader.GetString(7),
+        reader.GetString(8),
+        reader.GetString(9),
+        reader.GetString(10),
+        reader.GetString(11),
+        reader.IsDBNull(12) ? null : reader.GetDouble(12),
+        reader.GetString(13),
+        reader.GetString(14),
+        ReadTimestamp(reader, 15));
 
     private static async Task<T?> ReadOneAsync<T>(
         NpgsqlCommand command,

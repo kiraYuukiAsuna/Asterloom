@@ -31,6 +31,13 @@ enum CollectorHealthStatus {
   COLLECTOR_HEALTH_STATUS_UNAVAILABLE = 3;
 }
 
+enum TelemetrySignalType {
+  TELEMETRY_SIGNAL_TYPE_UNSPECIFIED = 0;
+  TELEMETRY_SIGNAL_TYPE_TRACE = 1;
+  TELEMETRY_SIGNAL_TYPE_METRIC = 2;
+  TELEMETRY_SIGNAL_TYPE_LOG = 3;
+}
+
 message TelemetrySource {
   string id = 1;
   TelemetryScope scope = 2;
@@ -78,6 +85,23 @@ message TelemetryError {
   string span_id = 8;
   string request_id = 9;
   google.protobuf.Timestamp occurred_at = 10;
+}
+
+message TelemetryRecord {
+  string id = 1;
+  TelemetryScope scope = 2;
+  TelemetrySignalType signal_type = 3;
+  string service_name = 4;
+  google.protobuf.Timestamp observed_at = 5;
+  string trace_id = 6;
+  string span_id = 7;
+  string name = 8;
+  string category = 9;
+  string value = 10;
+  optional double duration_milliseconds = 11;
+  string attributes_json = 12;
+  string payload_json = 13;
+  google.protobuf.Timestamp created_at = 14;
 }
 
 message DiagnosticLink {

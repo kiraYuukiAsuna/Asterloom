@@ -17,15 +17,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Analytics/Asterloom.Sdk.Analytics.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Config/Asterloom.Sdk.Config.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Feature/Asterloom.Sdk.Feature.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Release/Asterloom.Sdk.Release.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Storage/Asterloom.Sdk.Storage.csproj" />
-    <ProjectReference Include="../../Asterloom/Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Analytics/Asterloom.Sdk.Analytics.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Authorization/Asterloom.Sdk.Authorization.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Config/Asterloom.Sdk.Config.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Feature/Asterloom.Sdk.Feature.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Identity/Asterloom.Sdk.Identity.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Release/Asterloom.Sdk.Release.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Rpc/Asterloom.Sdk.Rpc.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Storage/Asterloom.Sdk.Storage.csproj" />
+    <ProjectReference Include="../../../Backend/Asterloom.Sdk.Telemetry/Asterloom.Sdk.Telemetry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

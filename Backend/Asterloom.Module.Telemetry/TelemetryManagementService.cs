@@ -241,6 +241,50 @@ public sealed partial class TelemetryManagementService(
             page.HasMore ? EncodeOffset(filter.Offset + page.Items.Count) : string.Empty);
     }
 
+    public async Task<TelemetryListResult<TelemetryRecord>> ListRecordsAsync(
+        string tenantId,
+        string applicationId,
+        string environmentId,
+        TelemetrySignalType signalType,
+        int pageSize,
+        string? pageToken,
+        string? serviceName,
+        string? traceId,
+        string? query,
+        DateTimeOffset? fromAt,
+        DateTimeOffset? toAt,
+        CancellationToken cancellationToken)
+    {
+        if (signalType is not (
+            TelemetrySignalType.Trace or TelemetrySignalType.Metric or TelemetrySignalType.Log))
+        {
+            throw Invalid("signalType", "A supported telemetry signal type is required.");
+        }
+
+        if (fromAt is not null && toAt is not null && fromAt >= toAt)
+        {
+            throw Invalid("timeRange", "The telemetry time range must be positive.");
+        }
+
+        var request = CreatePageRequest(pageSize, pageToken, query, includeArchived: false);
+        var filter = new TelemetryRecordFilter(
+            request.Offset,
+            request.PageSize,
+            signalType,
+            NormalizeText(serviceName, "serviceName", 200),
+            NormalizeTraceId(traceId, required: false),
+            request.Query,
+            fromAt?.ToUniversalTime(),
+            toAt?.ToUniversalTime());
+        var page = await store.ListRecordsAsync(
+            ParseScope(tenantId, applicationId, environmentId),
+            filter,
+            cancellationToken);
+        return new(
+            page.Items,
+            page.HasMore ? EncodeOffset(filter.Offset + page.Items.Count) : string.Empty);
+    }
+
     public async Task<TelemetryDiagnosticLink> GetDiagnosticLinkAsync(
         string tenantId,
         string applicationId,

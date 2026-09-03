@@ -9,6 +9,8 @@ using ProtocolScope = Asterloom.Protocol.Telemetry.V1.TelemetryScope;
 using ProtocolSettings = Asterloom.Protocol.Telemetry.V1.TelemetrySettings;
 using ProtocolSource = Asterloom.Protocol.Telemetry.V1.TelemetrySource;
 using ProtocolTelemetryError = Asterloom.Protocol.Telemetry.V1.TelemetryError;
+using ProtocolTelemetryRecord = Asterloom.Protocol.Telemetry.V1.TelemetryRecord;
+using ProtocolTelemetrySignalType = Asterloom.Protocol.Telemetry.V1.TelemetrySignalType;
 
 namespace Asterloom.Modules.Telemetry;
 
@@ -87,6 +89,32 @@ internal static class TelemetryProtocolMapper
         OccurredAt = Timestamp.FromDateTimeOffset(error.OccurredAt),
     };
 
+    public static ProtocolTelemetryRecord ToProtocol(this TelemetryRecord record)
+    {
+        var result = new ProtocolTelemetryRecord
+        {
+            Id = record.Id.ToString("D"),
+            Scope = record.Scope.ToProtocol(),
+            SignalType = record.SignalType.ToProtocol(),
+            ServiceName = record.ServiceName,
+            ObservedAt = Timestamp.FromDateTimeOffset(record.ObservedAt),
+            TraceId = record.TraceId,
+            SpanId = record.SpanId,
+            Name = record.Name,
+            Category = record.Category,
+            Value = record.Value,
+            AttributesJson = record.AttributesJson,
+            PayloadJson = record.PayloadJson,
+            CreatedAt = Timestamp.FromDateTimeOffset(record.CreatedAt),
+        };
+        if (record.DurationMilliseconds is { } duration)
+        {
+            result.DurationMilliseconds = duration;
+        }
+
+        return result;
+    }
+
     public static ProtocolDiagnosticLink ToProtocol(this TelemetryDiagnosticLink link) => new()
     {
         Url = link.Url,
@@ -101,6 +129,24 @@ internal static class TelemetryProtocolMapper
             ProtocolOtlpProtocol.Grpc => TelemetryOtlpProtocol.Grpc,
             ProtocolOtlpProtocol.HttpProtobuf => TelemetryOtlpProtocol.HttpProtobuf,
             _ => (TelemetryOtlpProtocol)0,
+        };
+
+    public static TelemetrySignalType ToDomain(this ProtocolTelemetrySignalType signalType) =>
+        signalType switch
+        {
+            ProtocolTelemetrySignalType.Trace => TelemetrySignalType.Trace,
+            ProtocolTelemetrySignalType.Metric => TelemetrySignalType.Metric,
+            ProtocolTelemetrySignalType.Log => TelemetrySignalType.Log,
+            _ => (TelemetrySignalType)0,
+        };
+
+    private static ProtocolTelemetrySignalType ToProtocol(this TelemetrySignalType signalType) =>
+        signalType switch
+        {
+            TelemetrySignalType.Trace => ProtocolTelemetrySignalType.Trace,
+            TelemetrySignalType.Metric => ProtocolTelemetrySignalType.Metric,
+            TelemetrySignalType.Log => ProtocolTelemetrySignalType.Log,
+            _ => ProtocolTelemetrySignalType.Unspecified,
         };
 
     private static ProtocolOtlpProtocol ToProtocol(this TelemetryOtlpProtocol protocol) =>

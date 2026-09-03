@@ -7,7 +7,7 @@ import useSWR from "swr";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { OtlpProtocolObject, TelemetryResourceStatusObject } from "@/lib/api/generated/models";
+import { TelemetryResourceStatusObject } from "@/lib/api/generated/models";
 import {
   archiveTelemetrySource,
   createTelemetrySource,
@@ -181,24 +181,20 @@ function TelemetrySettingsCard({ csrfToken, onChanged, settings }: { csrfToken: 
   const [tracesEnabled, setTracesEnabled] = useState(settings.tracesEnabled);
   const [metricsEnabled, setMetricsEnabled] = useState(settings.metricsEnabled);
   const [logsEnabled, setLogsEnabled] = useState(settings.logsEnabled);
-  const [exporterEndpoint, setExporterEndpoint] = useState(settings.exporterEndpoint);
-  const [exporterProtocol, setExporterProtocol] = useState(settings.exporterProtocol);
   const [diagnosticsBaseUrl, setDiagnosticsBaseUrl] = useState(settings.diagnosticsBaseUrl);
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true);
     try {
-      await onChanged(await updateTelemetrySettings(csrfToken, settings, { samplingRatio, tracesEnabled, metricsEnabled, logsEnabled, exporterEndpoint, exporterProtocol, diagnosticsBaseUrl }));
-      toast.success(translate("Telemetry sampling and export settings updated."));
+      await onChanged(await updateTelemetrySettings(csrfToken, settings, { samplingRatio, tracesEnabled, metricsEnabled, logsEnabled, exporterEndpoint: settings.exporterEndpoint, exporterProtocol: settings.exporterProtocol, diagnosticsBaseUrl }));
+      toast.success(translate("Telemetry sampling and storage settings updated."));
     } catch (error) { toast.error(translate(telemetryErrorMessage(error))); } finally { setBusy(false); }
   }
   return (
     <Card data-ui-action="get-telemetry-settings">
-      <CardHeader><div className="flex items-center gap-2"><Settings2 className="size-4 text-violet-300" /><CardTitle>{translate("Sampling and export")}</CardTitle></div><CardDescription>{translate("Environment policy consumed by service deployment configuration; changes are versioned and audited.")}</CardDescription></CardHeader>
+      <CardHeader><div className="flex items-center gap-2"><Settings2 className="size-4 text-violet-300" /><CardTitle>{translate("Sampling and database storage")}</CardTitle></div><CardDescription>{translate("Controls which signals are retained in PostgreSQL for this environment.")}</CardDescription></CardHeader>
       <CardContent><form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" onSubmit={submit}>
         <label className={telemetryLabelClassName}>{translate("Sampling ratio")}<input className={telemetryInputClassName} max={1} min={0} name="telemetrySamplingRatio" onChange={(event) => setSamplingRatio(event.target.valueAsNumber)} step={0.01} type="number" value={samplingRatio} /></label>
-        <label className={telemetryLabelClassName}>{translate("OTLP protocol")}<select className={telemetryInputClassName} name="telemetryExporterProtocol" onChange={(event) => setExporterProtocol(event.target.value as typeof exporterProtocol)} value={exporterProtocol}><option value={OtlpProtocolObject.OTLP_PROTOCOL_GRPC}>{translate("gRPC")}</option><option value={OtlpProtocolObject.OTLP_PROTOCOL_HTTP_PROTOBUF}>{translate("HTTP/protobuf")}</option></select></label>
-        <label className={cn(telemetryLabelClassName, "md:col-span-2")}>{translate("Exporter endpoint")}<input className={telemetryInputClassName} name="telemetryExporterEndpoint" onChange={(event) => setExporterEndpoint(event.target.value)} value={exporterEndpoint} /></label>
-        <label className={cn(telemetryLabelClassName, "md:col-span-2 xl:col-span-4")}>{translate("Diagnostics base URL")}<input className={telemetryInputClassName} name="telemetryDiagnosticsBaseUrl" onChange={(event) => setDiagnosticsBaseUrl(event.target.value)} placeholder={translate("https://observability.example/traces")} value={diagnosticsBaseUrl} /></label>
+        <label className={cn(telemetryLabelClassName, "md:col-span-1 xl:col-span-3")}>{translate("Diagnostics base URL")}<input className={telemetryInputClassName} name="telemetryDiagnosticsBaseUrl" onChange={(event) => setDiagnosticsBaseUrl(event.target.value)} placeholder={translate("https://observability.example/traces")} value={diagnosticsBaseUrl} /></label>
         <div className="flex flex-wrap gap-5 md:col-span-2 xl:col-span-4">
           <SignalToggle checked={tracesEnabled} label={translate("Traces")} onChange={setTracesEnabled} />
           <SignalToggle checked={metricsEnabled} label={translate("Metrics")} onChange={setMetricsEnabled} />

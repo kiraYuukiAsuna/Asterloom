@@ -12,16 +12,16 @@ Telemetry 基于 OpenTelemetry 收集应用与平台的技术信号：Trace、Me
   → OpenTelemetry instrumentation + Asterloom resource attributes
   → OTLP gRPC :4317 or HTTP/protobuf :4318
   → OpenTelemetry Collector
-  → 轮转 JSON 文件与可选的可观测性后端
+  → 经过认证的 OTLP/JSON Ingestion API
+  → PostgreSQL telemetry.records
 ```
 
-Compose Collector 会把 Trace、Metric、Log 写入持久命名卷中的轮转 JSON 文件（单文件 100 MiB、
-保留 10 个备份与七天），同时保留 `debug` Exporter 便于诊断。不使用看板也可以直接导出原始数据；
-只有需要索引查询、告警或 Trace Pivot 跳转时才需要另接可观测性后端。
+Compose Collector 将 Trace、Metric、Log 转发到 Asterloom Ingestion API，并规范化保存到 PostgreSQL；
+记录默认保留七天，不再创建 JSON 文件。只有需要告警、长期保存或复杂分析时才需要另接可观测性后端。
 
 ## 2. Web 管理
 
-路由：`/telemetry/sources`、`/telemetry/health`
+路由：`/telemetry/sources`、`/telemetry/signals`、`/telemetry/health`
 
 ### Sources
 
@@ -31,13 +31,14 @@ Compose Collector 会把 Trace、Metric、Log 写入持久命名卷中的轮转 
 
 ### Settings 与 Health
 
-- 设置 Sampling Ratio、Trace/Metric/Log 开关、Exporter Endpoint/Protocol、Diagnostics Base URL。
+- 设置数据库入库 Sampling Ratio、Trace/Metric/Log 开关和 Diagnostics Base URL。
 - 检查 Collector Health Endpoint 和延迟。
 - 按 Service Name/Trace ID 查看 Asterloom Server 捕获的近期技术错误。
+- 按信号类型、Service Name、Trace ID、关键字和时间范围查询 PostgreSQL 中的遥测记录。
 - 根据 Trace ID 与时间范围生成外部诊断系统链接。
 
-当前重要边界：Web 中保存的 Telemetry Settings 不会自动推送到正在运行的 C# SDK。应用 SDK 仍从
-部署配置创建 `AsterloomTelemetryOptions`；运维需要让部署配置与控制面设置保持一致。
+Web 中的信号开关和 Trace Sampling Ratio 会在入库时执行，但不会自动推送到正在运行的 C# SDK；
+应用 SDK 仍从部署配置创建 `AsterloomTelemetryOptions`。
 
 ## 3. C# SDK 接入
 
@@ -103,14 +104,15 @@ Metric Tag 必须低基数；User ID、Request ID、Order ID、完整 URL 等高
 - `telemetry.settings.read/update`
 - `telemetry.health.read`
 - `telemetry.error.read`
+- `telemetry.record.read`
 - `telemetry.diagnostic.read`
 
-OTLP Receiver 的网络认证不由这些管理 Permission 替代。生产 Collector 还需网络隔离、TLS/mTLS 或受控
-Gateway，不能把无认证 4317/4318 暴露到公网。
+Collector 到 Server 的入库请求使用 `TELEMETRY_INGESTION_API_KEY`；生产 Collector 仍需网络隔离，
+不能把 4317/4318 暴露到公网。
 
 ## 7. 上线检查
 
-- [ ] Collector 文件卷已纳入备份/导出，或已配置托管 Exporter。
+- [ ] PostgreSQL 已纳入备份并具有足够的遥测容量。
 - [ ] OTLP Endpoint、Protocol、TLS 和网络策略已验证。
 - [ ] Service Name、Version、Environment 和 Asterloom Scope Resource 完整。
 - [ ] Sampling 与成本、故障诊断需求平衡。

@@ -6,10 +6,12 @@ namespace Asterloom.Modules.Infrastructure.Telemetry;
 internal sealed class InMemoryTelemetryStore : ITelemetryStore
 {
     private const int MaximumErrors = 10_000;
+    private const int MaximumRecords = 100_000;
     private readonly Lock _gate = new();
     private readonly Dictionary<Guid, TelemetrySource> _sources = [];
     private readonly Dictionary<TelemetryScope, TelemetrySettings> _settings = [];
     private readonly Dictionary<Guid, TelemetryError> _errors = [];
+    private readonly Dictionary<Guid, TelemetryRecord> _records = [];
 
     public Task<TelemetryStorePage<TelemetrySource>> ListSourcesAsync(
         TelemetryScope scope,
@@ -49,6 +51,21 @@ internal sealed class InMemoryTelemetryStore : ITelemetryStore
                 _sources.TryGetValue(sourceId, out var source) && source.Scope == scope
                     ? source
                     : null);
+        }
+    }
+
+    public Task<bool> HasActiveSourceAsync(
+        TelemetryScope scope,
+        string serviceName,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(_sources.Values.Any(source =>
+                source.Scope == scope
+                && source.Status == TelemetryResourceStatus.Active
+                && string.Equals(source.ServiceName, serviceName, StringComparison.Ordinal)));
         }
     }
 
@@ -171,6 +188,61 @@ internal sealed class InMemoryTelemetryStore : ITelemetryStore
                     .Where(item => filter.TraceId.Length == 0
                         || string.Equals(item.TraceId, filter.TraceId, StringComparison.Ordinal))
                     .OrderByDescending(static item => item.OccurredAt)
+                    .ThenByDescending(static item => item.Id),
+                filter.Offset,
+                filter.PageSize));
+        }
+    }
+
+    public Task AppendRecordsAsync(
+        IReadOnlyCollection<TelemetryRecord> records,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            foreach (var record in records)
+            {
+                _records.TryAdd(record.Id, record);
+            }
+
+            foreach (var id in _records.Values
+                .OrderByDescending(static item => item.ObservedAt)
+                .Skip(MaximumRecords)
+                .Select(static item => item.Id)
+                .ToArray())
+            {
+                _records.Remove(id);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task<TelemetryStorePage<TelemetryRecord>> ListRecordsAsync(
+        TelemetryScope scope,
+        TelemetryRecordFilter filter,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(ToPage(
+                _records.Values
+                    .Where(item => item.Scope == scope && item.SignalType == filter.SignalType)
+                    .Where(item => filter.ServiceName.Length == 0
+                        || string.Equals(item.ServiceName, filter.ServiceName, StringComparison.Ordinal))
+                    .Where(item => filter.TraceId.Length == 0
+                        || string.Equals(item.TraceId, filter.TraceId, StringComparison.Ordinal))
+                    .Where(item => filter.Query.Length == 0 || Matches(
+                        filter.Query,
+                        item.Name,
+                        item.Category,
+                        item.Value,
+                        item.AttributesJson))
+                    .Where(item => filter.FromAt is null || item.ObservedAt >= filter.FromAt)
+                    .Where(item => filter.ToAt is null || item.ObservedAt <= filter.ToAt)
+                    .OrderByDescending(static item => item.ObservedAt)
                     .ThenByDescending(static item => item.Id),
                 filter.Offset,
                 filter.PageSize));

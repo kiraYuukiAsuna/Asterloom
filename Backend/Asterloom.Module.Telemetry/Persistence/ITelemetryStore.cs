@@ -14,6 +14,11 @@ public interface ITelemetryStore
         Guid sourceId,
         CancellationToken cancellationToken);
 
+    Task<bool> HasActiveSourceAsync(
+        TelemetryScope scope,
+        string serviceName,
+        CancellationToken cancellationToken);
+
     Task<bool> TryCreateSourceAsync(
         TelemetrySource source,
         CancellationToken cancellationToken);
@@ -39,5 +44,14 @@ public interface ITelemetryStore
     Task<TelemetryStorePage<TelemetryError>> ListErrorsAsync(
         TelemetryScope scope,
         TelemetryErrorFilter filter,
+        CancellationToken cancellationToken);
+
+    Task AppendRecordsAsync(
+        IReadOnlyCollection<TelemetryRecord> records,
+        CancellationToken cancellationToken);
+
+    Task<TelemetryStorePage<TelemetryRecord>> ListRecordsAsync(
+        TelemetryScope scope,
+        TelemetryRecordFilter filter,
         CancellationToken cancellationToken);
 }

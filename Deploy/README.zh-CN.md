@@ -296,6 +296,7 @@ sudo bash Deploy/Scripts/Prepare-ProductionHost.sh
 | `ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL` / `ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD` | 首个管理账号凭据。 |
 | `ASTERLOOM_OIDC_CLIENT_SECRET` | Web BFF 的 OIDC Confidential Client Secret。 |
 | `ASTERLOOM_SESSION_ENCRYPTION_KEY` | 32 字节 Base64 Key，用于加密 Redis 中的 Session。 |
+| `TELEMETRY_INGESTION_API_KEY` | 仅供 Collector 与 Server 之间进行 OTLP 数据库入库认证的共享密钥。 |
 | `ASTERLOOM_CERTIFICATE_PASSWORD` | 两个 OpenIddict PFX 的密码；生产覆盖文件强制要求。 |
 
 不要直接把本地 `.env.example` 用于生产。根目录 `.env`、`Deploy/Secrets/` 和 `.data/`
@@ -454,17 +455,14 @@ sudo journalctl -u nginx --since "30 minutes ago"
 - `Deploy/Secrets/*.pfx`；
 - `.data/dataprotection-keys/`；
 - 使用参考应用时的 `.data/reference-app/reference.env` 与 `state/`；
-- `asterloom-production_otel-collector-data` 命名卷；
 - 宿主机 `/etc/letsencrypt/` 和 Nginx Site 配置。
 
 Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性，也应把它纳入恢复设计。
 不要把 `docker compose down -v` 当作普通停止命令；它会删除生产命名卷。数据库迁移是前向
 执行的，代码回滚前必须单独评估 Schema 兼容性，不能假设回退 Git 提交会自动回退数据库。
 
-Collector 会把轮转的 `traces.json`、`metrics.json`、`logs.json` 写入
-`asterloom-production_otel-collector-data` 命名卷；默认单文件 100 MiB、保留 10 个备份与七天。
-应在保留期前备份或导出该卷；只有需要索引查询、告警或更长保留期时，才需要另接 OTLP、
-Prometheus、Loki 等后端。
+Collector 使用共享 Ingestion Key 将 Trace、Metric、Log 转发给 Server，并保存到 PostgreSQL
+`telemetry.records`；默认保留七天，不再创建遥测文件卷。PostgreSQL 备份必须覆盖这些记录。
 
 Mail 模块由 Server 容器直接向控制台配置的 SMTP 主机发起出站连接，不新增任何入站或
 宿主机映射端口。生产防火墙需按所用服务商放行出站 SMTP（常见为 465 或 587）；SMTP
@@ -500,7 +498,7 @@ Mail 模块由 Server 容器直接向控制台配置的 SMTP 主机发起出站�
 
 | 文件 | 作用 |
 | --- | --- |
-| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | 开启 OTLP gRPC 4317、OTLP HTTP 4318 和健康检查 13133，使用 memory limiter、batch processor、诊断用 `debug` 输出与持久化轮转 JSON 文件 exporter。 |
+| [`OpenTelemetry/otel-collector.yaml`](OpenTelemetry/otel-collector.yaml) | 开启 OTLP gRPC 4317、OTLP HTTP 4318 和健康检查 13133，使用 memory limiter、batch processor，并通过认证的 OTLP/JSON 将信号写入 Server/PostgreSQL。 |
 
 ### 6.4 Scripts
 

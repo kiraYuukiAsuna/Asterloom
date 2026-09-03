@@ -21,11 +21,14 @@ public sealed class TelemetryModule : IAsterloomModule
         services.AddSingleton(TelemetryManagementOptions.FromConfiguration(configuration));
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IAsterloomModuleMigration, TelemetryInitialMigration>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IAsterloomModuleMigration, TelemetryRecordsMigration>());
         services.AddHttpClient<TelemetryCollectorHealthProbe>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(2);
         });
         services.AddScoped<TelemetryManagementService>();
+        services.AddScoped<TelemetryIngestionService>();
         services.AddScoped<TelemetryAdminGrpcService>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<ITechnicalDiagnosticSink, TelemetryDiagnosticSink>());
@@ -36,5 +39,6 @@ public sealed class TelemetryModule : IAsterloomModule
         endpoints
             .MapGrpcService<TelemetryAdminGrpcService>()
             .RequireAuthorization(AsterloomApiAuthorization.ManagementPolicy);
+        TelemetryIngestionEndpoints.Map(endpoints);
     }
 }

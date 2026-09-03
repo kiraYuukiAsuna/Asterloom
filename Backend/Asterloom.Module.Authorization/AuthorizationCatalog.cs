@@ -170,6 +170,7 @@ public static class AuthorizationCatalog
         Permission("telemetry.settings.update", "Update telemetry settings"),
         Permission("telemetry.health.read", "Read Collector health"),
         Permission("telemetry.error.read", "Read recent telemetry errors"),
+        Permission("telemetry.record.read", "Read stored telemetry records"),
         Permission("telemetry.diagnostic.read", "Open telemetry diagnostics"),
         Permission("operations.api.read", "Read the API catalog"),
         Permission("operations.health.read", "Read platform dependency health"),

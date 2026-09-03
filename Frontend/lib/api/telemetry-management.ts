@@ -4,6 +4,7 @@ import {
   CollectorHealthStatusObject,
   OtlpProtocolObject,
   TelemetryResourceStatusObject,
+  TelemetrySignalTypeObject,
 } from "@/lib/api/generated/models";
 
 import { getAsterloomApiClient } from "./asterloom-client";
@@ -54,6 +55,11 @@ const statusSchema = z.enum([
 const protocolSchema = z.enum([
   OtlpProtocolObject.OTLP_PROTOCOL_GRPC,
   OtlpProtocolObject.OTLP_PROTOCOL_HTTP_PROTOBUF,
+]);
+export const telemetrySignalTypeSchema = z.enum([
+  TelemetrySignalTypeObject.TELEMETRY_SIGNAL_TYPE_TRACE,
+  TelemetrySignalTypeObject.TELEMETRY_SIGNAL_TYPE_METRIC,
+  TelemetrySignalTypeObject.TELEMETRY_SIGNAL_TYPE_LOG,
 ]);
 const scopeResponseSchema = telemetryScopeSchema;
 const sourceRecordSchema = z.object({
@@ -113,6 +119,26 @@ const errorPageSchema = z.object({
   errors: z.array(telemetryErrorSchema).nullish().transform((value) => value ?? []),
   nextPageToken: optionalTextSchema,
 });
+const telemetryRecordSchema = z.object({
+  attributesJson: z.string(),
+  category: z.string(),
+  createdAt: timestampSchema,
+  durationMilliseconds: z.number().nonnegative().nullish().transform((value) => value ?? null),
+  id: idSchema,
+  name: z.string(),
+  observedAt: timestampSchema,
+  payloadJson: z.string(),
+  scope: scopeResponseSchema,
+  serviceName: z.string(),
+  signalType: telemetrySignalTypeSchema,
+  spanId: optionalTextSchema,
+  traceId: optionalTextSchema,
+  value: z.string(),
+});
+const telemetryRecordPageSchema = z.object({
+  nextPageToken: optionalTextSchema,
+  records: z.array(telemetryRecordSchema).nullish().transform((value) => value ?? []),
+});
 const diagnosticLinkSchema = z.object({
   fromAt: timestampSchema,
   toAt: timestampSchema,
@@ -125,6 +151,8 @@ export type TelemetrySourceRecord = z.infer<typeof sourceRecordSchema>;
 export type TelemetrySettingsRecord = z.infer<typeof settingsSchema>;
 export type TelemetryCollectorHealthRecord = z.infer<typeof collectorHealthSchema>;
 export type TelemetryErrorRecord = z.infer<typeof telemetryErrorSchema>;
+export type TelemetryRecord = z.infer<typeof telemetryRecordSchema>;
+export type TelemetrySignalType = z.infer<typeof telemetrySignalTypeSchema>;
 export type TelemetryDiagnosticLinkRecord = z.infer<typeof diagnosticLinkSchema>;
 
 export async function listTelemetrySources(
@@ -271,6 +299,35 @@ export async function listTelemetryErrors(
     },
   });
   return errorPageSchema.parse(requireResponse(response));
+}
+
+export async function listTelemetryRecords(
+  scope: TelemetryScope,
+  options: {
+    fromAt?: string;
+    pageSize?: number;
+    pageToken?: string;
+    query?: string;
+    serviceName?: string;
+    signalType: TelemetrySignalType;
+    toAt?: string;
+    traceId?: string;
+  },
+) {
+  const parsed = z.object({
+    fromAt: z.string().datetime().optional(),
+    pageSize: z.number().int().min(1).max(100).default(50),
+    pageToken: z.string().max(2_048).default(""),
+    query: z.string().trim().max(200).default(""),
+    serviceName: z.string().trim().max(200).default(""),
+    signalType: telemetrySignalTypeSchema,
+    toAt: z.string().datetime().optional(),
+    traceId: z.union([z.literal(""), z.string().trim().toLowerCase().regex(traceIdPattern)]).default(""),
+  }).parse(options);
+  const response = await telemetryBuilder(telemetryScopeSchema.parse(scope)).records.get({
+    queryParameters: parsed,
+  });
+  return telemetryRecordPageSchema.parse(requireResponse(response));
 }
 
 export async function getTelemetryDiagnosticLink(

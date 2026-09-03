@@ -19,6 +19,7 @@ if [[ ! -f "$ASTERLOOM_ENV_FILE" ]]; then
   redis_password="$(openssl rand -hex 24)"
   admin_password="Ast!$(openssl rand -hex 18)Z9"
   oidc_secret="$(openssl rand -hex 32)"
+  telemetry_ingestion_key="$(openssl rand -hex 32)"
   session_key="$(openssl rand -base64 32 | tr -d '\n')"
   certificate_password="$(openssl rand -hex 24)"
 
@@ -33,9 +34,15 @@ if [[ ! -f "$ASTERLOOM_ENV_FILE" ]]; then
     "ASTERLOOM_BOOTSTRAP_ADMIN_EMAIL=admin@$ASTERLOOM_DOMAIN" \
     "ASTERLOOM_BOOTSTRAP_ADMIN_PASSWORD=$admin_password" \
     "ASTERLOOM_OIDC_CLIENT_SECRET=$oidc_secret" \
+    "TELEMETRY_INGESTION_API_KEY=$telemetry_ingestion_key" \
     "ASTERLOOM_SESSION_ENCRYPTION_KEY=$session_key" \
     "ASTERLOOM_CERTIFICATE_PASSWORD=$certificate_password" > "$ASTERLOOM_ENV_FILE"
   chmod 0600 "$ASTERLOOM_ENV_FILE"
+fi
+
+if ! grep -q '^TELEMETRY_INGESTION_API_KEY=' "$ASTERLOOM_ENV_FILE"; then
+  printf 'TELEMETRY_INGESTION_API_KEY=%s\n' "$(openssl rand -hex 32)" \
+    >> "$ASTERLOOM_ENV_FILE"
 fi
 
 set -a

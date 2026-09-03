@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -6,6 +7,7 @@ using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Telemetry.Model;
 using Asterloom.Modules.Telemetry.Persistence;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
@@ -26,7 +28,8 @@ public sealed class TelemetryContractTests : IClassFixture<WebApplicationFactory
 
     public TelemetryContractTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(_ => { });
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Telemetry:IngestionApiKey", "telemetry-contract-key"));
     }
 
     [Fact]
@@ -71,6 +74,147 @@ public sealed class TelemetryContractTests : IClassFixture<WebApplicationFactory
             telemetryPath + $"/sources/{source.Id}:restore",
             new { expectedVersion = source.Version }));
         Assert.Equal("TELEMETRY_RESOURCE_STATUS_ACTIVE", source.Status);
+
+        const string storedTraceId = "1123456789abcdef0123456789abcdef";
+        using (var unauthorizedResponse = await client.PostAsJsonAsync(
+            "/api/v1/telemetry/otlp/v1/traces",
+            new { }))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, unauthorizedResponse.StatusCode);
+        }
+
+        client.DefaultRequestHeaders.Add(
+            "X-Asterloom-Telemetry-Key",
+            "telemetry-contract-key");
+        using (var ingestionResponse = await client.PostAsJsonAsync(
+            "/api/v1/telemetry/otlp/v1/traces",
+            new
+            {
+                resourceSpans = new[]
+                {
+                    new
+                    {
+                        resource = new
+                        {
+                            attributes = new object[]
+                            {
+                                new { key = "service.name", value = new { stringValue = "asterloom.checkout-api-v2" } },
+                                new { key = "asterloom.tenant.id", value = new { stringValue = scope.TenantId } },
+                                new { key = "asterloom.application.id", value = new { stringValue = scope.ApplicationId } },
+                                new { key = "asterloom.environment.id", value = new { stringValue = scope.EnvironmentId } },
+                            },
+                        },
+                        scopeSpans = new[]
+                        {
+                            new
+                            {
+                                scope = new { name = "Asterloom.ContractTests" },
+                                spans = new[]
+                                {
+                                    new
+                                    {
+                                        traceId = storedTraceId,
+                                        spanId = "1123456789abcdef",
+                                        name = "checkout.test",
+                                        startTimeUnixNano = "1788508800000000000",
+                                        endTimeUnixNano = "1788508800025000000",
+                                        status = new { code = "STATUS_CODE_OK" },
+                                        attributes = Array.Empty<object>(),
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }))
+        {
+            Assert.True(ingestionResponse.IsSuccessStatusCode);
+        }
+
+        var records = await client.GetFromJsonAsync<TelemetryRecordListJson>(
+            telemetryPath + "/records?signalType=TELEMETRY_SIGNAL_TYPE_TRACE" +
+            $"&pageSize=20&traceId={storedTraceId}");
+        var storedTrace = Assert.Single(records!.Records);
+        Assert.Equal("checkout.test", storedTrace.Name);
+        Assert.Equal(25, storedTrace.DurationMilliseconds);
+
+        using (var ingestionResponse = await client.PostAsJsonAsync(
+            "/api/v1/telemetry/otlp/v1/metrics",
+            new
+            {
+                resourceMetrics = new[]
+                {
+                    new
+                    {
+                        resource = new { attributes = OtlpResourceAttributes(scope) },
+                        scopeMetrics = new[]
+                        {
+                            new
+                            {
+                                metrics = new[]
+                                {
+                                    new
+                                    {
+                                        name = "checkout.queue.depth",
+                                        gauge = new
+                                        {
+                                            dataPoints = new[]
+                                            {
+                                                new { timeUnixNano = "1788508801000000000", asDouble = 12.5 },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }))
+        {
+            Assert.True(ingestionResponse.IsSuccessStatusCode);
+        }
+
+        var metrics = await client.GetFromJsonAsync<TelemetryRecordListJson>(
+            telemetryPath + "/records?signalType=TELEMETRY_SIGNAL_TYPE_METRIC&pageSize=20");
+        Assert.Equal("12.5", Assert.Single(metrics!.Records).Value);
+
+        using (var ingestionResponse = await client.PostAsJsonAsync(
+            "/api/v1/telemetry/otlp/v1/logs",
+            new
+            {
+                resourceLogs = new[]
+                {
+                    new
+                    {
+                        resource = new { attributes = OtlpResourceAttributes(scope) },
+                        scopeLogs = new[]
+                        {
+                            new
+                            {
+                                logRecords = new[]
+                                {
+                                    new
+                                    {
+                                        timeUnixNano = "1788508802000000000",
+                                        traceId = storedTraceId,
+                                        spanId = "1123456789abcdef",
+                                        severityText = "INFO",
+                                        body = new { stringValue = "checkout completed" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }))
+        {
+            Assert.True(ingestionResponse.IsSuccessStatusCode);
+        }
+
+        var logs = await client.GetFromJsonAsync<TelemetryRecordListJson>(
+            telemetryPath + "/records?signalType=TELEMETRY_SIGNAL_TYPE_LOG&pageSize=20" +
+            "&query=completed");
+        Assert.Equal("checkout completed", Assert.Single(logs!.Records).Value);
 
         var settings = await client.GetFromJsonAsync<TelemetrySettingsJson>(
             telemetryPath + "/settings");
@@ -151,6 +295,14 @@ public sealed class TelemetryContractTests : IClassFixture<WebApplicationFactory
     private static string ScopePath(ScopeResources resources) =>
         $"/api/v1/tenants/{resources.TenantId}/applications/{resources.ApplicationId}" +
         $"/environments/{resources.EnvironmentId}";
+
+    private static object[] OtlpResourceAttributes(ScopeResources scope) =>
+    [
+        new { key = "service.name", value = new { stringValue = "asterloom.checkout-api-v2" } },
+        new { key = "asterloom.tenant.id", value = new { stringValue = scope.TenantId } },
+        new { key = "asterloom.application.id", value = new { stringValue = scope.ApplicationId } },
+        new { key = "asterloom.environment.id", value = new { stringValue = scope.EnvironmentId } },
+    ];
 
     private static async Task<T> SendAsync<T>(Task<HttpResponseMessage> responseTask)
     {
@@ -237,5 +389,7 @@ public sealed class TelemetryContractTests : IClassFixture<WebApplicationFactory
     private sealed record CollectorHealthJson(string Status);
     private sealed record TelemetryErrorJson(string TraceId);
     private sealed record TelemetryErrorListJson(IReadOnlyList<TelemetryErrorJson> Errors);
+    private sealed record TelemetryRecordJson(string Name, string Value, double? DurationMilliseconds);
+    private sealed record TelemetryRecordListJson(IReadOnlyList<TelemetryRecordJson> Records);
     private sealed record DiagnosticLinkJson(string Url, string TraceId);
 }

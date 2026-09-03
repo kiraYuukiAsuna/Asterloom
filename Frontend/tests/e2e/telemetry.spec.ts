@@ -24,7 +24,7 @@ test("manages every Telemetry API through the Web Console", async ({ page }) => 
   await expect(page.getByTestId("telemetry-collector-health")).toBeVisible();
   await expect(page.locator('[data-ui-action="list-telemetry-errors"]')).toBeVisible();
 
-  await page.getByRole("link", { name: "Sources & export", exact: true }).click();
+  await page.getByRole("link", { name: "Sources & storage", exact: true }).click();
   await expect(page).toHaveURL(webUrl("/telemetry/sources"));
   await expect(page.locator('[data-ui-action="list-telemetry-sources"]')).toBeVisible();
   await expect(page.locator('[data-ui-action="get-telemetry-settings"]')).toBeVisible();
@@ -51,11 +51,13 @@ test("manages every Telemetry API through the Web Console", async ({ page }) => 
   await expect(sourceRow).toContainText("active", { ignoreCase: true });
 
   await page.locator('input[name="telemetrySamplingRatio"]').fill("0.25");
-  await page.locator('select[name="telemetryExporterProtocol"]').selectOption("OTLP_PROTOCOL_HTTP_PROTOBUF");
-  await page.locator('input[name="telemetryExporterEndpoint"]').fill("http://otel-collector:4318");
   await page.locator('input[name="telemetryDiagnosticsBaseUrl"]').fill("http://localhost:16686/search");
   await page.locator('[data-ui-action="update-telemetry-settings"]').click();
   await expect(page.locator('input[name="telemetrySamplingRatio"]')).toHaveValue("0.25");
+
+  await page.getByRole("link", { name: "Stored signals", exact: true }).click();
+  await expect(page).toHaveURL(webUrl("/telemetry/signals"));
+  await expect(page.locator('[data-ui-action="list-telemetry-records"]')).toBeVisible();
 
   await page.getByRole("link", { name: "Health & errors", exact: true }).click();
   const traceId = "0123456789abcdef0123456789abcdef";

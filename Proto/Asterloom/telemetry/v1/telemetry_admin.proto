@@ -51,6 +51,9 @@ service TelemetryAdminService {
   rpc ListRecentErrors(ListRecentErrorsRequest) returns (ListRecentErrorsResponse) {
     option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/errors"};
   }
+  rpc ListTelemetryRecords(ListTelemetryRecordsRequest) returns (ListTelemetryRecordsResponse) {
+    option (google.api.http) = {get: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry/records"};
+  }
   rpc GetDiagnosticLink(GetDiagnosticLinkRequest) returns (asterloom.telemetry.v1.DiagnosticLink) {
     option (google.api.http) = {
       post: "/api/v1/tenants/{tenant_id}/applications/{application_id}/environments/{environment_id}/telemetry:diagnostic-link"
@@ -147,6 +150,23 @@ message ListRecentErrorsRequest {
 }
 message ListRecentErrorsResponse {
   repeated asterloom.telemetry.v1.TelemetryError errors = 1;
+  string next_page_token = 2;
+}
+message ListTelemetryRecordsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  asterloom.telemetry.v1.TelemetrySignalType signal_type = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+  string service_name = 7;
+  string trace_id = 8;
+  string query = 9;
+  google.protobuf.Timestamp from_at = 10;
+  google.protobuf.Timestamp to_at = 11;
+}
+message ListTelemetryRecordsResponse {
+  repeated asterloom.telemetry.v1.TelemetryRecord records = 1;
   string next_page_token = 2;
 }
 message GetDiagnosticLinkRequest {
