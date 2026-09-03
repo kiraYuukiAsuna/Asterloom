@@ -13,8 +13,23 @@ internal static class ReferenceBusinessAuthorizationEndpoints
         var group = endpoints.MapGroup("/api/reference/authorization")
             .RequireAuthorization();
         group.MapPost("/fixture", SeedFixtureAsync);
-        group.MapPost("/orders/{orderId}/refund", AuthorizeRefundAsync);
+        group.MapPost("/orders/{orderId}/refund", AuthorizeRefundFromRequestAsync);
         return endpoints;
+    }
+
+    private static Task<IResult> AuthorizeRefundFromRequestAsync(
+        string orderId,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var services = context.RequestServices;
+        return AuthorizeRefundAsync(
+            orderId,
+            context.User,
+            services.GetRequiredService<ReferenceAppStore>(),
+            services.GetRequiredService<ReferenceIdentityGateway>(),
+            services.GetRequiredService<ReferenceResourceServerOptions>(),
+            cancellationToken);
     }
 
     private static async Task<IResult> SeedFixtureAsync(
@@ -43,9 +58,9 @@ internal static class ReferenceBusinessAuthorizationEndpoints
     private static async Task<IResult> AuthorizeRefundAsync(
         string orderId,
         ClaimsPrincipal user,
-        [FromServices] ReferenceAppStore store,
-        [FromServices] ReferenceIdentityGateway gateway,
-        [FromServices] ReferenceResourceServerOptions options,
+        ReferenceAppStore store,
+        ReferenceIdentityGateway gateway,
+        ReferenceResourceServerOptions options,
         CancellationToken cancellationToken)
     {
         var subjectId = RequireSubject(user);
