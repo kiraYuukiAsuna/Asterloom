@@ -319,6 +319,7 @@ internal sealed class ReferenceDiagnosticRunner(
             metricsClient,
             metricsAddress,
             cancellationToken);
+        var emittedAt = DateTimeOffset.UtcNow.AddSeconds(-1);
         using (var activity = instrumentation.ActivitySource.StartActivity("reference.diagnostic.telemetry"))
         {
             activity?.SetTag("asterloom.reference.run_id", state.RunId);
@@ -345,18 +346,56 @@ internal sealed class ReferenceDiagnosticRunner(
                 metricsAddress,
                 cancellationToken);
             if (CollectorSignalCounters.All(counter =>
-                    after[counter.Name] > before[counter.Name]))
+                    after[counter.Name] > before[counter.Name])
+                && await HasStoredTelemetryAsync(path, emittedAt, cancellationToken))
             {
-                return "Collector received and exported Trace, Metric and Log through OTLP.";
+                return "Collector received, exported and stored Trace, Metric and Log through OTLP.";
             }
         }
         while (DateTimeOffset.UtcNow < deadline);
 
         var missing = CollectorSignalCounters
             .Where(counter => after[counter.Name] <= before[counter.Name])
-            .Select(counter => counter.Name);
+            .Select(counter => counter.Name)
+            .ToArray();
+        if (missing.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Collector exported telemetry, but the database did not store all three signal types.");
+        }
+
         throw new InvalidOperationException(
             "Collector counters did not increase for: " + string.Join(", ", missing) + ".");
+    }
+
+    private async Task<bool> HasStoredTelemetryAsync(
+        string path,
+        DateTimeOffset fromAt,
+        CancellationToken cancellationToken)
+    {
+        foreach (var signalType in new[]
+        {
+            "TELEMETRY_SIGNAL_TYPE_TRACE",
+            "TELEMETRY_SIGNAL_TYPE_METRIC",
+            "TELEMETRY_SIGNAL_TYPE_LOG",
+        })
+        {
+            var query = $"?signalType={signalType}&pageSize=1"
+                + $"&serviceName=asterloom.reference.client"
+                + $"&fromAt={Uri.EscapeDataString(fromAt.ToString("O"))}";
+            using var response = await platform.HttpClient.GetAsync(
+                path + "/records" + query,
+                cancellationToken);
+            await EnsureSuccessAsync(response, cancellationToken);
+            using var document = JsonDocument.Parse(
+                await response.Content.ReadAsStringAsync(cancellationToken));
+            if (document.RootElement.GetProperty("records").GetArrayLength() == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async Task<string> TestRpcAsync(CancellationToken cancellationToken)

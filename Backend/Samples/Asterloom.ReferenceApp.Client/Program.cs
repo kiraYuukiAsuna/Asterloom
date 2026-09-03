@@ -275,6 +275,9 @@ internal static class Program
         CancellationToken cancellationToken)
     {
         var serviceCredentials = settings.RequireServiceCredentials();
+        var current = provision
+            ? null
+            : await ReferenceAppState.LoadAsync(settings.StateFile, cancellationToken);
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddAsterloomIdentityClient(options =>
         {
@@ -290,6 +293,12 @@ internal static class Program
             builder.Configuration,
             "asterloom.reference.client",
             typeof(Program).Assembly.GetName().Version?.ToString());
+        if (current is not null)
+        {
+            telemetry.TenantId = current.TenantId.ToString("D");
+            telemetry.ApplicationId = current.ApplicationId.ToString("D");
+            telemetry.EnvironmentId = current.EnvironmentId.ToString("D");
+        }
         telemetry.ActivitySourceNames.Add(ReferenceClientInstrumentation.ActivitySourceName);
         telemetry.MeterNames.Add(ReferenceClientInstrumentation.MeterName);
         builder.Services.AddAsterloomTelemetry(telemetry);
@@ -340,12 +349,9 @@ internal static class Program
                 return 0;
             }
 
-            var current = await ReferenceAppState.LoadAsync(
-                settings.StateFile,
-                cancellationToken);
             var runner = new ReferenceDiagnosticRunner(
                 settings,
-                current,
+                current!,
                 transport,
                 host.Services.GetRequiredService<ReferenceClientInstrumentation>(),
                 host.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
