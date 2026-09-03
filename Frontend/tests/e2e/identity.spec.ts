@@ -132,6 +132,7 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await userEditor.locator('[data-ui-action="archive-user"]').click();
   await expect(userEditor.locator('[data-ui-action="restore-user"]')).toBeVisible();
   await userEditor.locator('[data-ui-action="restore-user"]').click();
+  await expect(userEditor.locator('[data-ui-action="restore-user"]')).toHaveCount(0);
 
   const usersResponse = await page.request.get(
     `/api/asterloom/api/v1/identity/users?query=${encodeURIComponent(email)}`,
@@ -147,7 +148,10 @@ test("manages the complete Identity surface through the Web Console", async ({ b
     .getByLabel("User", { exact: true })
     .fill(`Identity E2E User Updated (${email})`);
   await setMembership.getByLabel("Tenant", { exact: true }).fill(`Identity E2E Tenant (identity-${suffix})`);
-  await setMembership.getByLabel("Application", { exact: true }).fill(`Identity E2E Application (identity-${suffix})`);
+  const membershipApplication = setMembership.getByLabel("Application", { exact: true });
+  await membershipApplication.fill(`Identity E2E Application (identity-${suffix})`);
+  await expect.poll(() => membershipApplication.evaluate((element) =>
+    (element as HTMLInputElement).checkValidity())).toBe(true);
   await setMembership.getByRole("button", { name: "Save membership" }).click();
   const membershipList = page.locator('[data-ui-action="list-application-memberships"]');
   await membershipList.getByLabel("Include removed memberships").check();
@@ -163,7 +167,7 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await page.getByTestId("identity-tab-clients").click();
   const systemClientRow = page
     .locator('[data-ui-action="get-client"]')
-    .filter({ hasText: "asterloom-web-e2e" });
+    .filter({ hasText: "System resource" });
   await systemClientRow.click();
   const systemClientEditor = page.locator('[data-ui-action="update-client"]');
   await expect(systemClientEditor).toContainText("System resource");
@@ -182,10 +186,13 @@ test("manages the complete Identity surface through the Web Console", async ({ b
   await createClient.getByLabel("Client credentials").check();
   await expect(createClient.getByLabel("Trusted backend password")).toHaveCount(0);
   await createClient.getByLabel("Tenant", { exact: true }).fill(`Identity E2E Tenant (identity-${suffix})`);
-  await createClient.getByLabel("Application", { exact: true }).fill(`Identity E2E Application (identity-${suffix})`);
+  const clientApplication = createClient.getByLabel("Application", { exact: true });
+  await clientApplication.fill(`Identity E2E Application (identity-${suffix})`);
+  await expect.poll(() => clientApplication.evaluate((element) =>
+    (element as HTMLInputElement).checkValidity())).toBe(true);
   await createClient.getByLabel("Allow trusted backend registration").check();
   await createClient.getByLabel("Auto-join existing accounts on login").check();
-  await createClient.getByLabel("Add scope").fill("asterloom.api");
+  await expect(createClient).toContainText("asterloom.api");
   await createClient.getByRole("button", { name: "Register client" }).click();
   await expect(page.getByTestId("identity-credential-reveal")).toContainText(clientId);
   await page

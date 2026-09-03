@@ -15,7 +15,7 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   const sessionResponse = await page.request.get("/api/auth/session");
   expect(sessionResponse.ok()).toBeTruthy();
   const session = (await sessionResponse.json()) as {
-    actor: { subject: string };
+    actor: { email?: string; name: string; subject: string };
   };
 
   const suffix = Date.now().toString(36).slice(-8);
@@ -111,7 +111,9 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   );
   await expect(membershipPanel).toBeVisible();
   await membershipPanel.getByLabel("Show removed memberships").check();
-  await membershipPanel.getByLabel("User", { exact: true }).fill("E2E Administrator (admin@asterloom.test)");
+  await membershipPanel
+    .getByLabel("User", { exact: true })
+    .fill(session.actor.email ? `${session.actor.name} (${session.actor.email})` : session.actor.name);
   await membershipPanel
     .locator("form")
     .locator('[data-ui-action="set-tenant-membership"]')

@@ -65,9 +65,10 @@ test("manages buckets and verified objects through every Storage admin API", asy
   await page
     .getByLabel("Upload application", { exact: true })
     .fill(`Storage E2E App (${applicationSlug})`);
-  await page
-    .getByLabel("Upload environment", { exact: true })
-    .fill(`Storage E2E Environment (${environmentSlug})`);
+  const uploadEnvironment = page.getByLabel("Upload environment", { exact: true });
+  await uploadEnvironment.fill(`Storage E2E Environment (${environmentSlug})`);
+  await expect.poll(() => uploadEnvironment.evaluate((element) =>
+    (element as HTMLInputElement).checkValidity())).toBe(true);
   await page.locator('input[name="storageFile"]').setInputFiles({
     buffer: Buffer.from(`Asterloom storage E2E ${suffix}`, "utf8"),
     mimeType: "text/plain",

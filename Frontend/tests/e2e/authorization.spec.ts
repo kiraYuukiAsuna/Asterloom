@@ -156,7 +156,10 @@ test("manages the complete authorization surface through the Web Console", async
     .getByLabel("Role", { exact: true })
     .fill(`E2E Release Operator Updated (${roleKey})`);
   await bindingForm.getByLabel("Tenant", { exact: true }).fill(tenantLabel);
-  await bindingForm.getByLabel("Application", { exact: true }).fill(applicationLabel);
+  const bindingApplication = bindingForm.getByLabel("Application", { exact: true });
+  await bindingApplication.fill(applicationLabel);
+  await expect.poll(() => bindingApplication.evaluate((element) =>
+    (element as HTMLInputElement).checkValidity())).toBe(true);
   const [createBindingResponse] = await Promise.all([
     page.waitForResponse(
       (response) =>
