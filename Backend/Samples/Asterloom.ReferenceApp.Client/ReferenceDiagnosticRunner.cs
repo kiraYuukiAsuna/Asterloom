@@ -33,9 +33,9 @@ internal sealed class ReferenceDiagnosticRunner(
         ("otelcol_receiver_accepted_spans", "receiver=\"otlp/reference\""),
         ("otelcol_receiver_accepted_metric_points", "receiver=\"otlp/reference\""),
         ("otelcol_receiver_accepted_log_records", "receiver=\"otlp/reference\""),
-        ("otelcol_exporter_sent_spans", "exporter=\"debug/reference\""),
-        ("otelcol_exporter_sent_metric_points", "exporter=\"debug/reference\""),
-        ("otelcol_exporter_sent_log_records", "exporter=\"debug/reference\""),
+        ("otelcol_exporter_sent_spans", "exporter=\"otlp_http/database\""),
+        ("otelcol_exporter_sent_metric_points", "exporter=\"otlp_http/database\""),
+        ("otelcol_exporter_sent_log_records", "exporter=\"otlp_http/database\""),
     ];
     private static readonly Action<ILogger, string, Exception?> LogTelemetryProbe =
         LoggerMessage.Define<string>(
