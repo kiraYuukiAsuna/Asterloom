@@ -23,13 +23,29 @@ internal sealed class AuthorizationGrpcService(
                 AsterloomErrorKind.Unauthenticated,
                 "actor_identity_missing",
                 "The access token has no stable subject.");
-        if (!string.IsNullOrWhiteSpace(request.ActorId)
-            && !string.Equals(request.ActorId, actorId, StringComparison.Ordinal))
+        var callerType = principal.FindFirstValue("asterloom_actor_type");
+        var isServiceClient = string.Equals(
+            callerType,
+            "client",
+            StringComparison.Ordinal);
+        var targetActorId = string.IsNullOrWhiteSpace(request.ActorId)
+            ? actorId
+            : request.ActorId;
+        if (!isServiceClient
+            && !string.Equals(targetActorId, actorId, StringComparison.Ordinal))
         {
             throw new AsterloomException(
                 AsterloomErrorKind.PermissionDenied,
                 "actor_impersonation_denied",
                 "A caller may only check its own permissions.");
+        }
+
+        if (request.Attributes.Count > 0 && !isServiceClient)
+        {
+            throw new AsterloomException(
+                AsterloomErrorKind.PermissionDenied,
+                "authorization_trusted_attributes_required",
+                "Only a confidential application service may supply ABAC attributes.");
         }
 
         var trustedRoles = principal.Claims
@@ -41,16 +57,45 @@ internal sealed class AuthorizationGrpcService(
             principal,
             request.Scope.ToDomain(),
             inferWhenUnspecified: true);
+        if (request.Attributes.Count > 0 && scope.ApplicationId is null)
+        {
+            throw new AsterloomException(
+                AsterloomErrorKind.PermissionDenied,
+                "authorization_application_scope_required",
+                "ABAC attributes require an application-bound confidential client.");
+        }
         await ApplicationTokenScope.EnforceMembershipAsync(
             principal,
             memberships,
             context.CancellationToken);
+        if (isServiceClient
+            && !string.Equals(targetActorId, actorId, StringComparison.Ordinal))
+        {
+            if (scope.ApplicationId is not { } applicationId
+                || !Guid.TryParse(targetActorId, out var userId)
+                || userId == Guid.Empty
+                || !await memberships.IsActiveMemberAsync(
+                    userId,
+                    applicationId,
+                    context.CancellationToken))
+            {
+                throw new AsterloomException(
+                    AsterloomErrorKind.PermissionDenied,
+                    "identity_application_membership_required",
+                    "The target account is not an active member of the application.");
+            }
+        }
+
+        var input = request.ToDomain() with
+        {
+            ActorId = targetActorId,
+            Scope = scope,
+            TrustedRoles = string.Equals(targetActorId, actorId, StringComparison.Ordinal)
+                ? trustedRoles
+                : [],
+        };
         var decision = await managementService.SimulateAsync(
-            new AuthorizationDecisionRequest(
-                actorId,
-                scope,
-                request.Permission,
-                trustedRoles),
+            input,
             context.CancellationToken);
         return decision.ToProtocol();
     }

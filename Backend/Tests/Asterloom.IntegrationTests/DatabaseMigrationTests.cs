@@ -326,25 +326,72 @@ public sealed class DatabaseMigrationTests
         var authorization = identityScope.ServiceProvider
             .GetRequiredService<AuthorizationManagementService>();
         var actorId = "migration-test-client-" + suffix;
+        var applicationScope = new AuthorizationScope(tenant.Id, application.Id, null);
+        var updatePermission = await authorization.CreatePermissionAsync(
+            applicationScope,
+            "migration.orders.update",
+            "Update migration orders",
+            "Verifies application permission persistence.",
+            CancellationToken.None);
+        await authorization.CreatePermissionAsync(
+            applicationScope,
+            "migration.orders.refund",
+            "Refund migration orders",
+            "Verifies ACL and ABAC policy persistence.",
+            CancellationToken.None);
         var role = await authorization.CreateRoleAsync(
             "migration-role-" + suffix,
             "Migration Role",
             "Verifies the PostgreSQL authorization adapter.",
-            ["platform.environment.update"],
+            [updatePermission.Key],
+            applicationScope,
             CancellationToken.None);
         await authorization.SetRoleBindingAsync(
             Guid.CreateVersion7().ToString("D"),
             actorId,
             role.Id.ToString("D"),
-            new AuthorizationScope(tenant.Id, application.Id, null),
+            applicationScope,
             expectedVersion: 0,
             CancellationToken.None);
         var authorizationDecision = await authorization.SimulateAsync(
             new AuthorizationDecisionRequest(
                 actorId,
                 new AuthorizationScope(tenant.Id, application.Id, environment.Id),
-                "platform.environment.update",
+                updatePermission.Key,
                 []),
+            CancellationToken.None);
+        var refundPolicy = await authorization.CreatePolicyRuleAsync(
+            "Migration finance refunds",
+            AuthorizationPolicyEffect.Allow,
+            AuthorizationPolicySubjectType.Any,
+            "*",
+            applicationScope,
+            "migration.orders.refund",
+            "order",
+            "migration-order",
+            new TargetingRule(
+                TargetingMatchMode.All,
+                [
+                    new TargetingCondition(
+                        "finance-department",
+                        "subject.department",
+                        TargetingValueKind.Text,
+                        TargetingOperator.Equals,
+                        [TargetingValue.From("finance")]),
+                ]),
+            CancellationToken.None);
+        var persistedAbacDecision = await authorization.SimulateAsync(
+            new AuthorizationDecisionRequest(
+                actorId,
+                applicationScope,
+                "migration.orders.refund",
+                [],
+                "order",
+                "migration-order",
+                new Dictionary<string, TargetingValue>
+                {
+                    ["subject.department"] = TargetingValue.From("finance"),
+                }),
             CancellationToken.None);
         var revisions = await authorization.ListPolicyRevisionsAsync(
             pageSize: 20,
@@ -417,9 +464,9 @@ public sealed class DatabaseMigrationTests
         }
 
         Assert.True(firstRun.IsPersistent);
-        Assert.Equal(12, firstRun.AppliedCount);
+        Assert.Equal(13, firstRun.AppliedCount);
         Assert.Equal(0, secondRun.AppliedCount);
-        Assert.Equal(12, secondRun.PreviouslyAppliedCount);
+        Assert.Equal(13, secondRun.PreviouslyAppliedCount);
         Assert.Contains(
             persistedEnvironments.Items,
             candidate => candidate.Id == environment.Id);
@@ -427,6 +474,7 @@ public sealed class DatabaseMigrationTests
             persistedSmtpAccounts.Items,
             candidate => candidate.Id == smtpAccount.Id);
         Assert.True(authorizationDecision.Allowed);
+        Assert.True(persistedAbacDecision.Allowed);
         Assert.True(targetingSimulation.Matched);
         Assert.Equal("enabled", targetingSimulation.SelectedVariant);
         Assert.Equal("on", featureEvaluation.VariantKey);
@@ -437,6 +485,9 @@ public sealed class DatabaseMigrationTests
         Assert.Contains(persistedReleases.Items, item => item.Id == desktopRelease.Id);
         Assert.Equal(ReleaseSigningKeyStatus.Active, releaseSigningKey.Status);
         Assert.Contains(revisions.Items, revision => revision.ResourceId == role.Id.ToString());
+        Assert.Contains(
+            revisions.Items,
+            revision => revision.ResourceId == refundPolicy.Id.ToString());
         Assert.NotNull(audit);
         Assert.Null(await outboxStore.GetAsync(rolledBackEvent.Id, CancellationToken.None));
         Assert.NotNull(await outboxStore.GetAsync(committedEvent.Id, CancellationToken.None));
@@ -449,6 +500,7 @@ public sealed class DatabaseMigrationTests
                 AND to_regclass('platform.applications') IS NOT NULL
                 AND to_regclass('platform.environments') IS NOT NULL
                 AND to_regclass('authorization.roles') IS NOT NULL
+                AND to_regclass('authorization.permissions') IS NOT NULL
                 AND to_regclass('authorization.role_bindings') IS NOT NULL
                 AND to_regclass('authorization.policy_rules') IS NOT NULL
                 AND to_regclass('authorization.policy_revisions') IS NOT NULL

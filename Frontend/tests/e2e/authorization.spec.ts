@@ -1,8 +1,6 @@
-import { randomUUID } from "node:crypto";
-
 import { expect, test } from "@playwright/test";
 
-import { signIn, webUrl } from "./support/environment";
+import { signIn, webOrigin, webUrl } from "./support/environment";
 
 test("manages the complete authorization surface through the Web Console", async ({
   page,
@@ -18,17 +16,92 @@ test("manages the complete authorization surface through the Web Console", async
     "true",
   );
 
+  const sessionResponse = await page.request.get("/api/auth/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = (await sessionResponse.json()) as { csrfToken: string };
+  const mutationHeaders = {
+    origin: webOrigin,
+    "x-csrf-token": session.csrfToken,
+  };
+
+  const suffix = Date.now().toString(36).slice(-8);
+  const tenantResponse = await page.request.post("/api/asterloom/api/v1/tenants", {
+    data: { displayName: "Authorization E2E Tenant", slug: `authorization-${suffix}` },
+    headers: mutationHeaders,
+  });
+  expect(tenantResponse.ok()).toBeTruthy();
+  const tenant = (await tenantResponse.json()) as { id: string };
+  const applicationResponse = await page.request.post(
+    `/api/asterloom/api/v1/tenants/${tenant.id}/applications`,
+    {
+      data: {
+        displayName: "Authorization E2E Application",
+        slug: `authorization-${suffix}`,
+      },
+      headers: mutationHeaders,
+    },
+  );
+  expect(applicationResponse.ok()).toBeTruthy();
+  const application = (await applicationResponse.json()) as { id: string };
+  const environmentResponse = await page.request.post(
+    `/api/asterloom/api/v1/tenants/${tenant.id}/applications/${application.id}/environments`,
+    {
+      data: {
+        displayName: "Authorization E2E Environment",
+        environmentType: "ENVIRONMENT_TYPE_DEVELOPMENT",
+        isProtected: false,
+        slug: `authorization-${suffix}`,
+      },
+      headers: mutationHeaders,
+    },
+  );
+  expect(environmentResponse.ok()).toBeTruthy();
+  const environment = (await environmentResponse.json()) as { id: string };
+
+  const tenantId = tenant.id;
+  const applicationId = application.id;
+  const environmentId = environment.id;
+  await page.locator('input[name="authorizationTenantId"]').fill(tenantId);
+  await page.locator('input[name="authorizationApplicationId"]').fill(applicationId);
+
   await expect(page.locator('[data-ui-action="list-roles"]')).toBeVisible();
   await expect(page.locator('[data-ui-action="list-permissions"]')).toBeVisible();
 
-  const suffix = Date.now().toString(36).slice(-8);
   const roleKey = `auth-e2e-${suffix}`;
   const actorId = `authorization-e2e-actor-${suffix}`;
   const policyName = `E2E release rule ${suffix}`;
   const updatedPolicyName = `E2E release deny rule ${suffix}`;
-  const tenantId = randomUUID();
-  const applicationId = randomUUID();
-  const environmentId = randomUUID();
+  const permissionKey = `orders.refund-${suffix}`;
+
+  await page.getByTestId("authorization-tab-permissions").click();
+  await page.getByLabel("Include archived").check();
+  const createPermissionCard = page.locator('[data-ui-action="create-permission"]');
+  await createPermissionCard
+    .locator('input[name="applicationPermissionKey"]')
+    .fill(permissionKey);
+  await createPermissionCard
+    .locator('input[name="applicationPermissionDisplayName"]')
+    .fill("Refund E2E orders");
+  await createPermissionCard
+    .locator('textarea[name="applicationPermissionDescription"]')
+    .fill("Application permission exercised by the browser contract.");
+  await createPermissionCard.getByRole("button", { name: "Create permission" }).click();
+
+  const permissionRow = page.getByTestId(`authorization-permission-${permissionKey}`);
+  await expect(permissionRow).toContainText("Refund E2E orders");
+  await permissionRow.getByRole("button", { name: "Edit" }).click();
+  const updatePermissionForm = permissionRow.locator(
+    '[data-ui-action="update-permission"]',
+  );
+  await updatePermissionForm.getByLabel("Display name").fill("Refund E2E orders updated");
+  await updatePermissionForm.getByRole("button", { name: "Save permission" }).click();
+  await expect(permissionRow).toContainText("Refund E2E orders updated");
+  await permissionRow.locator('[data-ui-action="archive-permission"]').click();
+  await expect(permissionRow.locator('[data-ui-action="restore-permission"]')).toBeVisible();
+  await permissionRow.locator('[data-ui-action="restore-permission"]').click();
+  await expect(permissionRow.locator('[data-ui-action="archive-permission"]')).toBeVisible();
+
+  await page.getByTestId("authorization-tab-roles").click();
 
   await page.getByLabel("Include archived").check();
   const createRoleCard = page.locator('[data-ui-action="create-role"]');
@@ -41,7 +114,7 @@ test("manages the complete authorization surface through the Web Console", async
     .fill("Role exercised by the browser contract.");
   await createRoleCard
     .locator('textarea[name="rolePermissions"]')
-    .fill("platform.environment.read, platform.environment.update");
+    .fill(`${permissionKey}, platform.environment.read, platform.environment.update`);
   await createRoleCard.getByRole("button", { name: "Create role" }).click();
 
   const roleRow = page.getByTestId(`authorization-role-${roleKey}`);
@@ -101,6 +174,15 @@ test("manages the complete authorization surface through the Web Console", async
   await createPolicyCard
     .locator('input[name="policyPermission"]')
     .fill("platform.environment.update");
+  await createPolicyCard.locator('input[name="policyResourceType"]').fill("order");
+  await createPolicyCard.locator('input[name="policyResourceId"]').fill("order-42");
+  await createPolicyCard.getByLabel("Enable ABAC attribute condition").check();
+  await createPolicyCard
+    .locator('input[name="authorizationPolicyConditionConditionAttribute"]')
+    .fill("subject.department");
+  await createPolicyCard
+    .locator('input[name="authorizationPolicyConditionConditionValue"]')
+    .fill("finance");
   await createPolicyCard.locator('input[name="policyTenantId"]').fill(tenantId);
   await createPolicyCard
     .locator('input[name="policyApplicationId"]')
@@ -149,6 +231,8 @@ test("manages the complete authorization surface through the Web Console", async
   await simulator
     .locator('input[name="simulationEnvironmentId"]')
     .fill(environmentId);
+  await simulator.locator('input[name="simulationResourceType"]').fill("order");
+  await simulator.locator('input[name="simulationResourceId"]').fill("order-42");
   await simulator.getByRole("button", { name: "Simulate", exact: true }).click();
   await expect(simulator.getByText("Denied", { exact: true })).toBeVisible();
 

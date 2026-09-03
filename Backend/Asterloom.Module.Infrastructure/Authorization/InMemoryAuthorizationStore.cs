@@ -6,14 +6,109 @@ namespace Asterloom.Modules.Infrastructure.Authorization;
 internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
 {
     private readonly Lock _gate = new();
+    private readonly Dictionary<Guid, PermissionDefinition> _permissions = [];
     private readonly Dictionary<Guid, AuthorizationRole> _roles = [];
     private readonly Dictionary<Guid, AuthorizationRoleBinding> _bindings = [];
     private readonly Dictionary<Guid, AuthorizationPolicyRule> _policyRules = [];
     private readonly List<AuthorizationPolicyRevision> _revisions = [];
     private long _revisionNumber;
 
+    public Task<AuthorizationStorePage<PermissionDefinition>> ListPermissionsAsync(
+        AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(Page(
+                _permissions.Values
+                    .Where(permission => page.IncludeArchived
+                        || permission.Status == AuthorizationResourceStatus.Active)
+                    .Where(permission => MatchesScope(permission.Scope, scope))
+                    .Where(permission => Matches(
+                        permission.Key,
+                        permission.DisplayName,
+                        page.Query))
+                    .OrderBy(static permission => permission.Key, StringComparer.Ordinal)
+                    .ThenBy(static permission => permission.Id),
+                page));
+        }
+    }
+
+    public Task<PermissionDefinition?> GetPermissionAsync(
+        Guid permissionId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(_permissions.GetValueOrDefault(permissionId));
+        }
+    }
+
+    public Task<PermissionDefinition?> FindPermissionAsync(
+        AuthorizationScope scope,
+        string key,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(_permissions.Values.FirstOrDefault(permission =>
+                permission.Scope.TenantId == scope.TenantId
+                && permission.Scope.ApplicationId == scope.ApplicationId
+                && string.Equals(permission.Key, key, StringComparison.Ordinal)));
+        }
+    }
+
+    public Task<bool> TryCreatePermissionAsync(
+        PermissionDefinition permission,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            if (_permissions.ContainsKey(permission.Id)
+                || _permissions.Values.Any(candidate =>
+                    candidate.Scope.TenantId == permission.Scope.TenantId
+                    && candidate.Scope.ApplicationId == permission.Scope.ApplicationId
+                    && string.Equals(candidate.Key, permission.Key, StringComparison.Ordinal)))
+            {
+                return Task.FromResult(false);
+            }
+
+            _permissions.Add(permission.Id, permission);
+            AddRevision(revision);
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> TryUpdatePermissionAsync(
+        PermissionDefinition permission,
+        long expectedVersion,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            if (!_permissions.TryGetValue(permission.Id, out var current)
+                || current.Version != expectedVersion)
+            {
+                return Task.FromResult(false);
+            }
+
+            _permissions[permission.Id] = permission;
+            AddRevision(revision);
+            return Task.FromResult(true);
+        }
+    }
+
     public Task<AuthorizationStorePage<AuthorizationRole>> ListRolesAsync(
         AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -23,6 +118,7 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
                 _roles.Values
                     .Where(role => page.IncludeArchived
                         || role.Status == AuthorizationResourceStatus.Active)
+                    .Where(role => MatchesScope(role.Scope, scope))
                     .Where(role => Matches(role.Key, role.DisplayName, page.Query))
                     .OrderBy(static role => role.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(static role => role.Id),
@@ -53,7 +149,9 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
                 || _roles.Values.Any(candidate => string.Equals(
                     candidate.Key,
                     role.Key,
-                    StringComparison.Ordinal)))
+                    StringComparison.Ordinal)
+                    && candidate.Scope.TenantId == role.Scope.TenantId
+                    && candidate.Scope.ApplicationId == role.Scope.ApplicationId))
             {
                 return Task.FromResult(false);
             }
@@ -88,7 +186,7 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
     public Task<AuthorizationStorePage<AuthorizationRoleBinding>> ListRoleBindingsAsync(
         AuthorizationPageRequest page,
         string actorId,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -100,7 +198,7 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
                         || binding.Status == AuthorizationResourceStatus.Active)
                     .Where(binding => string.IsNullOrEmpty(actorId)
                         || binding.ActorId.Contains(actorId, StringComparison.OrdinalIgnoreCase))
-                    .Where(binding => tenantId is null || binding.Scope.TenantId == tenantId)
+                    .Where(binding => MatchesScope(binding.Scope, scope))
                     .OrderBy(static binding => binding.ActorId, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(static binding => binding.Id),
                 page));
@@ -163,7 +261,7 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
 
     public Task<AuthorizationStorePage<AuthorizationPolicyRule>> ListPolicyRulesAsync(
         AuthorizationPageRequest page,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -173,7 +271,7 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
                 _policyRules.Values
                     .Where(rule => page.IncludeArchived
                         || rule.Status == AuthorizationResourceStatus.Active)
-                    .Where(rule => tenantId is null || rule.Scope.TenantId == tenantId)
+                    .Where(rule => MatchesScope(rule.Scope, scope))
                     .Where(rule => Matches(rule.Name, rule.Permission, page.Query))
                     .OrderBy(static rule => rule.Name, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(static rule => rule.Id),
@@ -266,6 +364,10 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
         lock (_gate)
         {
             return Task.FromResult(new AuthorizationPolicySnapshot(
+                _permissions.Values
+                    .Where(static permission =>
+                        permission.Status == AuthorizationResourceStatus.Active)
+                    .ToArray(),
                 _roles.Values
                     .Where(static role => role.Status == AuthorizationResourceStatus.Active)
                     .ToArray(),
@@ -300,6 +402,13 @@ internal sealed class InMemoryAuthorizationStore : IAuthorizationStore
         string.Equals(left.ActorId, right.ActorId, StringComparison.Ordinal)
         && left.RoleId == right.RoleId
         && left.Scope == right.Scope;
+
+    private static bool MatchesScope(
+        AuthorizationScope candidate,
+        AuthorizationScopeFilter filter) =>
+        (filter.TenantId is null || candidate.TenantId == filter.TenantId)
+        && (filter.ApplicationId is null
+            || candidate.ApplicationId == filter.ApplicationId);
 
     private static bool Matches(string first, string second, string query) =>
         string.IsNullOrEmpty(query)

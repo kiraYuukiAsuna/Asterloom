@@ -52,15 +52,17 @@ export interface RolesRequestBuilder extends BaseRequestBuilder<RolesRequestBuil
      withRoleIdRestore(roleId: string | undefined) : WithRoleIdRestoreRequestBuilder;
 }
 export interface RolesRequestBuilderGetQueryParameters {
+    applicationId?: string;
     includeArchived?: boolean;
     pageSize?: number;
     pageToken?: string;
     query?: string;
+    tenantId?: string;
 }
 /**
  * Uri template for the request builder.
  */
-export const RolesRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/roles{?includeArchived*,pageSize*,pageToken*,query*}";
+export const RolesRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/roles{?applicationId*,includeArchived*,pageSize*,pageToken*,query*,tenantId*}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */

@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/generated/models";
 
 import { getAsterloomApiClient } from "./asterloom-client";
+import { targetingRuleSchema, targetingValueSchema } from "./targeting-management";
 
 const keyPattern = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 const timestampSchema = z.string().min(1);
@@ -67,10 +68,18 @@ const scopeSchema = z
   });
 
 const permissionSchema = z.object({
+  archivedAt: timestampSchema.nullish(),
+  createdAt: timestampSchema,
   description: z.string(),
   displayName: z.string().min(1),
+  id: z.union([z.literal(""), idSchema]),
+  isSystem: z.boolean(),
   key: permissionKeySchema,
   module: z.string().min(1),
+  scope: scopeSchema,
+  status: resourceStatusSchema,
+  updatedAt: timestampSchema,
+  version: versionSchema,
 });
 const roleSchema = z.object({
   archivedAt: timestampSchema.nullish(),
@@ -81,6 +90,7 @@ const roleSchema = z.object({
   isSystem: z.boolean(),
   key: roleKeySchema,
   permissions: z.array(permissionKeySchema),
+  scope: scopeSchema,
   status: resourceStatusSchema,
   updatedAt: timestampSchema,
   version: versionSchema,
@@ -104,12 +114,15 @@ const policyRuleSchema = z.object({
   id: idSchema,
   name: authorizationNameSchema,
   permission: permissionKeySchema,
+  resourceId: z.string().max(500),
+  resourceType: z.string().max(100),
   scope: scopeSchema,
   status: resourceStatusSchema,
   subject: z.string().min(1).max(200),
   subjectType: policySubjectTypeSchema,
   updatedAt: timestampSchema,
   version: versionSchema,
+  condition: targetingRuleSchema.nullish(),
 });
 const policyRevisionSchema = z.object({
   changeSummary: z.string(),
@@ -164,17 +177,41 @@ const roleInputSchema = z.object({
   displayName: authorizationNameSchema,
   permissions: permissionSelectionSchema,
 });
+const applicationScopeSchema = scopeSchema.superRefine((scope, context) => {
+  if (!scope.tenantId || !scope.applicationId || scope.environmentId) {
+    context.addIssue({
+      code: "custom",
+      message: "Tenant and application are required; environment must be omitted.",
+      path: ["applicationId"],
+    });
+  }
+});
+const permissionInputSchema = z.object({
+  description: authorizationDescriptionSchema,
+  displayName: authorizationNameSchema,
+  key: permissionKeySchema,
+  scope: applicationScopeSchema,
+});
 const policyInputSchema = z.object({
+  condition: targetingRuleSchema.nullish(),
   effect: policyEffectSchema,
   name: authorizationNameSchema,
   permission: permissionKeySchema,
+  resourceId: z.string().trim().max(500).default(""),
+  resourceType: z.string().trim().max(100).default(""),
   scope: scopeSchema,
   subject: z.string().trim().min(1).max(200),
   subjectType: policySubjectTypeSchema,
 });
 const decisionInputSchema = z.object({
   actorId: authorizationActorSchema,
+  attributes: z
+    .array(z.object({ key: z.string().trim().min(1).max(64), value: targetingValueSchema }))
+    .max(64)
+    .default([]),
   permission: permissionKeySchema,
+  resourceId: z.string().trim().max(500).default(""),
+  resourceType: z.string().trim().max(100).default(""),
   scope: scopeSchema,
   trustedRoles: z.array(z.string().trim().min(1).max(200)).max(20).default([]),
 });
@@ -188,26 +225,103 @@ export type AuthorizationDecisionRecord = z.infer<typeof decisionSchema>;
 export type AuthorizationScopeInput = z.infer<typeof scopeSchema>;
 export type PolicyEffect = z.infer<typeof policyEffectSchema>;
 export type PolicySubjectType = z.infer<typeof policySubjectTypeSchema>;
+export type AuthorizationDecisionInput = z.input<typeof decisionInputSchema>;
 
 export async function listPermissions(options: {
+  applicationId?: string;
+  includeArchived?: boolean;
   pageSize?: number;
   pageToken?: string;
   query?: string;
+  tenantId?: string;
 }) {
-  const page = pageSchema.parse(options);
+  const page = pageSchema
+    .extend({
+      applicationId: z.union([z.literal(""), z.string().uuid()]).default(""),
+      includeArchived: z.boolean().default(false),
+      tenantId: z.union([z.literal(""), z.string().uuid()]).default(""),
+    })
+    .parse(options);
   const response = await getAsterloomApiClient().api.v1.authorization.permissions.get({
     queryParameters: page,
   });
   return permissionsPageSchema.parse(requireResponse(response));
 }
 
+export async function listAllPermissions(options: {
+  applicationId?: string;
+  includeArchived?: boolean;
+  query?: string;
+  tenantId?: string;
+}) {
+  const permissions: PermissionRecord[] = [];
+  let pageToken = "";
+  do {
+    const page = await listPermissions({ ...options, pageSize: 100, pageToken });
+    permissions.push(...page.permissions);
+    pageToken = page.nextPageToken ?? "";
+  } while (pageToken);
+
+  return { nextPageToken: "", permissions };
+}
+
+export async function createPermission(
+  csrfToken: string,
+  input: z.input<typeof permissionInputSchema>,
+) {
+  const body = permissionInputSchema.parse(input);
+  const response = await getAsterloomApiClient(csrfToken).api.v1.authorization.permissions.post(
+    body,
+  );
+  return permissionSchema.parse(requireResponse(response));
+}
+
+export async function updatePermission(
+  csrfToken: string,
+  permission: PermissionRecord,
+  input: { description: string; displayName: string },
+) {
+  const body = z
+    .object({
+      description: authorizationDescriptionSchema,
+      displayName: authorizationNameSchema,
+    })
+    .parse(input);
+  const response = await getAsterloomApiClient(csrfToken).api.v1.authorization.permissions
+    .byPermissionId(idSchema.parse(permission.id))
+    .patch({ ...body, expectedVersion: versionSchema.parse(permission.version) });
+  return permissionSchema.parse(requireResponse(response));
+}
+
+export async function archivePermission(csrfToken: string, permission: PermissionRecord) {
+  const response = await getAsterloomApiClient(csrfToken).api.v1.authorization.permissions
+    .byPermissionId(idSchema.parse(permission.id))
+    .delete({ queryParameters: { expectedVersion: versionSchema.parse(permission.version) } });
+  return permissionSchema.parse(requireResponse(response));
+}
+
+export async function restorePermission(csrfToken: string, permission: PermissionRecord) {
+  const response = await getAsterloomApiClient(csrfToken).api.v1.authorization.permissions
+    .withPermissionIdRestore(idSchema.parse(permission.id))
+    .post({ expectedVersion: versionSchema.parse(permission.version) });
+  return permissionSchema.parse(requireResponse(response));
+}
+
 export async function listRoles(options: {
+  applicationId?: string;
   includeArchived?: boolean;
   pageSize?: number;
   pageToken?: string;
   query?: string;
+  tenantId?: string;
 }) {
-  const page = pageSchema.extend({ includeArchived: z.boolean().default(false) }).parse(options);
+  const page = pageSchema
+    .extend({
+      applicationId: z.union([z.literal(""), z.string().uuid()]).default(""),
+      includeArchived: z.boolean().default(false),
+      tenantId: z.union([z.literal(""), z.string().uuid()]).default(""),
+    })
+    .parse(options);
   const response = await getAsterloomApiClient().api.v1.authorization.roles.get({
     queryParameters: page,
   });
@@ -221,9 +335,12 @@ export async function createRole(
     displayName: string;
     key: string;
     permissions: string[];
+    scope: AuthorizationScopeInput;
   },
 ) {
-  const body = roleInputSchema.extend({ key: roleKeySchema }).parse(input);
+  const body = roleInputSchema
+    .extend({ key: roleKeySchema, scope: applicationScopeSchema })
+    .parse(input);
   const response = await getAsterloomApiClient(csrfToken).api.v1.authorization.roles.post(body);
   return roleSchema.parse(requireResponse(response));
 }
@@ -260,10 +377,12 @@ export async function listRoleBindings(options: {
   pageSize?: number;
   pageToken?: string;
   tenantId?: string;
+  applicationId?: string;
 }) {
   const parsed = z
     .object({
       actorId: z.string().trim().max(200).default(""),
+      applicationId: z.union([z.literal(""), z.string().uuid()]).default(""),
       includeArchived: z.boolean().default(false),
       pageSize: z.number().int().min(1).max(100).default(50),
       pageToken: z.string().default(""),
@@ -318,10 +437,12 @@ export async function listPolicyRules(options: {
   pageToken?: string;
   query?: string;
   tenantId?: string;
+  applicationId?: string;
 }) {
   const parsed = pageSchema
     .extend({
       includeArchived: z.boolean().default(false),
+      applicationId: z.union([z.literal(""), z.string().uuid()]).default(""),
       tenantId: z.union([z.literal(""), z.string().uuid()]).default(""),
     })
     .parse(options);

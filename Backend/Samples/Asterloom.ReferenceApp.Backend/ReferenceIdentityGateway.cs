@@ -1,3 +1,4 @@
+using Asterloom.Sdk.Authorization;
 using Asterloom.Sdk.Identity;
 using Asterloom.Sdk.Rpc;
 
@@ -17,9 +18,12 @@ internal sealed class ReferenceIdentityGateway : IDisposable
                 cancellationToken: cancellationToken),
             allowInsecureHttpForDevelopment: options.AllowInsecureHttpForDevelopment);
         Accounts = new AsterloomIdentityAccessClient(_transport.CallInvoker);
+        Authorization = new AsterloomAuthorizationClient(_transport.CallInvoker);
     }
 
     public AsterloomIdentityAccessClient Accounts { get; }
+
+    public AsterloomAuthorizationClient Authorization { get; }
 
     public void Dispose() => _transport.Dispose();
 }

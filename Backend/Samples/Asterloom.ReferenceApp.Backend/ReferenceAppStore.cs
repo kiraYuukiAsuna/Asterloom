@@ -13,6 +13,13 @@ internal sealed record StoredHeartbeat(
 
 internal sealed record StoredReferenceStatus(long HeartbeatCount, DateTimeOffset? LastHeartbeatAt);
 
+internal sealed record StoredAuthorizationContext(
+    string SubjectId,
+    string Department,
+    string OrderId,
+    string OwnerSubjectId,
+    double Amount);
+
 internal sealed class ReferenceAppStore(NpgsqlDataSource dataSource)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -33,6 +40,17 @@ internal sealed class ReferenceAppStore(NpgsqlDataSource dataSource)
 
             CREATE INDEX IF NOT EXISTS reference_app_client_heartbeats_recorded_idx
                 ON reference_app.client_heartbeats (recorded_at DESC);
+
+            CREATE TABLE IF NOT EXISTS reference_app.authorization_profiles (
+                subject_id text PRIMARY KEY,
+                department text NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS reference_app.orders (
+                id text PRIMARY KEY,
+                owner_subject_id text NOT NULL,
+                amount double precision NOT NULL CHECK (amount >= 0)
+            );
             """;
         await using var command = dataSource.CreateCommand(sql);
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -101,6 +119,62 @@ internal sealed class ReferenceAppStore(NpgsqlDataSource dataSource)
         return new StoredReferenceStatus(
             reader.GetInt64(0),
             reader.IsDBNull(1) ? null : reader.GetFieldValue<DateTimeOffset>(1));
+    }
+
+    public async Task SeedAuthorizationFixtureAsync(
+        string subjectId,
+        string department,
+        string orderId,
+        double amount,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO reference_app.authorization_profiles (subject_id, department)
+            VALUES (@subject_id, @department)
+            ON CONFLICT (subject_id) DO UPDATE SET department = EXCLUDED.department;
+
+            INSERT INTO reference_app.orders (id, owner_subject_id, amount)
+            VALUES (@order_id, @subject_id, @amount)
+            ON CONFLICT (id) DO UPDATE SET
+                owner_subject_id = EXCLUDED.owner_subject_id,
+                amount = EXCLUDED.amount;
+            """;
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("subject_id", subjectId);
+        command.Parameters.AddWithValue("department", department);
+        command.Parameters.AddWithValue("order_id", orderId);
+        command.Parameters.AddWithValue("amount", amount);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<StoredAuthorizationContext?> GetAuthorizationContextAsync(
+        string subjectId,
+        string orderId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT @subject_id, profile.department, orders.id, orders.owner_subject_id,
+                orders.amount
+            FROM reference_app.orders AS orders
+            CROSS JOIN reference_app.authorization_profiles AS profile
+            WHERE orders.id = @order_id
+                AND profile.subject_id = @subject_id;
+            """;
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("subject_id", subjectId);
+        command.Parameters.AddWithValue("order_id", orderId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new StoredAuthorizationContext(
+            reader.GetString(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetDouble(4));
     }
 
     private static StoredHeartbeat ReadHeartbeat(NpgsqlDataReader reader)

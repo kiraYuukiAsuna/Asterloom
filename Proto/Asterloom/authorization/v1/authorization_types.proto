@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package asterloom.authorization.v1;
 
+import "Asterloom/targeting/v1/targeting_types.proto";
 import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "Asterloom.Protocol.Authorization.V1";
@@ -17,6 +18,14 @@ message PermissionDefinition {
   string display_name = 2;
   string description = 3;
   string module = 4;
+  string id = 5;
+  AuthorizationScope scope = 6;
+  bool is_system = 7;
+  AuthorizationResourceStatus status = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp archived_at = 12;
 }
 
 message Role {
@@ -31,6 +40,7 @@ message Role {
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
   google.protobuf.Timestamp archived_at = 11;
+  AuthorizationScope scope = 12;
 }
 
 message RoleBinding {
@@ -59,6 +69,9 @@ message PolicyRule {
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
   google.protobuf.Timestamp archived_at = 12;
+  string resource_type = 13;
+  string resource_id = 14;
+  asterloom.targeting.v1.TargetingRule condition = 15;
 }
 
 message PolicyRevision {
@@ -78,6 +91,9 @@ message AuthorizationDecisionInput {
   AuthorizationScope scope = 2;
   string permission = 3;
   repeated string trusted_roles = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+  repeated asterloom.targeting.v1.TargetingAttribute attributes = 7;
 }
 
 message AuthorizationDecision {

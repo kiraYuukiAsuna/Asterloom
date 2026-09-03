@@ -5,6 +5,7 @@ using ProtocolRole = Asterloom.Protocol.Authorization.V1.Role;
 using ProtocolRoleBinding = Asterloom.Protocol.Authorization.V1.RoleBinding;
 using ProtocolPolicyRule = Asterloom.Protocol.Authorization.V1.PolicyRule;
 using ProtocolDecision = Asterloom.Protocol.Authorization.V1.AuthorizationDecision;
+using ProtocolPermission = Asterloom.Protocol.Authorization.V1.PermissionDefinition;
 
 namespace Asterloom.Modules.Authorization;
 
@@ -12,18 +13,58 @@ internal sealed class AuthorizationAdminGrpcService(
     AuthorizationManagementService managementService)
     : AuthorizationAdminService.AuthorizationAdminServiceBase
 {
-    public override Task<ListPermissionsResponse> ListPermissions(
+    public override async Task<ListPermissionsResponse> ListPermissions(
         ListPermissionsRequest request,
         ServerCallContext context)
     {
-        var result = AuthorizationManagementService.ListPermissions(
+        var result = await managementService.ListPermissionsAsync(
             request.PageSize,
             request.PageToken,
-            request.Query);
+            request.Query,
+            request.TenantId,
+            request.ApplicationId,
+            request.IncludeArchived,
+            context.CancellationToken);
         var response = new ListPermissionsResponse { NextPageToken = result.NextPageToken };
         response.Permissions.AddRange(result.Items.Select(AuthorizationProtocolMapper.ToProtocol));
-        return Task.FromResult(response);
+        return response;
     }
+
+    public override async Task<ProtocolPermission> CreatePermission(
+        CreatePermissionRequest request,
+        ServerCallContext context) =>
+        (await managementService.CreatePermissionAsync(
+            request.Scope.ToDomain(),
+            request.Key,
+            request.DisplayName,
+            request.Description,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolPermission> UpdatePermission(
+        UpdatePermissionRequest request,
+        ServerCallContext context) =>
+        (await managementService.UpdatePermissionAsync(
+            request.PermissionId,
+            request.DisplayName,
+            request.Description,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolPermission> ArchivePermission(
+        ArchivePermissionRequest request,
+        ServerCallContext context) =>
+        (await managementService.ArchivePermissionAsync(
+            request.PermissionId,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
+
+    public override async Task<ProtocolPermission> RestorePermission(
+        RestorePermissionRequest request,
+        ServerCallContext context) =>
+        (await managementService.RestorePermissionAsync(
+            request.PermissionId,
+            request.ExpectedVersion,
+            context.CancellationToken)).ToProtocol();
 
     public override async Task<ListRolesResponse> ListRoles(
         ListRolesRequest request,
@@ -34,6 +75,8 @@ internal sealed class AuthorizationAdminGrpcService(
             request.PageToken,
             request.Query,
             request.IncludeArchived,
+            request.TenantId,
+            request.ApplicationId,
             context.CancellationToken);
         var response = new ListRolesResponse { NextPageToken = result.NextPageToken };
         response.Roles.AddRange(result.Items.Select(AuthorizationProtocolMapper.ToProtocol));
@@ -48,6 +91,7 @@ internal sealed class AuthorizationAdminGrpcService(
             request.DisplayName,
             request.Description,
             request.Permissions,
+            request.Scope.ToDomain(),
             context.CancellationToken)).ToProtocol();
 
     public override async Task<ProtocolRole> UpdateRole(
@@ -86,6 +130,7 @@ internal sealed class AuthorizationAdminGrpcService(
             request.PageToken,
             request.ActorId,
             request.TenantId,
+            request.ApplicationId,
             request.IncludeArchived,
             context.CancellationToken);
         var response = new ListRoleBindingsResponse { NextPageToken = result.NextPageToken };
@@ -122,6 +167,7 @@ internal sealed class AuthorizationAdminGrpcService(
             request.PageToken,
             request.Query,
             request.TenantId,
+            request.ApplicationId,
             request.IncludeArchived,
             context.CancellationToken);
         var response = new ListPolicyRulesResponse { NextPageToken = result.NextPageToken };
@@ -140,6 +186,9 @@ internal sealed class AuthorizationAdminGrpcService(
             request.Subject,
             request.Scope.ToDomain(),
             request.Permission,
+            request.ResourceType,
+            request.ResourceId,
+            request.Condition?.ToDomain(),
             context.CancellationToken)).ToProtocol();
 
     public override async Task<ProtocolPolicyRule> UpdatePolicyRule(
@@ -153,6 +202,9 @@ internal sealed class AuthorizationAdminGrpcService(
             request.Subject,
             request.Scope.ToDomain(),
             request.Permission,
+            request.ResourceType,
+            request.ResourceId,
+            request.Condition?.ToDomain(),
             request.ExpectedVersion,
             context.CancellationToken)).ToProtocol();
 

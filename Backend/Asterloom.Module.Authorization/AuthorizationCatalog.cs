@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Asterloom.Modules.Authorization.Model;
 
 namespace Asterloom.Modules.Authorization;
@@ -26,6 +28,10 @@ public static class AuthorizationCatalog
         Permission("platform.tenant.membership.set", "Set tenant memberships"),
         Permission("platform.tenant.membership.remove", "Remove tenant memberships"),
         Permission("authorization.permission.read", "Read permission catalog"),
+        Permission("authorization.permission.create", "Create application permissions"),
+        Permission("authorization.permission.update", "Update application permissions"),
+        Permission("authorization.permission.archive", "Archive application permissions"),
+        Permission("authorization.permission.restore", "Restore application permissions"),
         Permission("authorization.role.read", "Read authorization roles"),
         Permission("authorization.role.create", "Create authorization roles"),
         Permission("authorization.role.update", "Update authorization roles"),
@@ -187,6 +193,17 @@ public static class AuthorizationCatalog
             permission,
             StringComparison.Ordinal));
 
+    public static bool IsReservedApplicationPermission(string permission)
+    {
+        var separator = permission.IndexOfAny(['.', '_', '-']);
+        var prefix = separator < 0 ? permission : permission[..separator];
+        return string.Equals(prefix, "asterloom", StringComparison.Ordinal)
+            || PermissionItems.Any(item => string.Equals(
+                item.Module,
+                prefix,
+                StringComparison.Ordinal));
+    }
+
     public static AuthorizationRole? FindSystemRole(Guid id) =>
         SystemRolesById.GetValueOrDefault(id);
 
@@ -205,10 +222,24 @@ public static class AuthorizationCatalog
 
     private static PermissionDefinition Permission(string key, string displayName) =>
         new(
+            StablePermissionId(key),
             key,
             displayName,
             $"Allows an actor to {displayName.ToLowerInvariant()}.",
-            key.Split('.', 2)[0]);
+            key.Split('.', 2)[0],
+            AuthorizationScope.Global,
+            IsSystem: true,
+            AuthorizationResourceStatus.Active,
+            Version: 1,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            ArchivedAt: null);
+
+    private static Guid StablePermissionId(string key)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"asterloom:permission:{key}"));
+        return new Guid(hash.AsSpan(0, 16));
+    }
 
     private static AuthorizationRole[] CreateSystemRoles()
     {
@@ -226,6 +257,7 @@ public static class AuthorizationCatalog
                 permission.Key.StartsWith("platform.application.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("platform.environment.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("platform.tenant.membership.", StringComparison.Ordinal)
+                || permission.Key.StartsWith("authorization.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("targeting.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("feature.", StringComparison.Ordinal)
                 || permission.Key.StartsWith("config.", StringComparison.Ordinal)
@@ -238,13 +270,7 @@ public static class AuthorizationCatalog
                 || permission.Key is "platform.info.read"
                     or "platform.tenant.read"
                     or "platform.tenant.update"
-                    or "authorization.permission.read"
-                    or "authorization.role.read"
-                    or "authorization.binding.read"
-                    or "authorization.binding.set"
-                    or "authorization.binding.remove"
-                    or "authorization.policy.read"
-                    or "authorization.simulation.execute")
+                    or "authorization.permission.read")
             .Select(static permission => permission.Key)
             .ToArray();
         var operatorPermissions = PermissionItems
@@ -375,6 +401,7 @@ public static class AuthorizationCatalog
             description,
             permissions,
             IsSystem: true,
+            AuthorizationScope.Global,
             AuthorizationResourceStatus.Active,
             Version: 1,
             timestamp,

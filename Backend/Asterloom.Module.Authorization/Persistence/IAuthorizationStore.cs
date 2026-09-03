@@ -4,8 +4,34 @@ namespace Asterloom.Modules.Authorization.Persistence;
 
 public interface IAuthorizationStore
 {
+    Task<AuthorizationStorePage<PermissionDefinition>> ListPermissionsAsync(
+        AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
+        CancellationToken cancellationToken);
+
+    Task<PermissionDefinition?> GetPermissionAsync(
+        Guid permissionId,
+        CancellationToken cancellationToken);
+
+    Task<PermissionDefinition?> FindPermissionAsync(
+        AuthorizationScope scope,
+        string key,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryCreatePermissionAsync(
+        PermissionDefinition permission,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryUpdatePermissionAsync(
+        PermissionDefinition permission,
+        long expectedVersion,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken);
+
     Task<AuthorizationStorePage<AuthorizationRole>> ListRolesAsync(
         AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken);
 
     Task<AuthorizationRole?> GetRoleAsync(Guid roleId, CancellationToken cancellationToken);
@@ -24,7 +50,7 @@ public interface IAuthorizationStore
     Task<AuthorizationStorePage<AuthorizationRoleBinding>> ListRoleBindingsAsync(
         AuthorizationPageRequest page,
         string actorId,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken);
 
     Task<AuthorizationRoleBinding?> GetRoleBindingAsync(
@@ -44,7 +70,7 @@ public interface IAuthorizationStore
 
     Task<AuthorizationStorePage<AuthorizationPolicyRule>> ListPolicyRulesAsync(
         AuthorizationPageRequest page,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken);
 
     Task<AuthorizationPolicyRule?> GetPolicyRuleAsync(

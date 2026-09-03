@@ -1,5 +1,6 @@
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Errors;
+using Asterloom.Targeting;
 using Google.Protobuf.WellKnownTypes;
 using ProtocolDecision = Asterloom.Protocol.Authorization.V1.AuthorizationDecision;
 using ProtocolEffect = Asterloom.Protocol.Authorization.V1.PolicyEffect;
@@ -11,6 +12,12 @@ using ProtocolRoleBinding = Asterloom.Protocol.Authorization.V1.RoleBinding;
 using ProtocolScope = Asterloom.Protocol.Authorization.V1.AuthorizationScope;
 using ProtocolStatus = Asterloom.Protocol.Authorization.V1.AuthorizationResourceStatus;
 using ProtocolSubjectType = Asterloom.Protocol.Authorization.V1.PolicySubjectType;
+using ProtocolAttribute = Asterloom.Protocol.Targeting.V1.TargetingAttribute;
+using ProtocolCondition = Asterloom.Protocol.Targeting.V1.TargetingCondition;
+using ProtocolMatchMode = Asterloom.Protocol.Targeting.V1.TargetingMatchMode;
+using ProtocolRule = Asterloom.Protocol.Targeting.V1.TargetingRule;
+using ProtocolValue = Asterloom.Protocol.Targeting.V1.TargetingValue;
+using ProtocolValueKind = Asterloom.Protocol.Targeting.V1.TargetingValueKind;
 
 namespace Asterloom.Modules.Authorization;
 
@@ -18,10 +25,20 @@ internal static class AuthorizationProtocolMapper
 {
     public static ProtocolPermission ToProtocol(this PermissionDefinition permission) => new()
     {
+        Id = permission.Id == Guid.Empty ? string.Empty : permission.Id.ToString("D"),
         Key = permission.Key,
         DisplayName = permission.DisplayName,
         Description = permission.Description,
         Module = permission.Module,
+        Scope = permission.Scope.ToProtocol(),
+        IsSystem = permission.IsSystem,
+        Status = permission.Status.ToProtocol(),
+        Version = permission.Version,
+        CreatedAt = Timestamp.FromDateTimeOffset(permission.CreatedAt),
+        UpdatedAt = Timestamp.FromDateTimeOffset(permission.UpdatedAt),
+        ArchivedAt = permission.ArchivedAt is { } archivedAt
+            ? Timestamp.FromDateTimeOffset(archivedAt)
+            : null,
     };
 
     public static ProtocolRole ToProtocol(this AuthorizationRole role)
@@ -33,6 +50,7 @@ internal static class AuthorizationProtocolMapper
             DisplayName = role.DisplayName,
             Description = role.Description,
             IsSystem = role.IsSystem,
+            Scope = role.Scope.ToProtocol(),
             Status = role.Status.ToProtocol(),
             Version = role.Version,
             CreatedAt = Timestamp.FromDateTimeOffset(role.CreatedAt),
@@ -61,23 +79,30 @@ internal static class AuthorizationProtocolMapper
             : null,
     };
 
-    public static ProtocolPolicyRule ToProtocol(this AuthorizationPolicyRule policyRule) => new()
+    public static ProtocolPolicyRule ToProtocol(this AuthorizationPolicyRule policyRule)
     {
-        Id = policyRule.Id.ToString("D"),
-        Name = policyRule.Name,
-        Effect = policyRule.Effect.ToProtocol(),
-        SubjectType = policyRule.SubjectType.ToProtocol(),
-        Subject = policyRule.Subject,
-        Scope = policyRule.Scope.ToProtocol(),
-        Permission = policyRule.Permission,
-        Status = policyRule.Status.ToProtocol(),
-        Version = policyRule.Version,
-        CreatedAt = Timestamp.FromDateTimeOffset(policyRule.CreatedAt),
-        UpdatedAt = Timestamp.FromDateTimeOffset(policyRule.UpdatedAt),
-        ArchivedAt = policyRule.ArchivedAt is { } archivedAt
-            ? Timestamp.FromDateTimeOffset(archivedAt)
-            : null,
-    };
+        var result = new ProtocolPolicyRule
+        {
+            Id = policyRule.Id.ToString("D"),
+            Name = policyRule.Name,
+            Effect = policyRule.Effect.ToProtocol(),
+            SubjectType = policyRule.SubjectType.ToProtocol(),
+            Subject = policyRule.Subject,
+            Scope = policyRule.Scope.ToProtocol(),
+            Permission = policyRule.Permission,
+            ResourceType = policyRule.ResourceType,
+            ResourceId = policyRule.ResourceId,
+            Condition = policyRule.Condition?.ToProtocol(),
+            Status = policyRule.Status.ToProtocol(),
+            Version = policyRule.Version,
+            CreatedAt = Timestamp.FromDateTimeOffset(policyRule.CreatedAt),
+            UpdatedAt = Timestamp.FromDateTimeOffset(policyRule.UpdatedAt),
+            ArchivedAt = policyRule.ArchivedAt is { } archivedAt
+                ? Timestamp.FromDateTimeOffset(archivedAt)
+                : null,
+        };
+        return result;
+    }
 
     public static ProtocolRevision ToProtocol(this AuthorizationPolicyRevision revision) => new()
     {
@@ -105,12 +130,37 @@ internal static class AuthorizationProtocolMapper
     }
 
     public static AuthorizationDecisionRequest ToDomain(
-        this Asterloom.Protocol.Authorization.V1.AuthorizationDecisionInput input) =>
-        new(
+        this Asterloom.Protocol.Authorization.V1.AuthorizationDecisionInput input)
+    {
+        var attributes = new Dictionary<string, TargetingValue>(StringComparer.Ordinal);
+        foreach (var attribute in input.Attributes)
+        {
+            if (!attributes.TryAdd(attribute.Key, attribute.Value.ToDomain()))
+            {
+                throw Invalid(
+                    "attributes",
+                    $"Authorization attribute '{attribute.Key}' is duplicated.");
+            }
+        }
+
+        return new AuthorizationDecisionRequest(
             input.ActorId,
             input.Scope.ToDomain(),
             input.Permission,
-            input.TrustedRoles.ToArray());
+            input.TrustedRoles.ToArray(),
+            input.ResourceType,
+            input.ResourceId,
+            attributes);
+    }
+
+    public static TargetingRule ToDomain(this ProtocolRule rule) => new(
+        rule.MatchMode switch
+        {
+            ProtocolMatchMode.All => TargetingMatchMode.All,
+            ProtocolMatchMode.Any => TargetingMatchMode.Any,
+            _ => (TargetingMatchMode)0,
+        },
+        rule.Conditions.Select(ToDomain).ToArray());
 
     public static AuthorizationScope ToDomain(this ProtocolScope? scope) => scope is null
         ? AuthorizationScope.Global
@@ -166,6 +216,69 @@ internal static class AuthorizationProtocolMapper
             _ => ProtocolSubjectType.Unspecified,
         };
 
+    private static ProtocolRule ToProtocol(this TargetingRule rule)
+    {
+        var result = new ProtocolRule
+        {
+            MatchMode = rule.MatchMode switch
+            {
+                TargetingMatchMode.All => ProtocolMatchMode.All,
+                TargetingMatchMode.Any => ProtocolMatchMode.Any,
+                _ => ProtocolMatchMode.Unspecified,
+            },
+        };
+        result.Conditions.AddRange(rule.Conditions.Select(ToProtocol));
+        return result;
+    }
+
+    private static ProtocolCondition ToProtocol(TargetingCondition condition)
+    {
+        var result = new ProtocolCondition
+        {
+            Id = condition.Id,
+            Attribute = condition.Attribute,
+            ValueKind = (ProtocolValueKind)(int)condition.ValueKind,
+            Operator = (Asterloom.Protocol.Targeting.V1.TargetingOperator)(int)condition.Operator,
+            CaseSensitive = condition.CaseSensitive,
+        };
+        result.Values.AddRange(condition.Values.Select(ToProtocol));
+        return result;
+    }
+
+    private static ProtocolValue ToProtocol(TargetingValue value) => value.Kind switch
+    {
+        TargetingValueKind.Text => new ProtocolValue { Text = value.StringValue! },
+        TargetingValueKind.Truth => new ProtocolValue { Truth = value.BooleanValue!.Value },
+        TargetingValueKind.Numeric => new ProtocolValue { Numeric = value.NumberValue!.Value },
+        _ => new ProtocolValue(),
+    };
+
+    private static TargetingCondition ToDomain(ProtocolCondition condition) => new(
+        condition.Id,
+        condition.Attribute,
+        (TargetingValueKind)(int)condition.ValueKind,
+        (TargetingOperator)(int)condition.Operator,
+        condition.Values.Select(ToDomain).ToArray(),
+        condition.CaseSensitive);
+
+    private static TargetingValue ToDomain(this ProtocolValue? value)
+    {
+        if (value is null)
+        {
+            throw Invalid("attributes", "An authorization attribute value is required.");
+        }
+
+        return value.ValueCase switch
+        {
+            ProtocolValue.ValueOneofCase.Text => TargetingValue.From(value.Text),
+            ProtocolValue.ValueOneofCase.Truth => TargetingValue.From(value.Truth),
+            ProtocolValue.ValueOneofCase.Numeric => TargetingValue.From(value.Numeric),
+            _ => throw Invalid(
+                "attributes",
+                "An authorization attribute must contain a typed value."),
+        };
+    }
+
     private static Guid? ParseOptionalId(string value, string field)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -178,13 +291,16 @@ internal static class AuthorizationProtocolMapper
             return id;
         }
 
-        throw new AsterloomException(
+        throw Invalid(field, "A valid identifier is required.");
+    }
+
+    private static AsterloomException Invalid(string field, string message) =>
+        new(
             AsterloomErrorKind.InvalidArgument,
             "validation_failed",
             "One or more fields are invalid.",
             new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
-                [field] = ["A valid identifier is required."],
+                [field] = [message],
             });
-    }
 }

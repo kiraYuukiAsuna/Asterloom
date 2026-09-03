@@ -109,14 +109,16 @@ Password Flow 与 Implicit Flow 均禁用；业务应用不得收集 Passport �
 
 路由：`/authorization/roles`
 
-1. 查看 Permission Catalog。
-2. 创建 Role 并分配 Permission Key。
-3. 将 Role 绑定到 Actor，可选择 Global、Tenant、Application 或 Environment 作用域。
-4. 角色绑定不足以表达规则时，再创建明确的 Policy Rule；发生冲突时按策略模型处理 Deny 优先级。
-5. 查看 Policy Revision，并在敏感变更上线前使用 Simulator 验证。
-6. 业务服务在真正执行操作前调用运行时 Permission Check 获取最终判断。
+1. 选择 Tenant/Application，并创建业务 Application Permission；平台 System Permission 保持只读。
+2. 创建最小权限 Role，通过 Role Binding 赋给 Actor，完成 RBAC。
+3. 在 Policy Rule 中按需设置精确 `resourceType/resourceId` ACL。
+4. 按需增加 `subject.*`、`resource.*`、`context.*`、`scope.*` typed Condition，完成 ABAC。
+5. 任意匹配 Deny 覆盖所有 Allow；归档 Permission 可集中停用该业务动作。
+6. 查看 Revision，并用 Simulator 验证 Actor、作用域、资源和属性。
+7. 高风险业务服务从自身数据库加载可信属性，用 Application Confidential Client 代表用户调用运行时 Check。
 
-前端隐藏按钮只能改善体验，不能替代服务端权限检查。
+Public Client 不能提交自定义 ABAC 属性。前端隐藏按钮只能改善体验，不能替代服务端权限检查。完整模型见
+[Authorization：RBAC、ACL 与 ABAC](Module/Authorization.zh-CN.md)。
 
 ### 4.4 Targeting 与灰度分桶
 
@@ -308,6 +310,9 @@ if (!decision.Allowed)
     throw new UnauthorizedAccessException(decision.Reason);
 }
 ```
+
+资源级或属性级业务授权使用 `CheckAccessAsync(actorId, permission, scope, resourceType, resourceId, attributes)`；
+该调用应由持有 Confidential Client 的业务后端发起，属性必须来自服务端可信数据源。
 
 ### 5.4 Targeting 与 Feature Flag
 

@@ -107,6 +107,13 @@ app.MapGet("/platform", Handle)
 
 The handler forwards the current request's same user Access Token to Asterloom `CheckPermission`. Asterloom takes `sub` and application scope from the token and checks membership and current role/policy state. The backend still does not persist the token. A failed or unavailable permission service fails closed.
 
+This policy is convenient for RBAC and ACL self-checks, but a User Token cannot submit custom ABAC attributes.
+For authorization based on order amount, department, ownership, or risk, the business API first validates the User
+Access Token, loads authoritative facts from its own database, and then calls
+`AsterloomAuthorizationClient.CheckAccessAsync(actorId: userSub, ...)` using its Confidential Client Service Token.
+Asterloom verifies that the target `sub` remains an active Application member. See
+[Authorization: RBAC, ACL, and ABAC](Authorization.md) for the complete flow and code.
+
 ## 5. Trusted backend account registration
 
 Registration belongs to the business backend, not its Public Client. The backend gets a Service Token with its Confidential Client and invokes the account API:
@@ -159,11 +166,13 @@ Password Grant is disabled. Neither native clients nor browser BFFs may collect 
 `Asterloom.ReferenceApp.Client login` completes PKCE sign-in and calls `/api/reference/me` with the resulting Access Token. See:
 
 - [ReferenceProtectedEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceProtectedEndpoints.cs)
+- [ReferenceBusinessAuthorizationEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceBusinessAuthorizationEndpoints.cs)
 - [Reference resource-server setup](../../Backend/Samples/Asterloom.ReferenceApp.Backend/Program.cs)
 - [Reference Public Client](../../Backend/Samples/Asterloom.ReferenceApp.Client/Program.cs)
 - [ASP.NET Core resource-server SDK](../../Backend/Asterloom.Sdk.Identity.AspNetCore/AsterloomResourceServerServiceCollectionExtensions.cs)
 
-Integration tests verify that the Access Token is a public three-part `at+jwt`, its signing key exists in JWKS, a resource server accepts it, an ID Token is rejected, and the same user token can drive a remote permission decision.
+Integration tests verify public `at+jwt` validation and cover Application Permissions, RBAC, ACL, ABAC, archive
+invalidation, and backend checks on behalf of a user.
 
 ## 9. Related contracts
 

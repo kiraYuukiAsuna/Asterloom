@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Trash2,
   UserRoundCog,
+  ListChecks,
 } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
@@ -32,23 +33,27 @@ import {
 } from "@/components/ui/card";
 import {
   archivePolicyRule,
+  archivePermission,
   archiveRole,
   authorizationErrorMessage,
   checkCurrentActorPermission,
   createPolicyRule,
+  createPermission,
   createRole,
   isAuthorizationVersionConflict,
-  listPermissions,
+  listAllPermissions,
   listPolicyRevisions,
   listPolicyRules,
   listRoleBindings,
   listRoles,
   removeRoleBinding,
   restorePolicyRule,
+  restorePermission,
   restoreRole,
   setRoleBinding,
   simulateAuthorization,
   updatePolicyRule,
+  updatePermission,
   updateRole,
   type AuthorizationDecisionRecord,
   type AuthorizationRoleRecord,
@@ -59,6 +64,13 @@ import {
   type PolicySubjectType,
   type RoleBindingRecord,
 } from "@/lib/api/authorization-management";
+import {
+  createRuleDraft,
+  RuleEditor,
+  toRuleInput,
+  type TargetingRuleDraft,
+} from "@/features/targeting/rule-editor";
+import type { TargetingValueInput } from "@/lib/api/targeting-management";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { translate } from "@/lib/i18n/locale";
@@ -75,7 +87,7 @@ const actorSubject = "POLICY_SUBJECT_TYPE_ACTOR";
 const roleSubject = "POLICY_SUBJECT_TYPE_ROLE";
 const anySubject = "POLICY_SUBJECT_TYPE_ANY";
 
-type WorkspaceTab = "roles" | "bindings" | "policies" | "simulator";
+type WorkspaceTab = "permissions" | "roles" | "bindings" | "policies" | "simulator";
 type ScopeFieldsValue = {
   applicationId: string;
   environmentId: string;
@@ -105,29 +117,62 @@ export function AuthorizationWorkspace({
   const hydrated = useHydrated();
   const [pending, setPending] = useState("");
   const [permissionQuery, setPermissionQuery] = useState("");
+  const [includeArchivedPermissions, setIncludeArchivedPermissions] = useState(false);
+  const [scopeTenantId, setScopeTenantId] = useState("");
+  const [scopeApplicationId, setScopeApplicationId] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
   const [includeArchivedRoles, setIncludeArchivedRoles] = useState(false);
   const [bindingActorQuery, setBindingActorQuery] = useState("");
-  const [bindingTenantQuery, setBindingTenantQuery] = useState("");
   const [includeArchivedBindings, setIncludeArchivedBindings] = useState(false);
   const [policyQuery, setPolicyQuery] = useState("");
-  const [policyTenantQuery, setPolicyTenantQuery] = useState("");
   const [includeArchivedPolicies, setIncludeArchivedPolicies] = useState(false);
   const [revisionResourceType, setRevisionResourceType] = useState("");
   const [revisionResourceId, setRevisionResourceId] = useState("");
 
-  const permissions = useSWR(
-    ["authorization-permissions", permissionQuery],
-    () => listPermissions({ pageSize: 100, query: permissionQuery }),
+  const systemPermissions = useSWR(
+    ["authorization-system-permissions", permissionQuery],
+    () => listAllPermissions({ query: permissionQuery }),
     { keepPreviousData: true },
   );
+  const hasApplicationScope = isUuid(scopeTenantId) && isUuid(scopeApplicationId);
+  const applicationPermissions = useSWR(
+    hasApplicationScope
+      ? [
+          "authorization-application-permissions",
+          scopeTenantId,
+          scopeApplicationId,
+          permissionQuery,
+          includeArchivedPermissions,
+        ]
+      : null,
+    () =>
+      listAllPermissions({
+        applicationId: scopeApplicationId,
+        includeArchived: includeArchivedPermissions,
+        query: permissionQuery,
+        tenantId: scopeTenantId,
+      }),
+    { keepPreviousData: true },
+  );
+  const permissions = [
+    ...(applicationPermissions.data?.permissions ?? []),
+    ...(systemPermissions.data?.permissions ?? []),
+  ];
   const roles = useSWR(
-    ["authorization-roles", roleQuery, includeArchivedRoles],
+    [
+      "authorization-roles",
+      roleQuery,
+      includeArchivedRoles,
+      hasApplicationScope ? scopeTenantId : "",
+      hasApplicationScope ? scopeApplicationId : "",
+    ],
     () =>
       listRoles({
         includeArchived: includeArchivedRoles,
         pageSize: 100,
         query: roleQuery,
+        tenantId: hasApplicationScope ? scopeTenantId : "",
+        applicationId: hasApplicationScope ? scopeApplicationId : "",
       }),
     { keepPreviousData: true },
   );
@@ -135,7 +180,8 @@ export function AuthorizationWorkspace({
     [
       "authorization-bindings",
       bindingActorQuery,
-      bindingTenantQuery,
+      scopeTenantId,
+      scopeApplicationId,
       includeArchivedBindings,
     ],
     () =>
@@ -143,7 +189,8 @@ export function AuthorizationWorkspace({
         actorId: bindingActorQuery,
         includeArchived: includeArchivedBindings,
         pageSize: 100,
-        tenantId: bindingTenantQuery,
+        tenantId: hasApplicationScope ? scopeTenantId : "",
+        applicationId: hasApplicationScope ? scopeApplicationId : "",
       }),
     { keepPreviousData: true },
   );
@@ -151,7 +198,8 @@ export function AuthorizationWorkspace({
     [
       "authorization-policies",
       policyQuery,
-      policyTenantQuery,
+      scopeTenantId,
+      scopeApplicationId,
       includeArchivedPolicies,
     ],
     () =>
@@ -159,7 +207,8 @@ export function AuthorizationWorkspace({
         includeArchived: includeArchivedPolicies,
         pageSize: 100,
         query: policyQuery,
-        tenantId: policyTenantQuery,
+        tenantId: hasApplicationScope ? scopeTenantId : "",
+        applicationId: hasApplicationScope ? scopeApplicationId : "",
       }),
     { keepPreviousData: true },
   );
@@ -195,7 +244,8 @@ export function AuthorizationWorkspace({
   };
 
   const tabs: Array<{ id: WorkspaceTab; label: string; icon: typeof ShieldCheck }> = [
-    { id: "roles", label: "Roles & permissions", icon: BookKey },
+    { id: "permissions", label: "Application permissions", icon: ListChecks },
+    { id: "roles", label: "Roles", icon: BookKey },
     { id: "bindings", label: "Role bindings", icon: UserRoundCog },
     { id: "policies", label: "Policy rules", icon: ShieldCheck },
     { id: "simulator", label: "Simulator & revisions", icon: Play },
@@ -218,9 +268,38 @@ export function AuthorizationWorkspace({
           {translate("Compose immutable platform permissions into roles, bind them to actors at an exact scope, add explicit policy exceptions, and inspect every revision before testing the resulting decision.")}</p>
       </section>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{translate("Application authorization scope")}</CardTitle>
+          <CardDescription>
+            {translate("Select one tenant and application to manage its permissions, roles, ACLs, and ABAC policies.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <Field label={translate("Tenant UUID")}>
+            <input
+              className={inputClassName}
+              name="authorizationTenantId"
+              onChange={(event) => setScopeTenantId(event.target.value.trim())}
+              placeholder={translate("Required for application authorization")}
+              value={scopeTenantId}
+            />
+          </Field>
+          <Field label={translate("Application UUID")}>
+            <input
+              className={inputClassName}
+              name="authorizationApplicationId"
+              onChange={(event) => setScopeApplicationId(event.target.value.trim())}
+              placeholder={translate("Required for application authorization")}
+              value={scopeApplicationId}
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
       <nav
         aria-label={translate("Authorization workspace")}
-        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.025] p-2 sm:grid-cols-2 xl:grid-cols-5"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -244,6 +323,24 @@ export function AuthorizationWorkspace({
         })}
       </nav>
 
+      {activeTab === "permissions" && (
+        <PermissionsPanel
+          applicationId={scopeApplicationId}
+          csrfToken={csrfToken}
+          error={applicationPermissions.error}
+          includeArchived={includeArchivedPermissions}
+          onIncludeArchivedChange={setIncludeArchivedPermissions}
+          onQueryChange={setPermissionQuery}
+          pending={pending}
+          permissions={applicationPermissions.data?.permissions ?? []}
+          query={permissionQuery}
+          reloadPermissions={applicationPermissions.mutate}
+          reloadRevisions={revisions.mutate}
+          runMutation={runMutation}
+          tenantId={scopeTenantId}
+        />
+      )}
+
       {activeTab === "roles" && (
         <RolesPanel
           csrfToken={csrfToken}
@@ -253,14 +350,16 @@ export function AuthorizationWorkspace({
           onRoleQueryChange={setRoleQuery}
           pending={pending}
           permissionQuery={permissionQuery}
-          permissions={permissions.data?.permissions ?? []}
-          permissionsError={permissions.error}
+          applicationId={scopeApplicationId}
+          permissions={permissions}
+          permissionsError={systemPermissions.error ?? applicationPermissions.error}
           reloadRevisions={revisions.mutate}
           reloadRoles={roles.mutate}
           roleQuery={roleQuery}
           roles={roles.data?.roles ?? []}
           rolesError={roles.error}
           runMutation={runMutation}
+          tenantId={scopeTenantId}
         />
       )}
       {activeTab === "bindings" && (
@@ -272,13 +371,13 @@ export function AuthorizationWorkspace({
           includeArchived={includeArchivedBindings}
           onActorQueryChange={setBindingActorQuery}
           onIncludeArchivedChange={setIncludeArchivedBindings}
-          onTenantQueryChange={setBindingTenantQuery}
           pending={pending}
           reloadBindings={bindings.mutate}
           reloadRevisions={revisions.mutate}
           roles={roles.data?.roles ?? []}
           runMutation={runMutation}
-          tenantQuery={bindingTenantQuery}
+          applicationId={scopeApplicationId}
+          tenantId={scopeTenantId}
         />
       )}
       {activeTab === "policies" && (
@@ -288,37 +387,265 @@ export function AuthorizationWorkspace({
           includeArchived={includeArchivedPolicies}
           onIncludeArchivedChange={setIncludeArchivedPolicies}
           onQueryChange={setPolicyQuery}
-          onTenantQueryChange={setPolicyTenantQuery}
           pending={pending}
-          permissions={permissions.data?.permissions ?? []}
+          permissions={permissions}
           policies={policies.data?.policyRules ?? []}
           query={policyQuery}
           reloadPolicies={policies.mutate}
           reloadRevisions={revisions.mutate}
           runMutation={runMutation}
-          tenantQuery={policyTenantQuery}
+          applicationId={scopeApplicationId}
+          tenantId={scopeTenantId}
         />
       )}
       {activeTab === "simulator" && (
         <SimulatorPanel
           actorId={actorId}
+          applicationId={scopeApplicationId}
           csrfToken={csrfToken}
           onRevisionResourceIdChange={setRevisionResourceId}
           onRevisionResourceTypeChange={setRevisionResourceType}
           pending={pending}
-          permissions={permissions.data?.permissions ?? []}
+          permissions={permissions}
           revisionResourceId={revisionResourceId}
           revisionResourceType={revisionResourceType}
           revisions={revisions.data?.revisions ?? []}
           revisionsError={revisions.error}
           runMutation={runMutation}
+          tenantId={scopeTenantId}
         />
       )}
     </div>
   );
 }
 
+function PermissionsPanel({
+  applicationId,
+  csrfToken,
+  error,
+  includeArchived,
+  onIncludeArchivedChange,
+  onQueryChange,
+  pending,
+  permissions,
+  query,
+  reloadPermissions,
+  reloadRevisions,
+  runMutation,
+  tenantId,
+}: {
+  applicationId: string;
+  csrfToken: string;
+  error: unknown;
+  includeArchived: boolean;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onQueryChange: (value: string) => void;
+  pending: string;
+  permissions: PermissionRecord[];
+  query: string;
+  reloadPermissions: () => Promise<unknown>;
+  reloadRevisions: () => Promise<unknown>;
+  runMutation: MutationRunner;
+  tenantId: string;
+}) {
+  const [key, setKey] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [description, setDescription] = useState("");
+  const [editing, setEditing] = useState<PermissionRecord>();
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const validScope = isUuid(tenantId) && isUuid(applicationId);
+
+  async function submitCreate(event: FormEvent) {
+    event.preventDefault();
+    const success = await runMutation(
+      "create-permission",
+      () =>
+        createPermission(csrfToken, {
+          description,
+          displayName,
+          key,
+          scope: { applicationId, environmentId: undefined, tenantId },
+        }),
+      [reloadPermissions, reloadRevisions],
+      "Application permission created.",
+    );
+    if (success) {
+      setKey("");
+      setDisplayName("");
+      setDescription("");
+    }
+  }
+
+  function beginEdit(permission: PermissionRecord) {
+    setEditing(permission);
+    setEditDisplayName(permission.displayName);
+    setEditDescription(permission.description);
+  }
+
+  async function submitEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    const success = await runMutation(
+      `update-permission-${editing.id}`,
+      () =>
+        updatePermission(csrfToken, editing, {
+          description: editDescription,
+          displayName: editDisplayName,
+        }),
+      [reloadPermissions, reloadRevisions],
+      "Application permission updated.",
+    );
+    if (success) setEditing(undefined);
+  }
+
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[0.75fr_1.25fr]">
+      <Card data-ui-action="create-permission">
+        <CardHeader>
+          <CardTitle>{translate("Register application permission")}</CardTitle>
+          <CardDescription>
+            {translate("Permission keys are application-owned and use dotted business names such as orders.refund.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!validScope && (
+            <p className="mb-4 rounded-lg border border-amber-400/15 bg-amber-400/[0.06] p-3 text-xs text-amber-300">
+              {translate("Enter valid tenant and application UUIDs above first.")}
+            </p>
+          )}
+          <form className="space-y-4" onSubmit={submitCreate}>
+            <Field label={translate("Permission key")}>
+              <input
+                className={inputClassName}
+                name="applicationPermissionKey"
+                onChange={(event) => setKey(event.target.value)}
+                placeholder={translate("orders.refund")}
+                value={key}
+              />
+            </Field>
+            <Field label={translate("Display name")}>
+              <input
+                className={inputClassName}
+                name="applicationPermissionDisplayName"
+                onChange={(event) => setDisplayName(event.target.value)}
+                value={displayName}
+              />
+            </Field>
+            <Field label={translate("Description")}>
+              <textarea
+                className={textAreaClassName}
+                name="applicationPermissionDescription"
+                onChange={(event) => setDescription(event.target.value)}
+                value={description}
+              />
+            </Field>
+            <div className="flex justify-end">
+              <Button disabled={pending !== "" || !validScope} type="submit">
+                <Plus className="size-4" /> {translate("Create permission")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card data-ui-action="list-permissions">
+        <CardHeader>
+          <CardTitle>{translate("Application permission catalog")}</CardTitle>
+          <CardDescription>
+            {translate("Archiving a permission immediately makes matching RBAC, ACL, and ABAC grants inactive.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FilterBar
+            includeArchived={includeArchived}
+            onIncludeArchivedChange={onIncludeArchivedChange}
+            onQueryChange={onQueryChange}
+            query={query}
+            queryPlaceholder={translate("Search application permissions")}
+          />
+          <ResourceError error={error} />
+          <div className="mt-4 space-y-3">
+            {permissions.map((permission) => (
+              <div
+                className="rounded-xl border border-white/8 bg-slate-950/45 p-4"
+                data-testid={`authorization-permission-${permission.key}`}
+                key={permission.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="break-all font-mono text-xs text-violet-300">{permission.key}</p>
+                      <StatusBadge active={permission.status === activeStatus} />
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-slate-200">{permission.displayName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{permission.description}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button onClick={() => beginEdit(permission)} size="sm" type="button" variant="ghost">
+                      <Pencil className="size-3.5" /> {translate("Edit")}
+                    </Button>
+                    {permission.status === activeStatus ? (
+                      <Button
+                        data-ui-action="archive-permission"
+                        disabled={pending !== ""}
+                        onClick={() => void runMutation(
+                          `archive-permission-${permission.id}`,
+                          () => archivePermission(csrfToken, permission),
+                          [reloadPermissions, reloadRevisions],
+                          "Application permission archived.",
+                        )}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Archive className="size-3.5" /> {translate("Archive")}
+                      </Button>
+                    ) : (
+                      <Button
+                        data-ui-action="restore-permission"
+                        disabled={pending !== ""}
+                        onClick={() => void runMutation(
+                          `restore-permission-${permission.id}`,
+                          () => restorePermission(csrfToken, permission),
+                          [reloadPermissions, reloadRevisions],
+                          "Application permission restored.",
+                        )}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <RotateCcw className="size-3.5" /> {translate("Restore")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {editing?.id === permission.id && (
+                  <form className="mt-4 space-y-3 border-t border-white/8 pt-4" data-ui-action="update-permission" onSubmit={submitEdit}>
+                    <Field label={translate("Display name")}>
+                      <input className={inputClassName} onChange={(event) => setEditDisplayName(event.target.value)} value={editDisplayName} />
+                    </Field>
+                    <Field label={translate("Description")}>
+                      <textarea className={textAreaClassName} onChange={(event) => setEditDescription(event.target.value)} value={editDescription} />
+                    </Field>
+                    <div className="flex justify-end gap-2">
+                      <Button onClick={() => setEditing(undefined)} type="button" variant="ghost">{translate("Cancel")}</Button>
+                      <Button disabled={pending !== ""} type="submit">{translate("Save permission")}</Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ))}
+            {permissions.length === 0 && <EmptyState text={translate(validScope ? "No application permissions match this view." : "Select an application to load its permissions.")} />}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function RolesPanel({
+  applicationId,
   csrfToken,
   includeArchived,
   onIncludeArchivedChange,
@@ -334,7 +661,9 @@ function RolesPanel({
   roles,
   rolesError,
   runMutation,
+  tenantId,
 }: {
+  applicationId: string;
   csrfToken: string;
   includeArchived: boolean;
   onIncludeArchivedChange: (value: boolean) => void;
@@ -350,6 +679,7 @@ function RolesPanel({
   roles: AuthorizationRoleRecord[];
   rolesError: unknown;
   runMutation: MutationRunner;
+  tenantId: string;
 }) {
   const [key, setKey] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -370,6 +700,7 @@ function RolesPanel({
           displayName,
           key,
           permissions: parseCsv(permissionKeys),
+          scope: { applicationId, environmentId: undefined, tenantId },
         }),
       [reloadRoles, reloadRevisions],
       "Role created.",
@@ -439,6 +770,7 @@ function RolesPanel({
                         {role.isSystem && <Badge variant="planned">{translate("System")}</Badge>}
                       </div>
                       <p className="mt-1 font-mono text-xs text-violet-300">{role.key}</p>
+                      {!role.isSystem && <ScopeSummary scope={role.scope} />}
                       <p className="mt-2 text-xs leading-5 text-slate-500">
                         {role.description || translate("No description")} {" "}{translate("· v")} {role.version}
                       </p>
@@ -589,7 +921,7 @@ function RolesPanel({
                 />
               </Field>
               <div className="sm:col-span-2 sm:justify-self-end">
-                <Button disabled={pending !== ""} type="submit">
+                <Button disabled={pending !== "" || !isUuid(tenantId) || !isUuid(applicationId)} type="submit">
                   {pending === "create-role" ? (
                     <LoaderCircle className="size-4 animate-spin" />
                   ) : (
@@ -641,6 +973,7 @@ function RolesPanel({
 }
 
 function BindingsPanel({
+  applicationId,
   actorQuery,
   bindings,
   csrfToken,
@@ -648,14 +981,14 @@ function BindingsPanel({
   includeArchived,
   onActorQueryChange,
   onIncludeArchivedChange,
-  onTenantQueryChange,
   pending,
   reloadBindings,
   reloadRevisions,
   roles,
   runMutation,
-  tenantQuery,
+  tenantId,
 }: {
+  applicationId: string;
   actorQuery: string;
   bindings: RoleBindingRecord[];
   csrfToken: string;
@@ -663,13 +996,12 @@ function BindingsPanel({
   includeArchived: boolean;
   onActorQueryChange: (value: string) => void;
   onIncludeArchivedChange: (value: boolean) => void;
-  onTenantQueryChange: (value: string) => void;
   pending: string;
   reloadBindings: () => Promise<unknown>;
   reloadRevisions: () => Promise<unknown>;
   roles: AuthorizationRoleRecord[];
   runMutation: MutationRunner;
-  tenantQuery: string;
+  tenantId: string;
 }) {
   const [editing, setEditing] = useState<RoleBindingRecord>();
   const [actorId, setActorId] = useState("");
@@ -680,7 +1012,7 @@ function BindingsPanel({
     setEditing(undefined);
     setActorId("");
     setRoleId("");
-    setScope(emptyScope);
+    setScope({ applicationId, environmentId: "", tenantId });
   }
 
   function beginEdit(binding: RoleBindingRecord) {
@@ -693,6 +1025,10 @@ function BindingsPanel({
   async function submit(event: FormEvent) {
     event.preventDefault();
     const bindingId = editing?.id ?? crypto.randomUUID();
+    const submittedScope =
+      !scope.tenantId && isUuid(tenantId) && isUuid(applicationId)
+        ? { applicationId, environmentId: "", tenantId }
+        : scope;
     const success = await runMutation(
       editing ? `set-binding-${editing.id}` : "set-binding",
       () =>
@@ -700,7 +1036,7 @@ function BindingsPanel({
           actorId,
           expectedVersion: editing?.version ?? 0,
           roleId,
-          scope: toScope(scope),
+          scope: toScope(submittedScope),
         }),
       [reloadBindings, reloadRevisions],
       editing ? "Role binding updated." : "Role binding created.",
@@ -714,7 +1050,7 @@ function BindingsPanel({
         <CardHeader>
           <CardTitle>{translate(editing ? "Edit role binding" : "Bind role to actor")}</CardTitle>
           <CardDescription>
-            {translate("Empty scope means global. Application and environment scopes must remain nested.")}</CardDescription>
+            {translate("Bindings default to the selected application; an environment may narrow the grant further.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
@@ -771,13 +1107,11 @@ function BindingsPanel({
               placeholder={translate("Filter actor IDs")}
               value={actorQuery}
             />
-            <input
-              className={inputClassName}
-              name="bindingTenantFilter"
-              onChange={(event) => onTenantQueryChange(event.target.value)}
-              placeholder={translate("Tenant UUID filter (optional)")}
-              value={tenantQuery}
-            />
+            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 font-mono text-[10px] text-slate-500">
+              {isUuid(applicationId)
+                ? `${shortId(tenantId)} / ${shortId(applicationId)}`
+                : translate("All scopes")}
+            </div>
           </div>
           <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
             <input
@@ -850,12 +1184,12 @@ function BindingsPanel({
 }
 
 function PoliciesPanel({
+  applicationId,
   csrfToken,
   error,
   includeArchived,
   onIncludeArchivedChange,
   onQueryChange,
-  onTenantQueryChange,
   pending,
   permissions,
   policies,
@@ -863,14 +1197,14 @@ function PoliciesPanel({
   reloadPolicies,
   reloadRevisions,
   runMutation,
-  tenantQuery,
+  tenantId,
 }: {
+  applicationId: string;
   csrfToken: string;
   error: unknown;
   includeArchived: boolean;
   onIncludeArchivedChange: (value: boolean) => void;
   onQueryChange: (value: string) => void;
-  onTenantQueryChange: (value: string) => void;
   pending: string;
   permissions: PermissionRecord[];
   policies: PolicyRuleRecord[];
@@ -878,7 +1212,7 @@ function PoliciesPanel({
   reloadPolicies: () => Promise<unknown>;
   reloadRevisions: () => Promise<unknown>;
   runMutation: MutationRunner;
-  tenantQuery: string;
+  tenantId: string;
 }) {
   const [editing, setEditing] = useState<PolicyRuleRecord>();
   const [name, setName] = useState("");
@@ -887,6 +1221,10 @@ function PoliciesPanel({
   const [subject, setSubject] = useState("");
   const [permission, setPermission] = useState("");
   const [scope, setScope] = useState<ScopeFieldsValue>(emptyScope);
+  const [resourceType, setResourceType] = useState("");
+  const [resourceId, setResourceId] = useState("");
+  const [conditionEnabled, setConditionEnabled] = useState(false);
+  const [condition, setCondition] = useState<TargetingRuleDraft>(() => createRuleDraft());
 
   function resetForm() {
     setEditing(undefined);
@@ -896,6 +1234,10 @@ function PoliciesPanel({
     setSubject("");
     setPermission("");
     setScope(emptyScope);
+    setResourceType("");
+    setResourceId("");
+    setConditionEnabled(false);
+    setCondition(createRuleDraft());
   }
 
   function beginEdit(policy: PolicyRuleRecord) {
@@ -906,15 +1248,26 @@ function PoliciesPanel({
     setSubject(policy.subject);
     setPermission(policy.permission);
     setScope(fromScope(policy.scope));
+    setResourceType(policy.resourceType);
+    setResourceId(policy.resourceId);
+    setConditionEnabled(Boolean(policy.condition));
+    setCondition(createRuleDraft(policy.condition ?? undefined));
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const input = {
+      condition: conditionEnabled ? toRuleInput(condition) : undefined,
       effect,
       name,
       permission,
-      scope: toScope(scope),
+      resourceId,
+      resourceType,
+      scope: toScope({
+        applicationId: scope.applicationId || applicationId,
+        environmentId: scope.environmentId,
+        tenantId: scope.tenantId || tenantId,
+      }),
       subject: subjectType === anySubject ? "*" : subject,
       subjectType,
     };
@@ -999,6 +1352,47 @@ function PoliciesPanel({
                 ))}
               </datalist>
             </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={translate("Resource type (ACL, optional)")}>
+                <input
+                  className={inputClassName}
+                  name="policyResourceType"
+                  onChange={(event) => setResourceType(event.target.value)}
+                  placeholder={translate("order")}
+                  value={resourceType}
+                />
+              </Field>
+              <Field label={translate("Resource ID (ACL, optional)")}>
+                <input
+                  className={inputClassName}
+                  disabled={!resourceType}
+                  name="policyResourceId"
+                  onChange={(event) => setResourceId(event.target.value)}
+                  placeholder={translate("order-123; leave blank for all")}
+                  value={resourceId}
+                />
+              </Field>
+            </div>
+            <div className="rounded-xl border border-white/8 p-3">
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                <input
+                  checked={conditionEnabled}
+                  className="accent-violet-400"
+                  onChange={(event) => setConditionEnabled(event.target.checked)}
+                  type="checkbox"
+                />
+                {translate("Enable ABAC attribute condition")}
+              </label>
+              {conditionEnabled && (
+                <div className="mt-4">
+                  <RuleEditor
+                    draft={condition}
+                    idPrefix="authorizationPolicyCondition"
+                    onChange={setCondition}
+                  />
+                </div>
+              )}
+            </div>
             <ScopeFields onChange={setScope} prefix="policy" value={scope} />
             <div className="flex justify-end gap-2">
               {editing && (
@@ -1020,16 +1414,10 @@ function PoliciesPanel({
           <CardDescription>{translate("Fine-grained exceptions layered over role grants.")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SearchInput onChange={onQueryChange} placeholder={translate("Search name or permission")} value={query} />
-            <input
-              className={inputClassName}
-              name="policyTenantFilter"
-              onChange={(event) => onTenantQueryChange(event.target.value)}
-              placeholder={translate("Tenant UUID filter (optional)")}
-              value={tenantQuery}
-            />
-          </div>
+          <SearchInput onChange={onQueryChange} placeholder={translate("Search name or permission")} value={query} />
+          <p className="mt-3 font-mono text-[10px] text-slate-500">
+            {translate("Selected scope")}: {shortId(tenantId) || "—"} / {shortId(applicationId) || "—"}
+          </p>
           <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
             <input
               checked={includeArchived}
@@ -1067,6 +1455,16 @@ function PoliciesPanel({
                     <p className="mt-2 text-xs text-slate-500">
                       {friendlySubjectType(policy.subjectType)}: {policy.subject}
                     </p>
+                    {(policy.resourceType || policy.resourceId) && (
+                      <p className="mt-2 font-mono text-[10px] text-sky-300">
+                        ACL {policy.resourceType || "*"}/{policy.resourceId || "*"}
+                      </p>
+                    )}
+                    {policy.condition && (
+                      <p className="mt-2 text-[10px] text-amber-300">
+                        ABAC · {policy.condition.conditions.length} {translate("condition(s)")}
+                      </p>
+                    )}
                     <ScopeSummary scope={policy.scope} />
                     <p className="mt-2 text-[11px] text-slate-600">{translate("v")}{policy.version}</p>
                   </div>
@@ -1129,6 +1527,7 @@ function PoliciesPanel({
 
 function SimulatorPanel({
   actorId,
+  applicationId,
   csrfToken,
   onRevisionResourceIdChange,
   onRevisionResourceTypeChange,
@@ -1139,8 +1538,10 @@ function SimulatorPanel({
   revisions,
   revisionsError,
   runMutation,
+  tenantId,
 }: {
   actorId: string;
+  applicationId: string;
   csrfToken: string;
   onRevisionResourceIdChange: (value: string) => void;
   onRevisionResourceTypeChange: (value: string) => void;
@@ -1161,11 +1562,17 @@ function SimulatorPanel({
   }>;
   revisionsError: unknown;
   runMutation: MutationRunner;
+  tenantId: string;
 }) {
   const [simulatedActor, setSimulatedActor] = useState(actorId);
   const [permission, setPermission] = useState("platform.info.read");
   const [trustedRoles, setTrustedRoles] = useState("");
   const [scope, setScope] = useState<ScopeFieldsValue>(emptyScope);
+  const [resourceType, setResourceType] = useState("");
+  const [resourceId, setResourceId] = useState("");
+  const [attributesJson, setAttributesJson] = useState(
+    '{\n  "subject.department": "finance",\n  "resource.amount": 1000,\n  "context.mfa": true\n}',
+  );
   const [simulation, setSimulation] = useState<AuthorizationDecisionRecord>();
   const [currentDecision, setCurrentDecision] = useState<AuthorizationDecisionRecord>();
 
@@ -1177,8 +1584,15 @@ function SimulatorPanel({
         setSimulation(
           await simulateAuthorization(csrfToken, {
             actorId: simulatedActor,
+            attributes: parseAuthorizationAttributes(attributesJson),
             permission,
-            scope: toScope(scope),
+            resourceId,
+            resourceType,
+            scope: toScope({
+              applicationId: scope.applicationId || applicationId,
+              environmentId: scope.environmentId,
+              tenantId: scope.tenantId || tenantId,
+            }),
             trustedRoles: parseCsv(trustedRoles),
           }),
         );
@@ -1195,8 +1609,15 @@ function SimulatorPanel({
         setCurrentDecision(
           await checkCurrentActorPermission(csrfToken, {
             actorId,
+            attributes: [],
             permission,
-            scope: toScope(scope),
+            resourceId,
+            resourceType,
+            scope: toScope({
+              applicationId: scope.applicationId || applicationId,
+              environmentId: scope.environmentId,
+              tenantId: scope.tenantId || tenantId,
+            }),
           }),
         );
       },
@@ -1246,7 +1667,38 @@ function SimulatorPanel({
                 value={trustedRoles}
               />
             </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={translate("Resource type (ACL)")}>
+                <input
+                  className={inputClassName}
+                  name="simulationResourceType"
+                  onChange={(event) => setResourceType(event.target.value)}
+                  placeholder={translate("order")}
+                  value={resourceType}
+                />
+              </Field>
+              <Field label={translate("Resource ID (ACL)")}>
+                <input
+                  className={inputClassName}
+                  name="simulationResourceId"
+                  onChange={(event) => setResourceId(event.target.value)}
+                  placeholder={translate("order-123")}
+                  value={resourceId}
+                />
+              </Field>
+            </div>
+            <Field label={translate("Trusted ABAC attributes (JSON object, simulation only)")}>
+              <textarea
+                className={cn(textAreaClassName, "h-32 font-mono text-xs")}
+                name="simulationAttributes"
+                onChange={(event) => setAttributesJson(event.target.value)}
+                value={attributesJson}
+              />
+            </Field>
             <ScopeFields onChange={setScope} prefix="simulation" value={scope} />
+            <p className="text-xs leading-5 text-slate-500">
+              {translate("Production ABAC attributes must be supplied by an application-bound confidential client. Check my access intentionally omits custom attributes.")}
+            </p>
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 data-ui-action="check-permission"
@@ -1284,6 +1736,7 @@ function SimulatorPanel({
               <option value="role">{translate("Role")}</option>
               <option value="role_binding">{translate("Role binding")}</option>
               <option value="policy_rule">{translate("Policy rule")}</option>
+              <option value="permission">{translate("Permission")}</option>
             </select>
             <input
               className={inputClassName}
@@ -1517,6 +1970,30 @@ function parseCsv(value: string): string[] {
     .filter(Boolean);
 }
 
+function parseAuthorizationAttributes(
+  value: string,
+): Array<{ key: string; value: TargetingValueInput }> {
+  if (!value.trim()) return [];
+
+  const parsed: unknown = JSON.parse(value);
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("ABAC attributes must be a JSON object.");
+  }
+
+  return Object.entries(parsed).map(([key, attributeValue]) => {
+    if (typeof attributeValue === "string") {
+      return { key, value: { text: attributeValue } };
+    }
+    if (typeof attributeValue === "boolean") {
+      return { key, value: { truth: attributeValue } };
+    }
+    if (typeof attributeValue === "number" && Number.isFinite(attributeValue)) {
+      return { key, value: { numeric: attributeValue } };
+    }
+    throw new Error(`ABAC attribute ${key} must be a string, boolean, or finite number.`);
+  });
+}
+
 function toScope(scope: ScopeFieldsValue): AuthorizationScopeInput {
   return {
     applicationId: scope.applicationId.trim() || undefined,
@@ -1541,6 +2018,12 @@ function friendlySubjectType(subjectType: PolicySubjectType): string {
 
 function shortId(value: string): string {
   return value.length > 12 ? `${value.slice(0, 8)}…` : value;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function formatTime(value: string): string {

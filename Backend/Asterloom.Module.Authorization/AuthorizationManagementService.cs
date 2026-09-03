@@ -7,12 +7,15 @@ using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Errors;
 using Asterloom.Modules.Requests;
+using Asterloom.Modules.Platform.Persistence;
+using Asterloom.Targeting;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Asterloom.Modules.Authorization;
 
 public sealed partial class AuthorizationManagementService(
     IAuthorizationStore store,
+    IPlatformResourceStore platformStore,
     AuthorizationDecisionService decisionService,
     IAsterloomRequestContextAccessor requestContextAccessor,
     TimeProvider timeProvider)
@@ -20,12 +23,23 @@ public sealed partial class AuthorizationManagementService(
     private const int DefaultPageSize = 20;
     private const int MaximumPageSize = 100;
 
-    public static AuthorizationListResult<PermissionDefinition> ListPermissions(
+    public async Task<AuthorizationListResult<PermissionDefinition>> ListPermissionsAsync(
         int pageSize,
         string? pageToken,
-        string? query)
+        string? query,
+        string? tenantId,
+        string? applicationId,
+        bool includeArchived,
+        CancellationToken cancellationToken)
     {
-        var page = CreatePageRequest(pageSize, pageToken, query, includeArchived: true);
+        var page = CreatePageRequest(pageSize, pageToken, query, includeArchived);
+        var scope = ParseScopeFilter(tenantId, applicationId);
+        if (scope.ApplicationId is not null)
+        {
+            var custom = await store.ListPermissionsAsync(page, scope, cancellationToken);
+            return ToListResult(custom.Items, page.Offset, custom.HasMore);
+        }
+
         var filtered = AuthorizationCatalog.Permissions
             .Where(permission => string.IsNullOrEmpty(page.Query)
                 || permission.Key.Contains(page.Query, StringComparison.OrdinalIgnoreCase)
@@ -37,11 +51,125 @@ public sealed partial class AuthorizationManagementService(
         return Page(filtered, page);
     }
 
+    public async Task<PermissionDefinition> CreatePermissionAsync(
+        AuthorizationScope scope,
+        string key,
+        string displayName,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        var applicationScope = await RequireApplicationScopeAsync(scope, cancellationToken);
+        var normalizedKey = NormalizeApplicationPermissionKey(key);
+        var now = timeProvider.GetUtcNow();
+        var permission = new PermissionDefinition(
+            Guid.CreateVersion7(),
+            normalizedKey,
+            NormalizeName(displayName),
+            NormalizeDescription(description),
+            normalizedKey.Split('.', 2)[0],
+            applicationScope,
+            IsSystem: false,
+            AuthorizationResourceStatus.Active,
+            Version: 1,
+            now,
+            now,
+            ArchivedAt: null);
+        var revision = CreateRevision(
+            "create",
+            "permission",
+            permission.Id.ToString(),
+            permission);
+        if (!await store.TryCreatePermissionAsync(permission, revision, cancellationToken))
+        {
+            throw AlreadyExists(
+                "permission_key_exists",
+                "A permission with this key already exists in the application.");
+        }
+
+        return permission;
+    }
+
+    public async Task<PermissionDefinition> UpdatePermissionAsync(
+        string permissionId,
+        string displayName,
+        string description,
+        long expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        var current = await RequirePermissionAsync(permissionId, cancellationToken);
+        RequireVersion(current.Version, expectedVersion);
+        RequireActive(current.Status, "permission");
+        return await UpdatePermissionAsync(
+            current,
+            current with
+            {
+                DisplayName = NormalizeName(displayName),
+                Description = NormalizeDescription(description),
+                Version = current.Version + 1,
+                UpdatedAt = timeProvider.GetUtcNow(),
+            },
+            "update",
+            cancellationToken);
+    }
+
+    public async Task<PermissionDefinition> ArchivePermissionAsync(
+        string permissionId,
+        long expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        var current = await RequirePermissionAsync(permissionId, cancellationToken);
+        RequireVersion(current.Version, expectedVersion);
+        if (current.Status == AuthorizationResourceStatus.Archived)
+        {
+            return current;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        return await UpdatePermissionAsync(
+            current,
+            current with
+            {
+                Status = AuthorizationResourceStatus.Archived,
+                Version = current.Version + 1,
+                UpdatedAt = now,
+                ArchivedAt = now,
+            },
+            "archive",
+            cancellationToken);
+    }
+
+    public async Task<PermissionDefinition> RestorePermissionAsync(
+        string permissionId,
+        long expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        var current = await RequirePermissionAsync(permissionId, cancellationToken);
+        RequireVersion(current.Version, expectedVersion);
+        if (current.Status == AuthorizationResourceStatus.Active)
+        {
+            return current;
+        }
+
+        return await UpdatePermissionAsync(
+            current,
+            current with
+            {
+                Status = AuthorizationResourceStatus.Active,
+                Version = current.Version + 1,
+                UpdatedAt = timeProvider.GetUtcNow(),
+                ArchivedAt = null,
+            },
+            "restore",
+            cancellationToken);
+    }
+
     public async Task<AuthorizationListResult<AuthorizationRole>> ListRolesAsync(
         int pageSize,
         string? pageToken,
         string? query,
         bool includeArchived,
+        string? tenantId,
+        string? applicationId,
         CancellationToken cancellationToken)
     {
         var page = CreatePageRequest(pageSize, pageToken, query, includeArchived);
@@ -61,6 +189,7 @@ public sealed partial class AuthorizationManagementService(
         var remaining = page.PageSize - items.Count;
         var customPage = await store.ListRolesAsync(
             page with { Offset = customOffset, PageSize = Math.Max(1, remaining) },
+            ParseScopeFilter(tenantId, applicationId),
             cancellationToken);
         if (remaining > 0)
         {
@@ -78,6 +207,7 @@ public sealed partial class AuthorizationManagementService(
         string displayName,
         string description,
         IEnumerable<string> permissions,
+        AuthorizationScope scope,
         CancellationToken cancellationToken)
     {
         var normalizedKey = NormalizeKey(key);
@@ -86,14 +216,16 @@ public sealed partial class AuthorizationManagementService(
             throw AlreadyExists("role_key_exists", "A role with this key already exists.");
         }
 
+        var applicationScope = await RequireApplicationScopeAsync(scope, cancellationToken);
         var now = timeProvider.GetUtcNow();
         var role = new AuthorizationRole(
             Guid.CreateVersion7(),
             normalizedKey,
             NormalizeName(displayName),
             NormalizeDescription(description),
-            NormalizePermissions(permissions),
+            await NormalizePermissionsAsync(permissions, applicationScope, cancellationToken),
             IsSystem: false,
+            applicationScope,
             AuthorizationResourceStatus.Active,
             Version: 1,
             now,
@@ -123,7 +255,10 @@ public sealed partial class AuthorizationManagementService(
         {
             DisplayName = NormalizeName(displayName),
             Description = NormalizeDescription(description),
-            Permissions = NormalizePermissions(permissions),
+            Permissions = await NormalizePermissionsAsync(
+                permissions,
+                current.Scope,
+                cancellationToken),
             Version = current.Version + 1,
             UpdatedAt = timeProvider.GetUtcNow(),
         };
@@ -187,6 +322,7 @@ public sealed partial class AuthorizationManagementService(
             string? pageToken,
             string? actorId,
             string? tenantId,
+            string? applicationId,
             bool includeArchived,
             CancellationToken cancellationToken)
     {
@@ -194,7 +330,7 @@ public sealed partial class AuthorizationManagementService(
         var result = await store.ListRoleBindingsAsync(
             page,
             NormalizeOptionalActor(actorId),
-            ParseOptionalId(tenantId, "tenantId"),
+            ParseScopeFilter(tenantId, applicationId),
             cancellationToken);
         return ToListResult(result.Items, page.Offset, result.HasMore);
     }
@@ -214,6 +350,12 @@ public sealed partial class AuthorizationManagementService(
             ?? throw NotFound("role_not_found", "The role was not found.");
         RequireActive(role.Status, "role");
         ValidateScope(scope);
+        if (!ContainsScope(role.Scope, scope))
+        {
+            throw Invalid(
+                "scope",
+                "A role binding must stay inside the role's application scope.");
+        }
         var current = await store.GetRoleBindingAsync(parsedBindingId, cancellationToken);
         var now = timeProvider.GetUtcNow();
         if (current is null)
@@ -322,13 +464,14 @@ public sealed partial class AuthorizationManagementService(
             string? pageToken,
             string? query,
             string? tenantId,
+            string? applicationId,
             bool includeArchived,
             CancellationToken cancellationToken)
     {
         var page = CreatePageRequest(pageSize, pageToken, query, includeArchived);
         var result = await store.ListPolicyRulesAsync(
             page,
-            ParseOptionalId(tenantId, "tenantId"),
+            ParseScopeFilter(tenantId, applicationId),
             cancellationToken);
         return ToListResult(result.Items, page.Offset, result.HasMore);
     }
@@ -340,8 +483,13 @@ public sealed partial class AuthorizationManagementService(
         string subject,
         AuthorizationScope scope,
         string permission,
+        string resourceType,
+        string resourceId,
+        TargetingRule? condition,
         CancellationToken cancellationToken)
     {
+        var validatedScope = ValidateScope(scope);
+        var normalizedResource = NormalizeResource(resourceType, resourceId);
         var now = timeProvider.GetUtcNow();
         var policyRule = new AuthorizationPolicyRule(
             Guid.CreateVersion7(),
@@ -349,8 +497,11 @@ public sealed partial class AuthorizationManagementService(
             ValidateEffect(effect),
             ValidateSubjectType(subjectType),
             NormalizeSubject(subjectType, subject),
-            ValidateScope(scope),
-            NormalizePermission(permission),
+            validatedScope,
+            await NormalizePermissionAsync(permission, validatedScope, cancellationToken),
+            normalizedResource.ResourceType,
+            normalizedResource.ResourceId,
+            NormalizeCondition(condition),
             AuthorizationResourceStatus.Active,
             Version: 1,
             now,
@@ -377,20 +528,31 @@ public sealed partial class AuthorizationManagementService(
         string subject,
         AuthorizationScope scope,
         string permission,
+        string resourceType,
+        string resourceId,
+        TargetingRule? condition,
         long expectedVersion,
         CancellationToken cancellationToken)
     {
         var current = await RequirePolicyRuleAsync(policyRuleId, cancellationToken);
         RequireVersion(current.Version, expectedVersion);
         RequireActive(current.Status, "policy rule");
+        var validatedScope = ValidateScope(scope);
+        var normalizedResource = NormalizeResource(resourceType, resourceId);
         var updated = current with
         {
             Name = NormalizeName(name),
             Effect = ValidateEffect(effect),
             SubjectType = ValidateSubjectType(subjectType),
             Subject = NormalizeSubject(subjectType, subject),
-            Scope = ValidateScope(scope),
-            Permission = NormalizePermission(permission),
+            Scope = validatedScope,
+            Permission = await NormalizePermissionAsync(
+                permission,
+                validatedScope,
+                cancellationToken),
+            ResourceType = normalizedResource.ResourceType,
+            ResourceId = normalizedResource.ResourceId,
+            Condition = NormalizeCondition(condition),
             Version = current.Version + 1,
             UpdatedAt = timeProvider.GetUtcNow(),
         };
@@ -465,12 +627,35 @@ public sealed partial class AuthorizationManagementService(
         return ToListResult(result.Items, page.Offset, result.HasMore);
     }
 
-    public Task<AuthorizationDecisionResult> SimulateAsync(
+    public async Task<AuthorizationDecisionResult> SimulateAsync(
         AuthorizationDecisionRequest request,
         CancellationToken cancellationToken)
     {
-        ValidateDecisionRequest(request);
-        return decisionService.DecideAsync(request, cancellationToken);
+        await ValidateDecisionRequestAsync(request, cancellationToken);
+        return await decisionService.DecideAsync(request, cancellationToken);
+    }
+
+    private async Task<PermissionDefinition> UpdatePermissionAsync(
+        PermissionDefinition current,
+        PermissionDefinition updated,
+        string changeType,
+        CancellationToken cancellationToken)
+    {
+        var revision = CreateRevision(
+            changeType,
+            "permission",
+            updated.Id.ToString(),
+            updated);
+        if (!await store.TryUpdatePermissionAsync(
+                updated,
+                current.Version,
+                revision,
+                cancellationToken))
+        {
+            throw VersionConflict();
+        }
+
+        return updated;
     }
 
     private async Task<AuthorizationRole> UpdateRoleAsync(
@@ -531,6 +716,14 @@ public sealed partial class AuthorizationManagementService(
             ?? throw NotFound("role_not_found", "The role was not found.");
     }
 
+    private async Task<PermissionDefinition> RequirePermissionAsync(
+        string permissionId,
+        CancellationToken cancellationToken) =>
+        await store.GetPermissionAsync(
+            ParseId(permissionId, "permissionId"),
+            cancellationToken)
+        ?? throw NotFound("permission_not_found", "The application permission was not found.");
+
     private Task<AuthorizationRole?> FindRoleAsync(
         Guid roleId,
         CancellationToken cancellationToken) =>
@@ -580,14 +773,85 @@ public sealed partial class AuthorizationManagementService(
         return scope;
     }
 
-    private static void ValidateDecisionRequest(AuthorizationDecisionRequest request)
+    private async Task<AuthorizationScope> RequireApplicationScopeAsync(
+        AuthorizationScope scope,
+        CancellationToken cancellationToken)
+    {
+        ValidateScope(scope);
+        if (scope.TenantId is not { } tenantId
+            || scope.ApplicationId is not { } applicationId
+            || scope.EnvironmentId is not null)
+        {
+            throw Invalid(
+                "scope",
+                "Tenant and application are required; environment must be omitted.");
+        }
+
+        if (await platformStore.GetApplicationAsync(
+                tenantId,
+                applicationId,
+                cancellationToken) is null)
+        {
+            throw NotFound("application_not_found", "The application was not found.");
+        }
+
+        return scope;
+    }
+
+    private static AuthorizationScopeFilter ParseScopeFilter(
+        string? tenantId,
+        string? applicationId)
+    {
+        var scope = ValidateScope(new AuthorizationScope(
+            ParseOptionalId(tenantId, "tenantId"),
+            ParseOptionalId(applicationId, "applicationId"),
+            null));
+        return new AuthorizationScopeFilter(scope.TenantId, scope.ApplicationId);
+    }
+
+    private static bool ContainsScope(
+        AuthorizationScope owner,
+        AuthorizationScope requested) =>
+        (owner.TenantId is null || owner.TenantId == requested.TenantId)
+        && (owner.ApplicationId is null || owner.ApplicationId == requested.ApplicationId)
+        && (owner.EnvironmentId is null || owner.EnvironmentId == requested.EnvironmentId);
+
+    private async Task ValidateDecisionRequestAsync(
+        AuthorizationDecisionRequest request,
+        CancellationToken cancellationToken)
     {
         NormalizeActor(request.ActorId);
-        ValidateScope(request.Scope);
-        NormalizePermission(request.Permission);
+        var scope = ValidateScope(request.Scope);
+        await ValidateDecisionPermissionAsync(request.Permission, scope, cancellationToken);
+        NormalizeResource(request.ResourceType, request.ResourceId);
         if (request.TrustedRoles.Count > 20)
         {
             throw Invalid("trustedRoles", "At most 20 trusted roles are accepted.");
+        }
+
+        if ((request.Attributes?.Count ?? 0) > 64)
+        {
+            throw Invalid("attributes", "At most 64 authorization attributes are accepted.");
+        }
+
+        foreach (var (key, value) in request.Attributes
+                     ?? new Dictionary<string, TargetingValue>())
+        {
+            try
+            {
+                TargetingContract.ValidateCustomAttributeName(key);
+            }
+            catch (ArgumentException exception)
+            {
+                throw Invalid("attributes", exception.Message);
+            }
+
+            if (value.Kind == TargetingValueKind.Text && value.StringValue!.Length > 1_000)
+            {
+                throw Invalid(
+                    "attributes",
+                    $"Authorization attribute '{key}' exceeds 1000 characters.");
+            }
         }
     }
 
@@ -611,11 +875,14 @@ public sealed partial class AuthorizationManagementService(
             ? "*"
             : NormalizeActor(subject);
 
-    private static string[] NormalizePermissions(IEnumerable<string> permissions)
+    private async Task<string[]> NormalizePermissionsAsync(
+        IEnumerable<string> permissions,
+        AuthorizationScope scope,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(permissions);
         var normalized = permissions
-            .Select(NormalizePermission)
+            .Select(permission => NormalizeOptional(permission, 200))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -629,18 +896,139 @@ public sealed partial class AuthorizationManagementService(
             throw Invalid("permissions", "At most 200 permissions are allowed.");
         }
 
-        return normalized;
-    }
-
-    private static string NormalizePermission(string? permission)
-    {
-        var normalized = NormalizeOptional(permission, 200);
-        if (string.IsNullOrEmpty(normalized) || !AuthorizationCatalog.IsKnownPermission(normalized))
+        foreach (var permission in normalized)
         {
-            throw Invalid("permission", "Permission is not present in the catalog.");
+            await NormalizePermissionAsync(permission, scope, cancellationToken);
         }
 
         return normalized;
+    }
+
+    private async Task<string> NormalizePermissionAsync(
+        string? permission,
+        AuthorizationScope scope,
+        CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeOptional(permission, 200);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            throw Invalid("permission", "A permission is required.");
+        }
+
+        if (AuthorizationCatalog.IsKnownPermission(normalized))
+        {
+            return normalized;
+        }
+
+        if (scope.TenantId is null
+            || scope.ApplicationId is null
+            || await store.FindPermissionAsync(scope, normalized, cancellationToken) is not
+                { Status: AuthorizationResourceStatus.Active })
+        {
+            throw Invalid(
+                "permission",
+                "Permission is not active in the selected application catalog.");
+        }
+
+        return normalized;
+    }
+
+    private async Task ValidateDecisionPermissionAsync(
+        string? permission,
+        AuthorizationScope scope,
+        CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeOptional(permission, 200);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            throw Invalid("permission", "A permission is required.");
+        }
+
+        if (AuthorizationCatalog.IsKnownPermission(normalized))
+        {
+            return;
+        }
+
+        if (scope.TenantId is null
+            || scope.ApplicationId is null
+            || await store.FindPermissionAsync(scope, normalized, cancellationToken) is null)
+        {
+            throw Invalid(
+                "permission",
+                "Permission is not present in the selected application catalog.");
+        }
+    }
+
+    private static string NormalizeApplicationPermissionKey(string? key)
+    {
+        var normalized = NormalizeOptional(key, 200).ToLowerInvariant();
+        if (!ApplicationPermissionPattern().IsMatch(normalized))
+        {
+            throw Invalid(
+                "key",
+                "Use a dotted application permission such as orders.refund.");
+        }
+
+        if (AuthorizationCatalog.IsReservedApplicationPermission(normalized))
+        {
+            throw Invalid(
+                "key",
+                "The permission uses an Asterloom-reserved namespace.");
+        }
+
+        return normalized;
+    }
+
+    private static (string ResourceType, string ResourceId) NormalizeResource(
+        string? resourceType,
+        string? resourceId)
+    {
+        var normalizedType = NormalizeOptional(resourceType, 100).ToLowerInvariant();
+        var normalizedId = NormalizeOptional(resourceId, 500);
+        if (!string.IsNullOrEmpty(normalizedType)
+            && !ResourceTypePattern().IsMatch(normalizedType))
+        {
+            throw Invalid(
+                "resourceType",
+                "Use lowercase letters, numbers, periods, underscores, or hyphens.");
+        }
+
+        if (!string.IsNullOrEmpty(normalizedId) && string.IsNullOrEmpty(normalizedType))
+        {
+            throw Invalid("resourceType", "Resource type is required for a resource ID.");
+        }
+
+        return (normalizedType, normalizedId);
+    }
+
+    private static TargetingRule? NormalizeCondition(TargetingRule? condition)
+    {
+        if (condition is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            TargetingContract.ValidateRule(condition);
+        }
+        catch (ArgumentException exception)
+        {
+            throw Invalid("condition", exception.Message);
+        }
+
+        if (condition.Conditions.Any(item =>
+                !item.Attribute.StartsWith("subject.", StringComparison.Ordinal)
+                && !item.Attribute.StartsWith("resource.", StringComparison.Ordinal)
+                && !item.Attribute.StartsWith("context.", StringComparison.Ordinal)
+                && !item.Attribute.StartsWith("scope.", StringComparison.Ordinal)))
+        {
+            throw Invalid(
+                "condition",
+                "ABAC attributes must start with subject., resource., context., or scope.");
+        }
+
+        return condition;
     }
 
     private static string NormalizeKey(string? key)
@@ -818,6 +1206,16 @@ public sealed partial class AuthorizationManagementService(
 
     [GeneratedRegex("^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$", RegexOptions.CultureInvariant)]
     private static partial Regex KeyPattern();
+
+    [GeneratedRegex(
+        "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex ApplicationPermissionPattern();
+
+    [GeneratedRegex(
+        "^[a-z0-9](?:[a-z0-9._-]{0,98}[a-z0-9])?$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex ResourceTypePattern();
 }
 
 public sealed record AuthorizationListResult<T>(

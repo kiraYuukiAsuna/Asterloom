@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Asterloom.Sdk.Identity;
 using Asterloom.Sdk.Release;
@@ -43,7 +44,7 @@ internal static class Program
             using var cancellation = CreateCancellationSource();
             return command switch
             {
-                "login" => await RunInteractiveLoginAsync(settings, cancellation.Token),
+                "login" => await RunInteractiveLoginAsync(settings, args, cancellation.Token),
                 "account-demo" => await RunAccountDemoAsync(
                     settings,
                     args,
@@ -361,6 +362,7 @@ internal static class Program
 
     private static async Task<int> RunInteractiveLoginAsync(
         ReferenceAppSettings settings,
+        string[] args,
         CancellationToken cancellationToken)
     {
         var builder = Host.CreateApplicationBuilder();
@@ -409,12 +411,51 @@ internal static class Program
             Console.WriteLine(JsonSerializer.Serialize(
                 document.RootElement,
                 IndentedJsonOptions));
+            if (args.Contains("--authorization-demo", StringComparer.OrdinalIgnoreCase))
+            {
+                await RunBusinessAuthorizationDemoAsync(apiClient, cancellationToken);
+            }
+
             return 0;
         }
         finally
         {
             await host.StopAsync(CancellationToken.None);
         }
+    }
+
+    private static async Task RunBusinessAuthorizationDemoAsync(
+        HttpClient apiClient,
+        CancellationToken cancellationToken)
+    {
+        const string orderId = "reference-order-42";
+        using var fixtureResponse = await apiClient.PostAsJsonAsync(
+            "api/reference/authorization/fixture",
+            new { department = "finance", orderId, amount = 1200D },
+            cancellationToken);
+        var fixtureBody = await fixtureResponse.Content.ReadAsStringAsync(cancellationToken);
+        if (!fixtureResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Authorization fixture failed with HTTP {(int)fixtureResponse.StatusCode}: {fixtureBody}");
+        }
+
+        using var refundResponse = await apiClient.PostAsync(
+            $"api/reference/authorization/orders/{orderId}/refund",
+            content: null,
+            cancellationToken);
+        var refundBody = await refundResponse.Content.ReadAsStringAsync(cancellationToken);
+        if (!refundResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"RBAC/ACL/ABAC refund check failed with HTTP {(int)refundResponse.StatusCode}: {refundBody}");
+        }
+
+        Console.WriteLine("Business backend RBAC/ACL/ABAC decision succeeded:");
+        using var refundDocument = JsonDocument.Parse(refundBody);
+        Console.WriteLine(JsonSerializer.Serialize(
+            refundDocument.RootElement,
+            IndentedJsonOptions));
     }
 
     private static async Task<int> RunAccountDemoAsync(
@@ -506,7 +547,8 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("  provision [--json]  Create complete platform test data and save local state.");
         Console.WriteLine("  doctor [--json]     Execute all capability diagnostics independently.");
-        Console.WriteLine("  login               Sign in with PKCE, then call the protected business API with the user token.");
+        Console.WriteLine("  login [--authorization-demo]");
+        Console.WriteLine("                      Sign in with PKCE and optionally test backend RBAC/ACL/ABAC.");
         Console.WriteLine("  account-demo EMAIL NAME");
         Console.WriteLine("                      Register and confirm an account through the sample business backend.");
         Console.WriteLine("  update RESULT_FILE [--force-full]");

@@ -13,7 +13,7 @@ For a new application integration:
 1. Read [Platform](Platform.md) and create the Tenant, Application, and Environment scope.
 2. Read [Identity](Identity.md), register a Passport client, and choose user or service authentication. Products
    with their own registration/sign-in UI should also follow [Business application identity integration](Identity-Business-Integration.md).
-3. Read [Authorization](Authorization.md) and grant roles, bindings, and least privilege.
+3. Read [Authorization](Authorization.md), define business permissions, and compose RBAC, ACL, and ABAC.
 4. Add Feature, Config, Release, Analytics, Telemetry, or Storage capabilities as required.
 5. Read [RPC/HTTP](Rpc-Http.md) and [Web Console/BFF](Web-Console-Bff.md) for transport and browser boundaries.
 6. Complete the deployment baseline with [Persistence](Persistence.md), [Audit](Audit.md), and
@@ -26,7 +26,7 @@ For a new application integration:
 | Platform | [Resource scopes](Platform.md) | `/tenants` | gRPC/JSON Admin API |
 | Identity | [Passport and accounts](Identity.md) | `/identity/users` | `Asterloom.Sdk.Identity` |
 | Business account integration | [Public Client sign-in, business API validation, registration, and membership](Identity-Business-Integration.md) | Identity + Authorization workspaces | `Asterloom.Sdk.Identity` + `Asterloom.Sdk.Identity.AspNetCore` |
-| Authorization | [Access control](Authorization.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
+| Authorization | [RBAC, ACL, and ABAC](Authorization.md) | `/authorization/roles` | `Asterloom.Sdk.Authorization` |
 | Targeting / Rollout | [Segments and deterministic rollout](Targeting-Rollout.md) | `/targeting/segments` | `Asterloom.Sdk.Targeting` |
 | Feature Flag | [Feature flags](Feature-Flags.md) | `/features` | `Asterloom.Sdk.Feature` + OpenFeature |
 | Dynamic Config | [Dynamic configuration](Dynamic-Config.md) | `/config` | `Asterloom.Sdk.Config` |

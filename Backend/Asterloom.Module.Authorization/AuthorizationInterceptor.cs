@@ -8,8 +8,14 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.DependencyInjection;
 using AuthorizationArchivePolicyRuleRequest = Asterloom.Protocol.Authorization.Admin.V1.ArchivePolicyRuleRequest;
+using AuthorizationArchivePermissionRequest = Asterloom.Protocol.Authorization.Admin.V1.ArchivePermissionRequest;
+using AuthorizationArchiveRoleRequest = Asterloom.Protocol.Authorization.Admin.V1.ArchiveRoleRequest;
 using AuthorizationRemoveRoleBindingRequest = Asterloom.Protocol.Authorization.Admin.V1.RemoveRoleBindingRequest;
 using AuthorizationRestorePolicyRuleRequest = Asterloom.Protocol.Authorization.Admin.V1.RestorePolicyRuleRequest;
+using AuthorizationRestorePermissionRequest = Asterloom.Protocol.Authorization.Admin.V1.RestorePermissionRequest;
+using AuthorizationRestoreRoleRequest = Asterloom.Protocol.Authorization.Admin.V1.RestoreRoleRequest;
+using AuthorizationUpdatePermissionRequest = Asterloom.Protocol.Authorization.Admin.V1.UpdatePermissionRequest;
+using AuthorizationUpdateRoleRequest = Asterloom.Protocol.Authorization.Admin.V1.UpdateRoleRequest;
 
 namespace Asterloom.Modules.Authorization;
 
@@ -46,6 +52,10 @@ internal sealed class AuthorizationInterceptor(
             [PlatformMethod("RemoveTenantMembership")] =
                 "platform.tenant.membership.remove",
             [AuthorizationMethod("ListPermissions")] = "authorization.permission.read",
+            [AuthorizationMethod("CreatePermission")] = "authorization.permission.create",
+            [AuthorizationMethod("UpdatePermission")] = "authorization.permission.update",
+            [AuthorizationMethod("ArchivePermission")] = "authorization.permission.archive",
+            [AuthorizationMethod("RestorePermission")] = "authorization.permission.restore",
             [AuthorizationMethod("ListRoles")] = "authorization.role.read",
             [AuthorizationMethod("CreateRole")] = "authorization.role.create",
             [AuthorizationMethod("UpdateRole")] = "authorization.role.update",
@@ -282,6 +292,42 @@ internal sealed class AuthorizationInterceptor(
             return binding?.Scope ?? AuthorizationScope.Global;
         }
 
+        if (request is AuthorizationUpdatePermissionRequest updatePermission)
+        {
+            return await ResolvePermissionScopeAsync(
+                updatePermission.PermissionId,
+                cancellationToken);
+        }
+
+        if (request is AuthorizationArchivePermissionRequest archivePermission)
+        {
+            return await ResolvePermissionScopeAsync(
+                archivePermission.PermissionId,
+                cancellationToken);
+        }
+
+        if (request is AuthorizationRestorePermissionRequest restorePermission)
+        {
+            return await ResolvePermissionScopeAsync(
+                restorePermission.PermissionId,
+                cancellationToken);
+        }
+
+        if (request is AuthorizationUpdateRoleRequest updateRole)
+        {
+            return await ResolveRoleScopeAsync(updateRole.RoleId, cancellationToken);
+        }
+
+        if (request is AuthorizationArchiveRoleRequest archiveRole)
+        {
+            return await ResolveRoleScopeAsync(archiveRole.RoleId, cancellationToken);
+        }
+
+        if (request is AuthorizationRestoreRoleRequest restoreRole)
+        {
+            return await ResolveRoleScopeAsync(restoreRole.RoleId, cancellationToken);
+        }
+
         if (request is AuthorizationArchivePolicyRuleRequest archivePolicy)
         {
             return await ResolvePolicyScopeAsync(
@@ -318,6 +364,30 @@ internal sealed class AuthorizationInterceptor(
             ParseRequiredId(policyRuleId, "policyRuleId"),
             cancellationToken);
         return policyRule?.Scope ?? AuthorizationScope.Global;
+    }
+
+    private async Task<AuthorizationScope> ResolvePermissionScopeAsync(
+        string permissionId,
+        CancellationToken cancellationToken)
+    {
+        var permission = await store.GetPermissionAsync(
+            ParseRequiredId(permissionId, "permissionId"),
+            cancellationToken);
+        return permission?.Scope ?? AuthorizationScope.Global;
+    }
+
+    private async Task<AuthorizationScope> ResolveRoleScopeAsync(
+        string roleId,
+        CancellationToken cancellationToken)
+    {
+        var id = ParseRequiredId(roleId, "roleId");
+        if (AuthorizationCatalog.FindSystemRole(id) is { } systemRole)
+        {
+            return systemRole.Scope;
+        }
+
+        return (await store.GetRoleAsync(id, cancellationToken))?.Scope
+            ?? AuthorizationScope.Global;
     }
 
     private static IMessage? ReadMessage(IMessage? message, string fieldName)

@@ -332,6 +332,87 @@ else
 fi
 require_value "reference business client secret" "$business_secret"
 
+permission_key="orders.refund"
+permissions_file="$temporary_directory/application-permissions.json"
+api_get "/api/v1/authorization/permissions?pageSize=100&query=$permission_key&tenantId=$identity_tenant_id&applicationId=$identity_application_id&includeArchived=true" \
+  "$permissions_file"
+refund_permission_id="$(jq --raw-output --arg key "$permission_key" \
+  '.permissions[]? | select(.key == $key) | .id' "$permissions_file" | head -n 1)"
+refund_permission_version="$(jq --raw-output --arg key "$permission_key" \
+  '.permissions[]? | select(.key == $key) | .version' "$permissions_file" | head -n 1)"
+refund_permission_status="$(jq --raw-output --arg key "$permission_key" \
+  '.permissions[]? | select(.key == $key) | .status' "$permissions_file" | head -n 1)"
+if [[ -z "$refund_permission_id" ]]; then
+  refund_permission_file="$temporary_directory/refund-permission-create.json"
+  api_mutate POST "/api/v1/authorization/permissions" \
+    "$(jq -cn \
+      --arg tenant "$identity_tenant_id" \
+      --arg application "$identity_application_id" \
+      --arg key "$permission_key" \
+      '{scope:{tenantId:$tenant,applicationId:$application},key:$key,displayName:"Refund orders",description:"Authorizes a refund in the reference business application."}')" \
+    "$refund_permission_file"
+  refund_permission_id="$(jq --raw-output '.id' "$refund_permission_file")"
+elif [[ "$refund_permission_status" == "AUTHORIZATION_RESOURCE_STATUS_ARCHIVED" ]]; then
+  refund_permission_file="$temporary_directory/refund-permission-restore.json"
+  api_mutate POST "/api/v1/authorization/permissions/$refund_permission_id:restore" \
+    "$(jq -cn --arg version "$refund_permission_version" \
+      '{expectedVersion:($version | tonumber)}')" \
+    "$refund_permission_file"
+fi
+
+reference_policy_name="Reference finance refund policy"
+policies_file="$temporary_directory/application-policies.json"
+api_get "/api/v1/authorization/policies?pageSize=100&query=Reference&tenantId=$identity_tenant_id&applicationId=$identity_application_id&includeArchived=true" \
+  "$policies_file"
+refund_policy_id="$(jq --raw-output --arg name "$reference_policy_name" \
+  '.policyRules[]? | select(.name == $name) | .id' "$policies_file" | head -n 1)"
+refund_policy_version="$(jq --raw-output --arg name "$reference_policy_name" \
+  '.policyRules[]? | select(.name == $name) | .version' "$policies_file" | head -n 1)"
+refund_policy_status="$(jq --raw-output --arg name "$reference_policy_name" \
+  '.policyRules[]? | select(.name == $name) | .status' "$policies_file" | head -n 1)"
+refund_policy_payload="$(jq -cn \
+  --arg name "$reference_policy_name" \
+  --arg tenant "$identity_tenant_id" \
+  --arg application "$identity_application_id" \
+  --arg permission "$permission_key" \
+  '{
+    name:$name,
+    effect:"POLICY_EFFECT_ALLOW",
+    subjectType:"POLICY_SUBJECT_TYPE_ANY",
+    subject:"*",
+    scope:{tenantId:$tenant,applicationId:$application},
+    permission:$permission,
+    resourceType:"order",
+    resourceId:"",
+    condition:{
+      matchMode:"TARGETING_MATCH_MODE_ALL",
+      conditions:[
+        {id:"finance-department",attribute:"subject.department",valueKind:"TARGETING_VALUE_KIND_TEXT",operator:"TARGETING_OPERATOR_EQUALS",values:[{text:"finance"}],caseSensitive:false},
+        {id:"refund-limit",attribute:"resource.amount",valueKind:"TARGETING_VALUE_KIND_NUMERIC",operator:"TARGETING_OPERATOR_LESS_THAN_OR_EQUAL",values:[{numeric:5000}],caseSensitive:false}
+      ]
+    }
+  }')"
+if [[ -z "$refund_policy_id" ]]; then
+  refund_policy_file="$temporary_directory/refund-policy-create.json"
+  api_mutate POST "/api/v1/authorization/policies" \
+    "$refund_policy_payload" \
+    "$refund_policy_file"
+else
+  if [[ "$refund_policy_status" == "AUTHORIZATION_RESOURCE_STATUS_ARCHIVED" ]]; then
+    refund_policy_file="$temporary_directory/refund-policy-restore.json"
+    api_mutate POST "/api/v1/authorization/policies/$refund_policy_id:restore" \
+      "$(jq -cn --arg version "$refund_policy_version" \
+        '{expectedVersion:($version | tonumber)}')" \
+      "$refund_policy_file"
+    refund_policy_version="$(jq --raw-output '.version' "$refund_policy_file")"
+  fi
+  refund_policy_file="$temporary_directory/refund-policy-update.json"
+  api_mutate PATCH "/api/v1/authorization/policies/$refund_policy_id" \
+    "$(jq --arg version "$refund_policy_version" \
+      '. + {expectedVersion:($version | tonumber)}' <<<"$refund_policy_payload")" \
+    "$refund_policy_file"
+fi
+
 roles_file="$temporary_directory/roles.json"
 api_get "/api/v1/authorization/roles?pageSize=100" "$roles_file"
 super_role_id="$(jq --raw-output '.roles[]? | select(.key == "super-administrator") | .id' \
@@ -414,6 +495,6 @@ if [[ -s "$mail_configuration" ]]; then
 fi
 chmod 600 "$reference_environment"
 
-echo "Reference OIDC clients, resource audience, application binding, and global authorization binding are ready."
+echo "Reference OIDC clients, resource audience, application permission, ABAC policy, and authorization bindings are ready."
 echo "Credentials were written to $reference_environment with mode 0600."
 echo "Recreate reference-backend after provisioning so it reloads the rotated business client secret."

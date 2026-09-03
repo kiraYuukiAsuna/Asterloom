@@ -231,4 +231,42 @@ export const identityAuthorizationZhCnMessages: Readonly<Record<string, string>>
   "Policy rule restored.": "策略规则已还原。",
   "Authorization simulation complete.": "权限决策模拟已完成。",
   "Current actor permission checked.": "当前主体权限已检查。",
+  "Application permissions": "应用权限",
+  "Application authorization scope": "应用授权作用域",
+  "Select one tenant and application to manage its permissions, roles, ACLs, and ABAC policies.":
+    "选择一个租户和应用，以管理其权限、角色、ACL 与 ABAC 策略。",
+  "Required for application authorization": "应用授权必填",
+  "Register application permission": "注册应用权限",
+  "Permission keys are application-owned and use dotted business names such as orders.refund.":
+    "权限键归应用所有，请使用 orders.refund 这类点分业务名称。",
+  "Enter valid tenant and application UUIDs above first.":
+    "请先在上方输入有效的租户和应用 UUID。",
+  "Permission key": "权限键",
+  "Create permission": "创建权限",
+  "Application permission catalog": "应用权限目录",
+  "Archiving a permission immediately makes matching RBAC, ACL, and ABAC grants inactive.":
+    "归档权限后，匹配的 RBAC、ACL 与 ABAC 授权会立即失效。",
+  "Search application permissions": "搜索应用权限",
+  "Save permission": "保存权限",
+  "No application permissions match this view.": "没有符合当前条件的应用权限。",
+  "Select an application to load its permissions.": "请选择应用以加载其权限。",
+  "Application permission created.": "应用权限已创建。",
+  "Application permission updated.": "应用权限已更新。",
+  "Application permission archived.": "应用权限已归档。",
+  "Application permission restored.": "应用权限已恢复。",
+  "Bindings default to the selected application; an environment may narrow the grant further.":
+    "绑定默认使用所选应用，也可通过环境进一步缩小授权范围。",
+  "All scopes": "全部作用域",
+  "Resource type (ACL, optional)": "资源类型（ACL，可选）",
+  "Resource ID (ACL, optional)": "资源 ID（ACL，可选）",
+  "Resource type (ACL)": "资源类型（ACL）",
+  "Resource ID (ACL)": "资源 ID（ACL）",
+  "order-123; leave blank for all": "order-123；留空表示全部",
+  "Enable ABAC attribute condition": "启用 ABAC 属性条件",
+  "Selected scope": "所选作用域",
+  "condition(s)": "个条件",
+  "Trusted ABAC attributes (JSON object, simulation only)":
+    "可信 ABAC 属性（JSON 对象，仅模拟）",
+  "Production ABAC attributes must be supplied by an application-bound confidential client. Check my access intentionally omits custom attributes.":
+    "生产 ABAC 属性必须由绑定应用的机密客户端提供；“检查我的权限”会有意省略自定义属性。",
 };

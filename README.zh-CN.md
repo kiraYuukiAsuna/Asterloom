@@ -14,7 +14,7 @@ Rust、Go 或 C++ SDK。
 | 能力 | 用途 |
 | --- | --- |
 | Identity / Passport | 全局账号、应用成员关系、邀请、会话、OIDC/OAuth 2.0 登录、Client 与 Scope。 |
-| Authorization | Permission、Role、Binding、Policy 和作用域权限判断。 |
+| Authorization | Application Permission、RBAC、ACL、ABAC 与作用域权限判断。 |
 | Targeting / Rollout | Segment、属性规则、模拟和稳定百分比分桶。 |
 | Feature Flag | 类型化 Flag、Variant、草稿、发布、回滚与 OpenFeature 评估。 |
 | Dynamic Config | 类型化配置、定向值、Diff、发布、快照和 Last-Known-Good。 |

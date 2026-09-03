@@ -1,6 +1,8 @@
 using System.Data;
+using System.Text.Json;
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
+using Asterloom.Targeting;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -9,16 +11,133 @@ namespace Asterloom.Modules.Infrastructure.Authorization;
 internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
     : IAuthorizationStore
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    public async Task<AuthorizationStorePage<PermissionDefinition>> ListPermissionsAsync(
+        AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
+        CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT id, tenant_id, application_id, key, display_name, description,
+                   module, status, version, created_at, updated_at, archived_at
+            FROM "authorization".permissions
+            WHERE (@include_archived OR status = 1)
+              AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
+              AND (@application_id IS NULL OR application_id = @application_id)
+              AND (@query = ''
+                   OR key ILIKE '%' || @query || '%'
+                   OR display_name ILIKE '%' || @query || '%')
+            ORDER BY key, id
+            OFFSET @offset
+            LIMIT @limit;
+            """);
+        AddPageParameters(command, page);
+        AddScopeFilterParameters(command, scope);
+        var items = new List<PermissionDefinition>(page.PageSize + 1);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(ReadPermission(reader));
+        }
+
+        return TrimPage(items, page.PageSize);
+    }
+
+    public async Task<PermissionDefinition?> GetPermissionAsync(
+        Guid permissionId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT id, tenant_id, application_id, key, display_name, description,
+                   module, status, version, created_at, updated_at, archived_at
+            FROM "authorization".permissions
+            WHERE id = @id;
+            """);
+        command.Parameters.AddWithValue("id", permissionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadPermission(reader) : null;
+    }
+
+    public async Task<PermissionDefinition?> FindPermissionAsync(
+        AuthorizationScope scope,
+        string key,
+        CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT id, tenant_id, application_id, key, display_name, description,
+                   module, status, version, created_at, updated_at, archived_at
+            FROM "authorization".permissions
+            WHERE tenant_id = @tenant_id
+              AND application_id = @application_id
+              AND key = @key;
+            """);
+        AddNullableGuid(command, "tenant_id", scope.TenantId);
+        AddNullableGuid(command, "application_id", scope.ApplicationId);
+        command.Parameters.AddWithValue("key", key);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadPermission(reader) : null;
+    }
+
+    public Task<bool> TryCreatePermissionAsync(
+        PermissionDefinition permission,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken) =>
+        ExecuteWriteAsync(
+            """
+            INSERT INTO "authorization".permissions (
+                id, tenant_id, application_id, key, display_name, description,
+                module, status, version, created_at, updated_at, archived_at)
+            VALUES (
+                @id, @tenant_id, @application_id, @key, @display_name, @description,
+                @module, @status, @version, @created_at, @updated_at, @archived_at)
+            ON CONFLICT DO NOTHING;
+            """,
+            command => AddPermissionParameters(command, permission),
+            revision,
+            cancellationToken);
+
+    public Task<bool> TryUpdatePermissionAsync(
+        PermissionDefinition permission,
+        long expectedVersion,
+        AuthorizationRevisionDraft revision,
+        CancellationToken cancellationToken) =>
+        ExecuteWriteAsync(
+            """
+            UPDATE "authorization".permissions
+            SET display_name = @display_name,
+                description = @description,
+                status = @status,
+                version = @version,
+                updated_at = @updated_at,
+                archived_at = @archived_at
+            WHERE id = @id AND version = @expected_version;
+            """,
+            command =>
+            {
+                AddPermissionParameters(command, permission);
+                command.Parameters.AddWithValue("expected_version", expectedVersion);
+            },
+            revision,
+            cancellationToken);
+
     public async Task<AuthorizationStorePage<AuthorizationRole>> ListRolesAsync(
         AuthorizationPageRequest page,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand(
             """
             SELECT id, key, display_name, description, permissions, is_system,
-                   status, version, created_at, updated_at, archived_at
+                   status, version, created_at, updated_at, archived_at,
+                   tenant_id, application_id
             FROM "authorization".roles
             WHERE (@include_archived OR status = 1)
+              AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
+              AND (@application_id IS NULL OR application_id = @application_id)
               AND (@query = ''
                    OR key ILIKE '%' || @query || '%'
                    OR display_name ILIKE '%' || @query || '%')
@@ -27,6 +146,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             LIMIT @limit;
             """);
         AddPageParameters(command, page);
+        AddScopeFilterParameters(command, scope);
         var items = new List<AuthorizationRole>(page.PageSize + 1);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -44,7 +164,8 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         await using var command = dataSource.CreateCommand(
             """
             SELECT id, key, display_name, description, permissions, is_system,
-                   status, version, created_at, updated_at, archived_at
+                   status, version, created_at, updated_at, archived_at,
+                   tenant_id, application_id
             FROM "authorization".roles
             WHERE id = @id;
             """);
@@ -61,10 +182,12 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             INSERT INTO "authorization".roles (
                 id, key, display_name, description, permissions, is_system,
-                status, version, created_at, updated_at, archived_at)
+                status, version, created_at, updated_at, archived_at,
+                tenant_id, application_id)
             VALUES (
                 @id, @key, @display_name, @description, @permissions, @is_system,
-                @status, @version, @created_at, @updated_at, @archived_at)
+                @status, @version, @created_at, @updated_at, @archived_at,
+                @tenant_id, @application_id)
             ON CONFLICT DO NOTHING;
             """,
             command => AddRoleParameters(command, role),
@@ -99,7 +222,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
     public async Task<AuthorizationStorePage<AuthorizationRoleBinding>> ListRoleBindingsAsync(
         AuthorizationPageRequest page,
         string actorId,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand(
@@ -110,13 +233,14 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             WHERE (@include_archived OR status = 1)
               AND (@actor_id = '' OR actor_id ILIKE '%' || @actor_id || '%')
               AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
+              AND (@application_id IS NULL OR application_id = @application_id)
             ORDER BY lower(actor_id), id
             OFFSET @offset
             LIMIT @limit;
             """);
         AddPageParameters(command, page);
         command.Parameters.AddWithValue("actor_id", actorId);
-        AddNullableGuid(command, "tenant_id", tenantId);
+        AddScopeFilterParameters(command, scope);
         var items = new List<AuthorizationRoleBinding>(page.PageSize + 1);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -191,17 +315,18 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
 
     public async Task<AuthorizationStorePage<AuthorizationPolicyRule>> ListPolicyRulesAsync(
         AuthorizationPageRequest page,
-        Guid? tenantId,
+        AuthorizationScopeFilter scope,
         CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand(
             """
             SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                    environment_id, permission, status, version, created_at, updated_at,
-                   archived_at
+                   archived_at, resource_type, resource_id, condition
             FROM "authorization".policy_rules
             WHERE (@include_archived OR status = 1)
               AND (@tenant_id IS NULL OR tenant_id = @tenant_id)
+              AND (@application_id IS NULL OR application_id = @application_id)
               AND (@query = ''
                    OR name ILIKE '%' || @query || '%'
                    OR permission ILIKE '%' || @query || '%')
@@ -210,7 +335,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             LIMIT @limit;
             """);
         AddPageParameters(command, page);
-        AddNullableGuid(command, "tenant_id", tenantId);
+        AddScopeFilterParameters(command, scope);
         var items = new List<AuthorizationPolicyRule>(page.PageSize + 1);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -229,7 +354,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             """
             SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                    environment_id, permission, status, version, created_at, updated_at,
-                   archived_at
+                   archived_at, resource_type, resource_id, condition
             FROM "authorization".policy_rules
             WHERE id = @id;
             """);
@@ -247,11 +372,11 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             INSERT INTO "authorization".policy_rules (
                 id, name, effect, subject_type, subject, tenant_id, application_id,
                 environment_id, permission, status, version, created_at, updated_at,
-                archived_at)
+                archived_at, resource_type, resource_id, condition)
             VALUES (
                 @id, @name, @effect, @subject_type, @subject, @tenant_id, @application_id,
                 @environment_id, @permission, @status, @version, @created_at, @updated_at,
-                @archived_at)
+                @archived_at, @resource_type, @resource_id, @condition)
             ON CONFLICT DO NOTHING;
             """,
             command => AddPolicyRuleParameters(command, policyRule),
@@ -274,6 +399,9 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 application_id = @application_id,
                 environment_id = @environment_id,
                 permission = @permission,
+                resource_type = @resource_type,
+                resource_id = @resource_id,
+                condition = @condition,
                 status = @status,
                 version = @version,
                 updated_at = @updated_at,
@@ -327,6 +455,24 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         await using var transaction = await connection.BeginTransactionAsync(
             IsolationLevel.RepeatableRead,
             cancellationToken);
+        var permissions = new List<PermissionDefinition>();
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                SELECT id, tenant_id, application_id, key, display_name, description,
+                       module, status, version, created_at, updated_at, archived_at
+                FROM "authorization".permissions
+                WHERE status = 1;
+                """;
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                permissions.Add(ReadPermission(reader));
+            }
+        }
+
         var roles = new List<AuthorizationRole>();
         await using (var command = connection.CreateCommand())
         {
@@ -334,7 +480,8 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
             command.CommandText =
                 """
                 SELECT id, key, display_name, description, permissions, is_system,
-                       status, version, created_at, updated_at, archived_at
+                       status, version, created_at, updated_at, archived_at,
+                       tenant_id, application_id
                 FROM "authorization".roles
                 WHERE status = 1;
                 """;
@@ -371,7 +518,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 """
                 SELECT id, name, effect, subject_type, subject, tenant_id, application_id,
                        environment_id, permission, status, version, created_at, updated_at,
-                       archived_at
+                       archived_at, resource_type, resource_id, condition
                 FROM "authorization".policy_rules
                 WHERE status = 1;
                 """;
@@ -383,7 +530,7 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         }
 
         await transaction.CommitAsync(cancellationToken);
-        return new AuthorizationPolicySnapshot(roles, bindings, policyRules);
+        return new AuthorizationPolicySnapshot(permissions, roles, bindings, policyRules);
     }
 
     private async Task<bool> ExecuteWriteAsync(
@@ -450,6 +597,32 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         command.Parameters.AddWithValue("limit", page.PageSize + 1);
     }
 
+    private static void AddScopeFilterParameters(
+        NpgsqlCommand command,
+        AuthorizationScopeFilter scope)
+    {
+        AddNullableGuid(command, "tenant_id", scope.TenantId);
+        AddNullableGuid(command, "application_id", scope.ApplicationId);
+    }
+
+    private static void AddPermissionParameters(
+        NpgsqlCommand command,
+        PermissionDefinition permission)
+    {
+        command.Parameters.AddWithValue("id", permission.Id);
+        AddNullableGuid(command, "tenant_id", permission.Scope.TenantId);
+        AddNullableGuid(command, "application_id", permission.Scope.ApplicationId);
+        command.Parameters.AddWithValue("key", permission.Key);
+        command.Parameters.AddWithValue("display_name", permission.DisplayName);
+        command.Parameters.AddWithValue("description", permission.Description);
+        command.Parameters.AddWithValue("module", permission.Module);
+        command.Parameters.AddWithValue("status", (short)permission.Status);
+        command.Parameters.AddWithValue("version", permission.Version);
+        command.Parameters.AddWithValue("created_at", permission.CreatedAt.UtcDateTime);
+        command.Parameters.AddWithValue("updated_at", permission.UpdatedAt.UtcDateTime);
+        AddNullableTimestamp(command, "archived_at", permission.ArchivedAt);
+    }
+
     private static void AddRoleParameters(NpgsqlCommand command, AuthorizationRole role)
     {
         command.Parameters.AddWithValue("id", role.Id);
@@ -462,6 +635,8 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 TypedValue = role.Permissions.ToArray(),
             });
         command.Parameters.AddWithValue("is_system", role.IsSystem);
+        AddNullableGuid(command, "tenant_id", role.Scope.TenantId);
+        AddNullableGuid(command, "application_id", role.Scope.ApplicationId);
         command.Parameters.AddWithValue("status", (short)role.Status);
         command.Parameters.AddWithValue("version", role.Version);
         command.Parameters.AddWithValue("created_at", role.CreatedAt.UtcDateTime);
@@ -496,6 +671,15 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         command.Parameters.AddWithValue("subject", policyRule.Subject);
         AddScopeParameters(command, policyRule.Scope);
         command.Parameters.AddWithValue("permission", policyRule.Permission);
+        command.Parameters.AddWithValue("resource_type", policyRule.ResourceType);
+        command.Parameters.AddWithValue("resource_id", policyRule.ResourceId);
+        command.Parameters.Add(
+            new NpgsqlParameter("condition", NpgsqlDbType.Jsonb)
+            {
+                Value = policyRule.Condition is null
+                    ? DBNull.Value
+                    : JsonSerializer.Serialize(policyRule.Condition, JsonOptions),
+            });
         command.Parameters.AddWithValue("status", (short)policyRule.Status);
         command.Parameters.AddWithValue("version", policyRule.Version);
         command.Parameters.AddWithValue("created_at", policyRule.CreatedAt.UtcDateTime);
@@ -527,6 +711,20 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
                 Value = value is null ? DBNull.Value : value.Value.UtcDateTime,
             });
 
+    private static PermissionDefinition ReadPermission(NpgsqlDataReader reader) => new(
+        reader.GetGuid(0),
+        reader.GetString(3),
+        reader.GetString(4),
+        reader.GetString(5),
+        reader.GetString(6),
+        new AuthorizationScope(reader.GetGuid(1), reader.GetGuid(2), null),
+        IsSystem: false,
+        (AuthorizationResourceStatus)reader.GetInt16(7),
+        reader.GetInt64(8),
+        ToDateTimeOffset(reader.GetDateTime(9)),
+        ToDateTimeOffset(reader.GetDateTime(10)),
+        reader.IsDBNull(11) ? null : ToDateTimeOffset(reader.GetDateTime(11)));
+
     private static AuthorizationRole ReadRole(NpgsqlDataReader reader) => new(
         reader.GetGuid(0),
         reader.GetString(1),
@@ -534,6 +732,10 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         reader.GetString(3),
         reader.GetFieldValue<string[]>(4),
         reader.GetBoolean(5),
+        new AuthorizationScope(
+            reader.IsDBNull(11) ? null : reader.GetGuid(11),
+            reader.IsDBNull(12) ? null : reader.GetGuid(12),
+            null),
         (AuthorizationResourceStatus)reader.GetInt16(6),
         reader.GetInt64(7),
         ToDateTimeOffset(reader.GetDateTime(8)),
@@ -560,6 +762,11 @@ internal sealed class PostgreSqlAuthorizationStore(NpgsqlDataSource dataSource)
         reader.GetString(4),
         ReadScope(reader, 5),
         reader.GetString(8),
+        reader.GetString(14),
+        reader.GetString(15),
+        reader.IsDBNull(16)
+            ? null
+            : JsonSerializer.Deserialize<TargetingRule>(reader.GetString(16), JsonOptions),
         (AuthorizationResourceStatus)reader.GetInt16(9),
         reader.GetInt64(10),
         ToDateTimeOffset(reader.GetDateTime(11)),

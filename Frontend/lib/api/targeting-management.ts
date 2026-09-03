@@ -72,7 +72,7 @@ export const targetingAttributeNameSchema = z
   .trim()
   .regex(attributePattern, "Enter a valid built-in or custom attribute name.");
 
-const targetingValueSchema = z.union([
+export const targetingValueSchema = z.union([
   z.object({ text: z.string().max(1000) }),
   z.object({ truth: z.boolean() }),
   z.object({ numeric: z.number().finite() }),
@@ -85,7 +85,7 @@ const targetingConditionSchema = z.object({
   valueKind: valueKindSchema,
   values: z.array(targetingValueSchema).max(50),
 });
-const targetingRuleSchema = z.object({
+export const targetingRuleSchema = z.object({
   conditions: z.array(targetingConditionSchema).min(1).max(50),
   matchMode: matchModeSchema,
 });

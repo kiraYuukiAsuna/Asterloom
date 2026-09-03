@@ -122,18 +122,17 @@ secret immediately and store it in a secret manager.
 
 Route: `/authorization/roles`
 
-1. Review the permission catalog.
-2. Create a role and assign permission keys.
-3. Bind the role to an actor globally or at tenant/application/environment
-   scope.
-4. Add explicit policy rules when role bindings are insufficient. Deny rules
-   take precedence where the policy model specifies a conflict.
-5. Inspect policy revisions and use the simulator before deploying a sensitive
-   change.
-6. Use the runtime permission check for the final server-side decision.
+1. Select a Tenant/Application and define business Application Permissions; System Permissions are read-only.
+2. Create least-privilege Roles and Role Bindings for RBAC.
+3. Add exact `resourceType/resourceId` Policy selectors for ACL.
+4. Add typed `subject.*`, `resource.*`, `context.*`, or `scope.*` conditions for ABAC.
+5. Any matching Deny overrides Allows; archiving a Permission centrally disables that business action.
+6. Inspect revisions and simulate actor, scope, resource, and attributes.
+7. For high-risk operations, the business backend loads trusted attributes and calls the runtime check on behalf
+   of the user with its Application Confidential Client.
 
-Hiding a Web button is only a user-experience optimization. Every protected
-operation must still call server-side authorization.
+A Public Client cannot submit custom ABAC attributes. Hiding a Web button is only a user-experience optimization.
+Every protected operation still needs server-side authorization. See [Authorization: RBAC, ACL, and ABAC](Module/Authorization.md).
 
 ### 4.4 Targeting and rollout
 
@@ -353,6 +352,10 @@ if (!decision.Allowed)
     throw new UnauthorizedAccessException(decision.Reason);
 }
 ```
+
+For resource or attribute decisions, use
+`CheckAccessAsync(actorId, permission, scope, resourceType, resourceId, attributes)` from a business backend that
+owns a Confidential Client. Attributes must come from trusted server-side sources.
 
 ### 5.4 Targeting and Feature Flags
 

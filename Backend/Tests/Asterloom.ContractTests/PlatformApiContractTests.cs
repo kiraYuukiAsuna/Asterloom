@@ -23,6 +23,7 @@ public sealed class PlatformApiContractTests
 {
     private static readonly string[] EnvironmentUpdatePermission =
         ["platform.environment.update"];
+    private static readonly string[] OrdersRefundPermission = ["orders.refund"];
     private static readonly string[] IgnoredRequestRoles =
         ["ThisRequestValueMustBeIgnored"];
     private static readonly string[] InjectedSuperRole = ["SuperAdministrator"];
@@ -187,9 +188,27 @@ public sealed class PlatformApiContractTests
     {
         using var client = await CreateAuthorizedClientAsync();
         var suffix = Guid.NewGuid().ToString("N");
-        var tenantId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
+        var tenant = await SendAsync<ResourceJson>(
+            client.PostAsJsonAsync(
+                "/api/v1/tenants",
+                new { slug = "auth-" + suffix, displayName = "Authorization Tenant" }));
+        var application = await SendAsync<ResourceJson>(
+            client.PostAsJsonAsync(
+                $"/api/v1/tenants/{tenant.Id}/applications",
+                new { slug = "auth-" + suffix, displayName = "Authorization App" }));
+        var environment = await SendAsync<EnvironmentJson>(
+            client.PostAsJsonAsync(
+                $"/api/v1/tenants/{tenant.Id}/applications/{application.Id}/environments",
+                new
+                {
+                    slug = "development",
+                    displayName = "Development",
+                    environmentType = "ENVIRONMENT_TYPE_DEVELOPMENT",
+                    isProtected = false,
+                }));
+        var tenantId = Guid.Parse(tenant.Id);
+        var applicationId = Guid.Parse(application.Id);
+        var environmentId = Guid.Parse(environment.Id);
         var actorId = "authorization-contract-" + suffix;
 
         var permissions = await client.GetFromJsonAsync<PermissionListJson>(
@@ -197,6 +216,40 @@ public sealed class PlatformApiContractTests
         Assert.Contains(
             permissions!.Permissions,
             permission => permission.Key == "authorization.role.create");
+
+        var applicationPermission = await SendAsync<PermissionJson>(
+            client.PostAsJsonAsync(
+                "/api/v1/authorization/permissions",
+                new
+                {
+                    scope = new { tenantId, applicationId },
+                    key = "orders.refund",
+                    displayName = "Refund orders",
+                    description = "Refund an order owned by this application.",
+                }));
+        applicationPermission = await SendAsync<PermissionJson>(
+            client.PatchAsJsonAsync(
+                $"/api/v1/authorization/permissions/{applicationPermission.Id}",
+                new
+                {
+                    displayName = "Refund business orders",
+                    description = applicationPermission.Description,
+                    expectedVersion = applicationPermission.Version,
+                }));
+        applicationPermission = await SendAsync<PermissionJson>(
+            client.DeleteAsync(
+                $"/api/v1/authorization/permissions/{applicationPermission.Id}" +
+                $"?expectedVersion={applicationPermission.Version}"));
+        applicationPermission = await SendAsync<PermissionJson>(
+            client.PostAsJsonAsync(
+                $"/api/v1/authorization/permissions/{applicationPermission.Id}:restore",
+                new { expectedVersion = applicationPermission.Version }));
+        var applicationPermissions = await client.GetFromJsonAsync<PermissionListJson>(
+            $"/api/v1/authorization/permissions?tenantId={tenantId}" +
+            $"&applicationId={applicationId}&includeArchived=true");
+        Assert.Contains(
+            applicationPermissions!.Permissions,
+            permission => permission.Id == applicationPermission.Id);
 
         var initialRoles = await client.GetFromJsonAsync<RoleListJson>(
             "/api/v1/authorization/roles?pageSize=100");
@@ -210,7 +263,8 @@ public sealed class PlatformApiContractTests
                     key = "contract-role-" + suffix,
                     displayName = "Contract Role",
                     description = "Created by the protocol contract test.",
-                    permissions = EnvironmentUpdatePermission,
+                    permissions = OrdersRefundPermission,
+                    scope = new { tenantId, applicationId },
                 }));
         role = await SendAsync<AuthorizationRoleJson>(
             client.PatchAsJsonAsync(
@@ -219,7 +273,7 @@ public sealed class PlatformApiContractTests
                 {
                     displayName = "Updated Contract Role",
                     description = "Updated by the protocol contract test.",
-                    permissions = EnvironmentUpdatePermission,
+                    permissions = OrdersRefundPermission,
                     expectedVersion = role.Version,
                 }));
         role = await SendAsync<AuthorizationRoleJson>(
@@ -282,7 +336,10 @@ public sealed class PlatformApiContractTests
                         tenantId,
                         applicationId,
                     },
-                    permission = "platform.environment.update",
+                    permission = "orders.refund",
+                    resourceType = "order",
+                    resourceId = "order-42",
+                    condition = AuthorizationFinanceConditionPayload(),
                 }));
         policy = await SendAsync<PolicyRuleJson>(
             client.PatchAsJsonAsync(
@@ -298,7 +355,10 @@ public sealed class PlatformApiContractTests
                         tenantId,
                         applicationId,
                     },
-                    permission = "platform.environment.update",
+                    permission = "orders.refund",
+                    resourceType = "order",
+                    resourceId = "order-42",
+                    condition = AuthorizationFinanceConditionPayload(),
                     expectedVersion = policy.Version,
                 }));
         policy = await SendAsync<PolicyRuleJson>(
@@ -333,7 +393,17 @@ public sealed class PlatformApiContractTests
                             applicationId,
                             environmentId,
                         },
-                        permission = "platform.environment.update",
+                        permission = "orders.refund",
+                        resourceType = "order",
+                        resourceId = "order-42",
+                        attributes = new[]
+                        {
+                            new
+                            {
+                                key = "subject.department",
+                                value = new { text = "finance" },
+                            },
+                        },
                     },
                 }));
         Assert.False(simulation.Allowed);
@@ -351,6 +421,7 @@ public sealed class PlatformApiContractTests
         Assert.Equal("AUTHORIZATION_RESOURCE_STATUS_ACTIVE", role.Status);
         Assert.Equal("AUTHORIZATION_RESOURCE_STATUS_ACTIVE", binding.Status);
         Assert.Equal("AUTHORIZATION_RESOURCE_STATUS_ACTIVE", policy.Status);
+        Assert.Equal("AUTHORIZATION_RESOURCE_STATUS_ACTIVE", applicationPermission.Status);
         Assert.Equal("POLICY_EFFECT_DENY", policy.Effect);
     }
 
@@ -660,6 +731,23 @@ public sealed class PlatformApiContractTests
         },
     };
 
+    private static object AuthorizationFinanceConditionPayload() => new
+    {
+        matchMode = "TARGETING_MATCH_MODE_ALL",
+        conditions = new[]
+        {
+            new
+            {
+                id = "finance-department",
+                attribute = "subject.department",
+                valueKind = "TARGETING_VALUE_KIND_TEXT",
+                @operator = "TARGETING_OPERATOR_EQUALS",
+                values = new[] { new { text = "finance" } },
+                caseSensitive = false,
+            },
+        },
+    };
+
     private Task<HttpClient> CreateAuthorizedClientAsync() =>
         CreateAuthorizedClientAsync(
             "platform-contract-tests",
@@ -775,7 +863,13 @@ public sealed class PlatformApiContractTests
 
     private sealed record MembershipListJson(IReadOnlyList<MembershipJson> Memberships);
 
-    private sealed record PermissionJson(string Key);
+    private sealed record PermissionJson(
+        string Id,
+        string Key,
+        string DisplayName,
+        string Description,
+        string Status,
+        long Version);
 
     private sealed record PermissionListJson(IReadOnlyList<PermissionJson> Permissions);
 

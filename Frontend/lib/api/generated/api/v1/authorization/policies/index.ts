@@ -52,6 +52,7 @@ export interface PoliciesRequestBuilder extends BaseRequestBuilder<PoliciesReque
      withPolicyRuleIdRestore(policyRuleId: string | undefined) : WithPolicyRuleIdRestoreRequestBuilder;
 }
 export interface PoliciesRequestBuilderGetQueryParameters {
+    applicationId?: string;
     includeArchived?: boolean;
     pageSize?: number;
     pageToken?: string;
@@ -61,7 +62,7 @@ export interface PoliciesRequestBuilderGetQueryParameters {
 /**
  * Uri template for the request builder.
  */
-export const PoliciesRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/policies{?includeArchived*,pageSize*,pageToken*,query*,tenantId*}";
+export const PoliciesRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/policies{?applicationId*,includeArchived*,pageSize*,pageToken*,query*,tenantId*}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */

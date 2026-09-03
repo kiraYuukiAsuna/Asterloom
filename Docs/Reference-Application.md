@@ -18,6 +18,7 @@
 Reference Client
   ├─ Passport (Public Client authorization code + PKCE)
   │    └─ user Access Token → Reference Backend protected API
+  │          └─ business DB attributes + Confidential Client → RBAC/ACL/ABAC decision
   ├─ Service identity (Confidential Client / client credentials)
   ├─ Business account registration → Reference Backend
   ├─ Asterloom gRPC + JSON/HTTP
@@ -45,6 +46,7 @@ Reference Client
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- provision
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- doctor
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login
+dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- login --authorization-demo
 dotnet run --project Backend/Samples/Asterloom.ReferenceApp.Client -- account-demo user@example.com "Example User"
 # 下面的 update 必须从 Velopack 安装目录中的程序运行，不能用 dotnet run。
 Asterloom.ReferenceApp.Client.exe update update-result.json [--force-full]
@@ -52,7 +54,7 @@ Asterloom.ReferenceApp.Client.exe update update-result.json [--force-full]
 
 - `provision`：创建独立的 tenant/application/environment，以及分群、已发布 Feature Flag、已发布动态配置、存储桶、签名密钥、更新通道、签名更新包、Analytics Schema/Write Key 和 Telemetry Source；敏感状态只写入被 Git 忽略的 `reference-state.json`。
 - `doctor`：逐项运行诊断。某项失败不会阻止后续能力，进程最终以非零退出码表示存在失败；加 `--json` 可供 CI 和监控采集。
-- `login`：启动系统浏览器，以 Public Client + OIDC Authorization Code + PKCE 登录 Passport，再把用户 Access Token 作为 Bearer 调用参考后台 `/api/reference/me`。参考后台会验证公开签名、Issuer、Audience、用户类型和 Tenant/Application 绑定；此命令不需要 Client Secret，也不在无界面的容器中执行。
+- `login`：启动系统浏览器，以 Public Client + OIDC Authorization Code + PKCE 登录 Passport，再把用户 Access Token 作为 Bearer 调用参考后台 `/api/reference/me`。参考后台会验证公开签名、Issuer、Audience、用户类型和 Tenant/Application 绑定；此命令不需要 Client Secret，也不在无界面的容器中执行。加 `--authorization-demo` 后还会写入一份明确标记为测试用途的业务订单/部门 Fixture，再调用退款 API；退款 API 从自己的 PostgreSQL 读取权威属性，并用业务 Confidential Client 代表当前 `sub` 请求 Asterloom RBAC/ACL/ABAC 决策。
 - `account-demo`：通过参考后台真实执行业务用户注册和邮箱确认；随后使用 `login` 通过标准 PKCE 登录并验证应用绑定的 `tenant_id`、`application_id` 和全局 `sub`。
 - `update`：仅在真实 Velopack 安装态运行；经 Asterloom 检查、下载并应用更新，重启到新版本后把下载的
   `Delta`/`Full` 类型、前后版本和 Restart Hook 结果写入指定 JSON。`--force-full` 禁用 Delta，用于验证 Full 回退。
@@ -75,6 +77,10 @@ bash Deploy/Scripts/Provision-Reference-App.sh
 Client Credentials 和可信注册；用户登录只由独立的 Public Client 通过 Authorization Code + S256 PKCE 完成。生成的密钥只保存在
 `.data/reference-app/reference.env`，权限为 `0600`；可写状态单独位于 `.data/reference-app/state`，生产容器仍以
 非 root UID 1654 运行。
+
+脚本还会幂等创建 Application Permission `orders.refund`，以及一条仅匹配 `order` 资源、
+`subject.department=finance` 且 `resource.amount<=5000` 的 ABAC Allow Policy。`--authorization-demo` 使用的
+Fixture 接口只用于演示如何准备业务自己的权威数据，生产业务不能开放“用户自行填写授权属性”的接口。
 
 同一 `reference.env` 还会为 Reference Backend 写入 Resource Server 的 Issuer、Audience、TenantId 和
 ApplicationId。修改 Scope Resource、Application 绑定或域名后必须重新执行脚本并重建参考后台。
@@ -113,7 +119,7 @@ ApplicationId。修改 Scope Resource、Application 绑定或域名后必须重�
 | 能力 | 真实操作 | 成功条件 |
 | --- | --- | --- |
 | Identity | OIDC discovery、client credentials、受保护 Identity API；另有 Public Client PKCE、业务 Bearer API 和业务账号命令 | 能取得服务 Token；discovery 不公布 Password Grant 且只公布 S256 PKCE；公开 `at+jwt` 可由 JWKS 验签；Reference Backend 接受用户 Access Token 且拒绝 ID Token；业务注册/确认全链路成功。 |
-| Authorization | `AsterloomAuthorizationClient.CheckPermissionAsync` | 服务身份在指定 scope 获得 `feature.flag.evaluate`。 |
+| Authorization | 管理面 Application Permission；`CheckPermissionAsync`；Public User Token + 业务 Confidential Client `CheckAccessAsync` | RBAC 基础检查成功；ACL 资源匹配；ABAC 使用业务 PostgreSQL 属性允许 finance/低金额退款；跨应用、非成员或不匹配条件拒绝。 |
 | Targeting | `AsterloomTargetingAdminClient.ListSegmentsAsync` | PostgreSQL 中创建的 segment 可由 gRPC SDK 读取。 |
 | Feature Flag | `AsterloomFeatureProvider` | CN context 命中 segment 并返回 `on/true`。 |
 | Rollout | Feature allocation 与 Release 100% rollout | 产生稳定且可解释的命中结果。 |

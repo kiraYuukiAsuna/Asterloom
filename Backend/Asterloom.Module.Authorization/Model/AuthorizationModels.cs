@@ -1,3 +1,5 @@
+using Asterloom.Targeting;
+
 namespace Asterloom.Modules.Authorization.Model;
 
 public enum AuthorizationResourceStatus
@@ -28,10 +30,18 @@ public sealed record AuthorizationScope(
 }
 
 public sealed record PermissionDefinition(
+    Guid Id,
     string Key,
     string DisplayName,
     string Description,
-    string Module);
+    string Module,
+    AuthorizationScope Scope,
+    bool IsSystem,
+    AuthorizationResourceStatus Status,
+    long Version,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? ArchivedAt);
 
 public sealed record AuthorizationRole(
     Guid Id,
@@ -40,6 +50,7 @@ public sealed record AuthorizationRole(
     string Description,
     IReadOnlyList<string> Permissions,
     bool IsSystem,
+    AuthorizationScope Scope,
     AuthorizationResourceStatus Status,
     long Version,
     DateTimeOffset CreatedAt,
@@ -66,6 +77,9 @@ public sealed record AuthorizationPolicyRule(
     string Subject,
     AuthorizationScope Scope,
     string Permission,
+    string ResourceType,
+    string ResourceId,
+    TargetingRule? Condition,
     AuthorizationResourceStatus Status,
     long Version,
     DateTimeOffset CreatedAt,
@@ -96,7 +110,10 @@ public sealed record AuthorizationDecisionRequest(
     string ActorId,
     AuthorizationScope Scope,
     string Permission,
-    IReadOnlyList<string> TrustedRoles);
+    IReadOnlyList<string> TrustedRoles,
+    string ResourceType = "",
+    string ResourceId = "",
+    IReadOnlyDictionary<string, TargetingValue>? Attributes = null);
 
 public sealed record AuthorizationDecisionResult(
     bool Allowed,
@@ -115,6 +132,11 @@ public sealed record AuthorizationStorePage<T>(
     bool HasMore);
 
 public sealed record AuthorizationPolicySnapshot(
+    IReadOnlyList<PermissionDefinition> Permissions,
     IReadOnlyList<AuthorizationRole> Roles,
     IReadOnlyList<AuthorizationRoleBinding> Bindings,
     IReadOnlyList<AuthorizationPolicyRule> PolicyRules);
+
+public sealed record AuthorizationScopeFilter(
+    Guid? TenantId,
+    Guid? ApplicationId);

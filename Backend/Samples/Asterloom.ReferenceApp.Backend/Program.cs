@@ -108,6 +108,10 @@ if (resourceServer.Enabled)
 {
     app.MapReferenceProtectedEndpoints();
 }
+if (referenceIdentity.Enabled && resourceServer.Enabled)
+{
+    app.MapReferenceBusinessAuthorizationEndpoints();
+}
 if (referenceMail.Enabled && resourceServer.Enabled)
 {
     app.MapReferenceMailEndpoints();

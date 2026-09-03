@@ -12,7 +12,9 @@ using Asterloom.Modules.Authorization;
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
 using Asterloom.Modules.Platform;
+using Asterloom.Sdk.Authorization;
 using Asterloom.Sdk.Identity;
+using Asterloom.Targeting;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -582,6 +584,36 @@ public sealed partial class IdentityAdminContractTests(
                     null),
                 expectedVersion: 0,
                 CancellationToken.None);
+            var applicationScope = new AuthorizationScope(
+                Guid.Parse(tenant.Id),
+                Guid.Parse(applicationA.Id),
+                null);
+            await authorization.CreatePermissionAsync(
+                applicationScope,
+                "orders.refund",
+                "Refund orders",
+                "Contract ABAC permission.",
+                CancellationToken.None);
+            await authorization.CreatePolicyRuleAsync(
+                "Finance refunds",
+                AuthorizationPolicyEffect.Allow,
+                AuthorizationPolicySubjectType.Any,
+                "*",
+                applicationScope,
+                "orders.refund",
+                "order",
+                string.Empty,
+                new TargetingRule(
+                    TargetingMatchMode.All,
+                    [
+                        new TargetingCondition(
+                            "finance-department",
+                            "subject.department",
+                            TargetingValueKind.Text,
+                            TargetingOperator.Equals,
+                            [TargetingValue.From("finance")]),
+                    ]),
+                CancellationToken.None);
         }
 
         var appADecision = await SendAsync<DecisionJson>(userA.PostAsJsonAsync(
@@ -603,6 +635,69 @@ public sealed partial class IdentityAdminContractTests(
                 permission = "feature.flag.read",
             }));
         Assert.True(appDecision.Allowed);
+        using (var forgedUserAttributes = await userA.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationA.Id },
+                permission = "orders.refund",
+                resourceType = "order",
+                resourceId = "order-42",
+                attributes = new[]
+                {
+                    new
+                    {
+                        key = "subject.department",
+                        value = new { text = "finance" },
+                    },
+                },
+            }))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, forgedUserAttributes.StatusCode);
+        }
+
+        var trustedBackendDecision = await SendAsync<DecisionJson>(backendA.PostAsJsonAsync(
+            "/api/v1/authorization:check",
+            new
+            {
+                actorId = registration.User.Id,
+                scope = new { tenantId = tenant.Id, applicationId = applicationA.Id },
+                permission = "orders.refund",
+                resourceType = "order",
+                resourceId = "order-42",
+                attributes = new[]
+                {
+                    new
+                    {
+                        key = "subject.department",
+                        value = new { text = "finance" },
+                    },
+                },
+            }));
+        Assert.True(trustedBackendDecision.Allowed);
+
+        using (var authorizationChannel = GrpcChannel.ForAddress(
+                   backendA.BaseAddress!,
+                   new GrpcChannelOptions { HttpClient = backendA }))
+        {
+            var authorizationClient = new AsterloomAuthorizationClient(
+                authorizationChannel.CreateCallInvoker());
+            var sdkDecision = await authorizationClient.CheckAccessAsync(
+                registration.User.Id,
+                "orders.refund",
+                new AsterloomAuthorizationScope(
+                    Guid.Parse(tenant.Id),
+                    Guid.Parse(applicationA.Id)),
+                "order",
+                "order-42",
+                new Dictionary<string, TargetingValue>
+                {
+                    ["subject.department"] = TargetingValue.From("finance"),
+                });
+            Assert.True(sdkDecision.Allowed);
+        }
+
         using (var crossApplication = await userB.PostAsJsonAsync(
             "/api/v1/authorization:check",
             new

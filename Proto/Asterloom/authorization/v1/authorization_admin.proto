@@ -3,6 +3,7 @@ syntax = "proto3";
 package asterloom.authorization.admin.v1;
 
 import "Asterloom/authorization/v1/authorization_types.proto";
+import "Asterloom/targeting/v1/targeting_types.proto";
 import "google/api/annotations.proto";
 
 option csharp_namespace = "Asterloom.Protocol.Authorization.Admin.V1";
@@ -10,6 +11,27 @@ option csharp_namespace = "Asterloom.Protocol.Authorization.Admin.V1";
 service AuthorizationAdminService {
   rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse) {
     option (google.api.http) = {get: "/api/v1/authorization/permissions"};
+  }
+  rpc CreatePermission(CreatePermissionRequest) returns (asterloom.authorization.v1.PermissionDefinition) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/permissions"
+      body: "*"
+    };
+  }
+  rpc UpdatePermission(UpdatePermissionRequest) returns (asterloom.authorization.v1.PermissionDefinition) {
+    option (google.api.http) = {
+      patch: "/api/v1/authorization/permissions/{permission_id}"
+      body: "*"
+    };
+  }
+  rpc ArchivePermission(ArchivePermissionRequest) returns (asterloom.authorization.v1.PermissionDefinition) {
+    option (google.api.http) = {delete: "/api/v1/authorization/permissions/{permission_id}"};
+  }
+  rpc RestorePermission(RestorePermissionRequest) returns (asterloom.authorization.v1.PermissionDefinition) {
+    option (google.api.http) = {
+      post: "/api/v1/authorization/permissions/{permission_id}:restore"
+      body: "*"
+    };
   }
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
     option (google.api.http) = {get: "/api/v1/authorization/roles"};
@@ -86,6 +108,9 @@ message ListPermissionsRequest {
   int32 page_size = 1;
   string page_token = 2;
   string query = 3;
+  string tenant_id = 4;
+  string application_id = 5;
+  bool include_archived = 6;
 }
 
 message ListPermissionsResponse {
@@ -93,11 +118,37 @@ message ListPermissionsResponse {
   string next_page_token = 2;
 }
 
+message CreatePermissionRequest {
+  asterloom.authorization.v1.AuthorizationScope scope = 1;
+  string key = 2;
+  string display_name = 3;
+  string description = 4;
+}
+
+message UpdatePermissionRequest {
+  string permission_id = 1;
+  string display_name = 2;
+  string description = 3;
+  int64 expected_version = 4;
+}
+
+message ArchivePermissionRequest {
+  string permission_id = 1;
+  int64 expected_version = 2;
+}
+
+message RestorePermissionRequest {
+  string permission_id = 1;
+  int64 expected_version = 2;
+}
+
 message ListRolesRequest {
   int32 page_size = 1;
   string page_token = 2;
   string query = 3;
   bool include_archived = 4;
+  string tenant_id = 5;
+  string application_id = 6;
 }
 
 message ListRolesResponse {
@@ -110,6 +161,7 @@ message CreateRoleRequest {
   string display_name = 2;
   string description = 3;
   repeated string permissions = 4;
+  asterloom.authorization.v1.AuthorizationScope scope = 5;
 }
 
 message UpdateRoleRequest {
@@ -136,6 +188,7 @@ message ListRoleBindingsRequest {
   string actor_id = 3;
   string tenant_id = 4;
   bool include_archived = 5;
+  string application_id = 6;
 }
 
 message ListRoleBindingsResponse {
@@ -162,6 +215,7 @@ message ListPolicyRulesRequest {
   string query = 3;
   string tenant_id = 4;
   bool include_archived = 5;
+  string application_id = 6;
 }
 
 message ListPolicyRulesResponse {
@@ -176,6 +230,9 @@ message CreatePolicyRuleRequest {
   string subject = 4;
   asterloom.authorization.v1.AuthorizationScope scope = 5;
   string permission = 6;
+  string resource_type = 7;
+  string resource_id = 8;
+  asterloom.targeting.v1.TargetingRule condition = 9;
 }
 
 message UpdatePolicyRuleRequest {
@@ -187,6 +244,9 @@ message UpdatePolicyRuleRequest {
   asterloom.authorization.v1.AuthorizationScope scope = 6;
   string permission = 7;
   int64 expected_version = 8;
+  string resource_type = 9;
+  string resource_id = 10;
+  asterloom.targeting.v1.TargetingRule condition = 11;
 }
 
 message ArchivePolicyRuleRequest {

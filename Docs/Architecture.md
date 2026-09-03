@@ -405,8 +405,9 @@ Passport User 是全局账号，同一用户跨业务保持一个稳定 `sub`。
 重复全局账号。原生登录由 Public Client 直接走 Passport PKCE，不经过业务后端 Client Secret。
 
 成员关系移除后 Refresh 立即失败；只执行本地 JWT 验证的外部业务 API 最长存在一个 Access Token 生命周期的失效
-窗口。高风险端点通过 Resource Server SDK 的远程 Permission Policy 每次调用 Asterloom，此时 Membership 和
-Role/Policy 变化立即生效。其他应用不受影响。
+窗口。高风险端点通过 Resource Server SDK 的远程 Permission Policy 每次调用 Asterloom；需要业务属性时，
+业务后端使用 Application 绑定的 Confidential Client，代表 User Token 的 `sub` 提交从自身数据库读取的可信属性。
+此时 Membership、Permission、Role、ACL/ABAC Policy 变化立即生效。其他应用不受影响。
 
 ### 9.2 Web 管理后台会话
 
@@ -442,11 +443,16 @@ Next.js BFF 只负责会话、转发、CSRF 防护和少量前端聚合，不承
 - `release.release.promote`
 - `storage.object.delete`
 
-Casbin 请求至少包含：
+完整授权同时支持 RBAC、ACL 与 ABAC。Casbin 请求至少包含：
 
 ```text
 subject, tenant, application/environment scope, resource, action
 ```
+
+平台 API Permission 由代码维护；业务 Permission 由各 Application 动态维护并按 Tenant/Application 隔离。自定义
+Role 只能引用同一 Application 的活动业务 Permission。ACL 由 Policy 的精确 `resourceType/resourceId` 选择器表示，
+ABAC 使用 `subject.*`、`resource.*`、`context.*`、`scope.*` 强类型条件。自定义属性只接受绑定应用的
+Confidential Client 提交，Public Client 不能自报授权事实。
 
 平台预置角色建议为 Super Administrator、Tenant Administrator、Operator、Developer 和 Viewer。角色只是权限集合，最终判定仍由权限策略完成。
 
@@ -671,10 +677,12 @@ bucket = value mod 100000
 - Permission Catalog。
 - Role。
 - Role Binding。
-- Policy Rule。
+- Policy Rule（Actor/Role/Any、Allow/Deny、ACL 资源选择器、ABAC 条件）。
 - Policy Revision。
 
-权限目录由代码和模块清单声明，角色与绑定由管理端配置。管理页面必须提供授权模拟器，输入 Actor、作用域、资源和 Action，显示最终结果及匹配策略，但不得暴露敏感内部信息。
+System Permission 由代码和模块清单声明，Application Permission、角色、绑定与策略由管理端配置。管理页面必须完整
+管理 Application Permission，并提供授权模拟器，输入 Actor、作用域、资源、Action 和可信测试属性，显示最终结果及
+匹配策略，但不得暴露敏感内部信息。
 
 ### 12.4 Feature
 
@@ -821,7 +829,7 @@ Sonner 用于异步操作反馈；cmdk 用于全局命令面板、资源跳转�
 | --- | --- | --- |
 | Platform | `/tenants`、`/applications`、`/environments` | 增删改查、切换上下文、环境保护、成员关系 |
 | Identity | `/identity/users` | 全局账号创建/邀请/禁用/密码、应用成员关系、Client 应用绑定与开关、Client/Scope、凭据轮换、会话撤销 |
-| Authorization | `/authorization/roles`、`/authorization/policies`、`/authorization/simulator` | 角色、绑定、策略、版本、授权模拟 |
+| Authorization | `/authorization/roles` | Application Permission、RBAC Role/Binding、ACL/ABAC Policy、版本、授权模拟 |
 | Feature | `/features`、`/features/[key]` | Flag/Variant、规则、草稿、校验、发布、回滚、评估 |
 | Targeting | `/targeting/segments`、`/targeting/simulator` | Segment、规则、属性、分桶预览、匹配模拟 |
 | Config | `/config`、`/config/[key]` | 类型/Schema、草稿、Diff、发布、历史、回滚、有效值预览 |

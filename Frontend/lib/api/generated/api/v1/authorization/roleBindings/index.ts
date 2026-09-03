@@ -32,6 +32,7 @@ export interface RoleBindingsRequestBuilder extends BaseRequestBuilder<RoleBindi
 }
 export interface RoleBindingsRequestBuilderGetQueryParameters {
     actorId?: string;
+    applicationId?: string;
     includeArchived?: boolean;
     pageSize?: number;
     pageToken?: string;
@@ -40,7 +41,7 @@ export interface RoleBindingsRequestBuilderGetQueryParameters {
 /**
  * Uri template for the request builder.
  */
-export const RoleBindingsRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/role-bindings{?actorId*,includeArchived*,pageSize*,pageToken*,tenantId*}";
+export const RoleBindingsRequestBuilderUriTemplate = "{+baseurl}/api/v1/authorization/role-bindings{?actorId*,applicationId*,includeArchived*,pageSize*,pageToken*,tenantId*}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */

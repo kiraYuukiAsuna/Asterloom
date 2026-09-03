@@ -161,6 +161,38 @@ apis:
     uiAction: list-permissions
     e2eTest: tests/e2e/authorization.spec.ts
   - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: CreatePermission
+    category: admin
+    http: POST /api/v1/authorization/permissions
+    permission: authorization.permission.create
+    uiRoute: /authorization/roles
+    uiAction: create-permission
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: UpdatePermission
+    category: admin
+    http: PATCH /api/v1/authorization/permissions/{permission_id}
+    permission: authorization.permission.update
+    uiRoute: /authorization/roles
+    uiAction: update-permission
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: ArchivePermission
+    category: admin
+    http: DELETE /api/v1/authorization/permissions/{permission_id}
+    permission: authorization.permission.archive
+    uiRoute: /authorization/roles
+    uiAction: archive-permission
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
+    rpc: RestorePermission
+    category: admin
+    http: POST /api/v1/authorization/permissions/{permission_id}:restore
+    permission: authorization.permission.restore
+    uiRoute: /authorization/roles
+    uiAction: restore-permission
+    e2eTest: tests/e2e/authorization.spec.ts
+  - service: asterloom.authorization.admin.v1.AuthorizationAdminService
     rpc: ListRoles
     category: admin
     http: GET /api/v1/authorization/roles

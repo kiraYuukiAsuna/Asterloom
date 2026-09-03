@@ -1,5 +1,8 @@
 using Asterloom.Protocol.Authorization.V1;
+using Asterloom.Targeting;
 using Grpc.Core;
+using ProtocolAttribute = Asterloom.Protocol.Targeting.V1.TargetingAttribute;
+using ProtocolValue = Asterloom.Protocol.Targeting.V1.TargetingValue;
 
 namespace Asterloom.Sdk.Authorization;
 
@@ -38,6 +41,25 @@ public sealed class AsterloomAuthorizationClient
         AsterloomAuthorizationScope? scope = null,
         CancellationToken cancellationToken = default)
     {
+        return await CheckAccessAsync(
+            actorId: null,
+            permission,
+            scope,
+            resourceType: null,
+            resourceId: null,
+            attributes: null,
+            cancellationToken);
+    }
+
+    public async Task<AsterloomAuthorizationDecision> CheckAccessAsync(
+        string? actorId,
+        string permission,
+        AsterloomAuthorizationScope? scope = null,
+        string? resourceType = null,
+        string? resourceId = null,
+        IReadOnlyDictionary<string, TargetingValue>? attributes = null,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(permission);
         if (permission.Length > 200)
         {
@@ -49,19 +71,62 @@ public sealed class AsterloomAuthorizationClient
 
         var normalizedScope = scope ?? AsterloomAuthorizationScope.Global;
         ValidateScope(normalizedScope);
-        var response = await _client.CheckPermissionAsync(
-            new AuthorizationDecisionInput
+        var normalizedResourceType = resourceType?.Trim() ?? string.Empty;
+        var normalizedResourceId = resourceId?.Trim() ?? string.Empty;
+        if (normalizedResourceType.Length > 100)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(resourceType),
+                "Resource type cannot exceed 100 characters.");
+        }
+
+        if (normalizedResourceId.Length > 500)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(resourceId),
+                "Resource ID cannot exceed 500 characters.");
+        }
+
+        if (normalizedResourceId.Length > 0 && normalizedResourceType.Length == 0)
+        {
+            throw new ArgumentException(
+                "Resource type is required when resource ID is set.",
+                nameof(resourceType));
+        }
+
+        if ((attributes?.Count ?? 0) > 64)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(attributes),
+                "At most 64 authorization attributes are accepted.");
+        }
+
+        var request = new AuthorizationDecisionInput
+        {
+            ActorId = actorId?.Trim() ?? string.Empty,
+            Permission = permission.Trim(),
+            ResourceType = normalizedResourceType,
+            ResourceId = normalizedResourceId,
+            Scope = new AuthorizationScope
             {
-                Permission = permission.Trim(),
-                Scope = new AuthorizationScope
-                {
-                    TenantId = normalizedScope.TenantId?.ToString("D") ?? string.Empty,
-                    ApplicationId = normalizedScope.ApplicationId?.ToString("D")
-                        ?? string.Empty,
-                    EnvironmentId = normalizedScope.EnvironmentId?.ToString("D")
-                        ?? string.Empty,
-                },
+                TenantId = normalizedScope.TenantId?.ToString("D") ?? string.Empty,
+                ApplicationId = normalizedScope.ApplicationId?.ToString("D")
+                    ?? string.Empty,
+                EnvironmentId = normalizedScope.EnvironmentId?.ToString("D")
+                    ?? string.Empty,
             },
+        };
+        if (attributes is not null)
+        {
+            request.Attributes.AddRange(attributes.Select(attribute => new ProtocolAttribute
+            {
+                Key = attribute.Key,
+                Value = ToProtocol(attribute.Value),
+            }));
+        }
+
+        var response = await _client.CheckPermissionAsync(
+            request,
             cancellationToken: cancellationToken);
 
         return new AsterloomAuthorizationDecision(
@@ -70,6 +135,14 @@ public sealed class AsterloomAuthorizationClient
             response.MatchedPolicyIds.ToArray(),
             response.MatchedRoleKeys.ToArray());
     }
+
+    private static ProtocolValue ToProtocol(TargetingValue value) => value.Kind switch
+    {
+        TargetingValueKind.Text => new ProtocolValue { Text = value.StringValue! },
+        TargetingValueKind.Truth => new ProtocolValue { Truth = value.BooleanValue!.Value },
+        TargetingValueKind.Numeric => new ProtocolValue { Numeric = value.NumberValue!.Value },
+        _ => throw new ArgumentException("Unsupported authorization attribute value.", nameof(value)),
+    };
 
     private static void ValidateScope(AsterloomAuthorizationScope scope)
     {

@@ -111,6 +111,11 @@ app.MapGet("/platform", Handle)
 
 该 Handler 会把当前请求的同一份用户 Access Token 传给 Asterloom `CheckPermission`。Asterloom 从 Token 读取 `sub`，锁定 Tenant/Application，实时检查 Membership 和 Role/Policy；业务后端仍不保存 Token。权限服务不可达或拒绝时按 Fail Closed 处理。
 
+该便捷 Policy 适合 RBAC 和 ACL 自检，但 User Token 不能提交自定义 ABAC 属性。需要基于订单金额、部门、所有者或风控
+结果授权时，业务 API 先正常验证用户 Access Token，再从自身数据库读取权威属性，最后用业务 Confidential Client 的
+Service Token 调用 `AsterloomAuthorizationClient.CheckAccessAsync(actorId: userSub, ...)`。Asterloom 会确认目标 `sub`
+仍是该 Application 的活动成员。完整调用链和代码见 [Authorization：RBAC、ACL 与 ABAC](Authorization.zh-CN.md)。
+
 ## 5. 可信后端注册账号
 
 注册不是 Public Client 的能力。业务注册表单提交到业务后端，后端用自己的 Confidential Client 获取 Service Token，再调用账号 API：
@@ -168,11 +173,13 @@ Password Grant 已禁用。无论原生客户端还是浏览器 BFF，都不得�
 运行 `Asterloom.ReferenceApp.Client login` 后，示例会完成 PKCE 登录，并用所得 Access Token 调用 `/api/reference/me`。相关实现：
 
 - [ReferenceProtectedEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceProtectedEndpoints.cs)
+- [ReferenceBusinessAuthorizationEndpoints.cs](../../Backend/Samples/Asterloom.ReferenceApp.Backend/ReferenceBusinessAuthorizationEndpoints.cs)
 - [Reference Resource Server 配置](../../Backend/Samples/Asterloom.ReferenceApp.Backend/Program.cs)
 - [Reference Public Client](../../Backend/Samples/Asterloom.ReferenceApp.Client/Program.cs)
 - [ASP.NET Core Resource Server SDK](../../Backend/Asterloom.Sdk.Identity.AspNetCore/AsterloomResourceServerServiceCollectionExtensions.cs)
 
-集成测试还会验证 Access Token 是公开可验证的三段式 `at+jwt`、JWKS 包含对应签名密钥、资源服务器接受 Access Token、拒绝 ID Token，并通过同一 Token 完成远程 Permission 判断。
+集成测试还会验证 Access Token 是公开可验证的三段式 `at+jwt`、JWKS 包含对应签名密钥、资源服务器接受 Access Token、
+拒绝 ID Token，并覆盖 Application Permission、RBAC、ACL、ABAC、归档失效与后端代表用户检查。
 
 ## 9. 相关契约
 

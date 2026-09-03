@@ -416,9 +416,21 @@ export interface AuthorizationDecisionInput extends Parsable {
      */
     actorId?: string | null;
     /**
+     * The attributes property
+     */
+    attributes?: TargetingAttribute[] | null;
+    /**
      * The permission property
      */
     permission?: string | null;
+    /**
+     * The resourceId property
+     */
+    resourceId?: string | null;
+    /**
+     * The resourceType property
+     */
+    resourceType?: string | null;
     /**
      * The scope property
      */
@@ -1645,6 +1657,15 @@ export function createCreateFlagRequestFromDiscriminatorValue(parseNode: ParseNo
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreatePermissionRequest}
+ */
+// @ts-ignore
+export function createCreatePermissionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreatePermissionRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CreatePolicyRuleRequest}
  */
 // @ts-ignore
@@ -2537,6 +2558,24 @@ export function createPauseReleaseRequestFromDiscriminatorValue(parseNode: Parse
 export function createPermissionDefinitionFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoPermissionDefinition;
 }
+export interface CreatePermissionRequest extends Parsable {
+    /**
+     * The description property
+     */
+    description?: string | null;
+    /**
+     * The displayName property
+     */
+    displayName?: string | null;
+    /**
+     * The key property
+     */
+    key?: string | null;
+    /**
+     * The scope property
+     */
+    scope?: AuthorizationScope | null;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -2566,6 +2605,10 @@ export function createPolicyRuleFromDiscriminatorValue(parseNode: ParseNode | un
 }
 export interface CreatePolicyRuleRequest extends Parsable {
     /**
+     * The condition property
+     */
+    condition?: TargetingRule | null;
+    /**
      * The effect property
      */
     effect?: PolicyEffect | null;
@@ -2577,6 +2620,14 @@ export interface CreatePolicyRuleRequest extends Parsable {
      * The permission property
      */
     permission?: string | null;
+    /**
+     * The resourceId property
+     */
+    resourceId?: string | null;
+    /**
+     * The resourceType property
+     */
+    resourceType?: string | null;
     /**
      * The scope property
      */
@@ -2877,6 +2928,15 @@ export function createRestoreFlagRequestFromDiscriminatorValue(parseNode: ParseN
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RestorePermissionRequest}
+ */
+// @ts-ignore
+export function createRestorePermissionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRestorePermissionRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RestorePolicyRuleRequest}
  */
 // @ts-ignore
@@ -2999,6 +3059,10 @@ export interface CreateRoleRequest extends Parsable {
      * The permissions property
      */
     permissions?: string[] | null;
+    /**
+     * The scope property
+     */
+    scope?: AuthorizationScope | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3596,6 +3660,15 @@ export function createUpdateObjectMetadataRequestFromDiscriminatorValue(parseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdatePermissionRequest}
+ */
+// @ts-ignore
+export function createUpdatePermissionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoUpdatePermissionRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdatePolicyRuleRequest}
  */
 // @ts-ignore
@@ -4096,7 +4169,10 @@ export function deserializeIntoAuthorizationDecision(authorizationDecision: Part
 export function deserializeIntoAuthorizationDecisionInput(authorizationDecisionInput: Partial<AuthorizationDecisionInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "actorId": n => { authorizationDecisionInput.actorId = n.getStringValue(); },
+        "attributes": n => { authorizationDecisionInput.attributes = n.getCollectionOfObjectValues<TargetingAttribute>(createTargetingAttributeFromDiscriminatorValue); },
         "permission": n => { authorizationDecisionInput.permission = n.getStringValue(); },
+        "resourceId": n => { authorizationDecisionInput.resourceId = n.getStringValue(); },
+        "resourceType": n => { authorizationDecisionInput.resourceType = n.getStringValue(); },
         "scope": n => { authorizationDecisionInput.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
         "trustedRoles": n => { authorizationDecisionInput.trustedRoles = n.getCollectionOfPrimitiveValues<string>("string"); },
     }
@@ -4643,15 +4719,32 @@ export function deserializeIntoCreateFlagRequest(createFlagRequest: Partial<Crea
 }
 /**
  * The deserialization information for the current model
+ * @param CreatePermissionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreatePermissionRequest(createPermissionRequest: Partial<CreatePermissionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "description": n => { createPermissionRequest.description = n.getStringValue(); },
+        "displayName": n => { createPermissionRequest.displayName = n.getStringValue(); },
+        "key": n => { createPermissionRequest.key = n.getStringValue(); },
+        "scope": n => { createPermissionRequest.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CreatePolicyRuleRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
 export function deserializeIntoCreatePolicyRuleRequest(createPolicyRuleRequest: Partial<CreatePolicyRuleRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "condition": n => { createPolicyRuleRequest.condition = n.getObjectValue<TargetingRule>(createTargetingRuleFromDiscriminatorValue); },
         "effect": n => { createPolicyRuleRequest.effect = n.getEnumValue<PolicyEffect>(PolicyEffectObject); },
         "name": n => { createPolicyRuleRequest.name = n.getStringValue(); },
         "permission": n => { createPolicyRuleRequest.permission = n.getStringValue(); },
+        "resourceId": n => { createPolicyRuleRequest.resourceId = n.getStringValue(); },
+        "resourceType": n => { createPolicyRuleRequest.resourceType = n.getStringValue(); },
         "scope": n => { createPolicyRuleRequest.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
         "subject": n => { createPolicyRuleRequest.subject = n.getStringValue(); },
         "subjectType": n => { createPolicyRuleRequest.subjectType = n.getEnumValue<PolicySubjectType>(PolicySubjectTypeObject); },
@@ -4691,6 +4784,7 @@ export function deserializeIntoCreateRoleRequest(createRoleRequest: Partial<Crea
         "displayName": n => { createRoleRequest.displayName = n.getStringValue(); },
         "key": n => { createRoleRequest.key = n.getStringValue(); },
         "permissions": n => { createRoleRequest.permissions = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "scope": n => { createRoleRequest.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
     }
 }
 /**
@@ -5913,10 +6007,18 @@ export function deserializeIntoPauseReleaseRequest(pauseReleaseRequest: Partial<
 // @ts-ignore
 export function deserializeIntoPermissionDefinition(permissionDefinition: Partial<PermissionDefinition> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "archivedAt": n => { permissionDefinition.archivedAt = n.getStringValue(); },
+        "createdAt": n => { permissionDefinition.createdAt = n.getStringValue(); },
         "description": n => { permissionDefinition.description = n.getStringValue(); },
         "displayName": n => { permissionDefinition.displayName = n.getStringValue(); },
+        "id": n => { permissionDefinition.id = n.getStringValue(); },
+        "isSystem": n => { permissionDefinition.isSystem = n.getBooleanValue(); },
         "key": n => { permissionDefinition.key = n.getStringValue(); },
         "module": n => { permissionDefinition.module = n.getStringValue(); },
+        "scope": n => { permissionDefinition.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
+        "status": n => { permissionDefinition.status = n.getEnumValue<AuthorizationResourceStatus>(AuthorizationResourceStatusObject); },
+        "updatedAt": n => { permissionDefinition.updatedAt = n.getStringValue(); },
+        "version": n => { permissionDefinition.version = n.getNumberValue(); },
     }
 }
 /**
@@ -5960,11 +6062,14 @@ export function deserializeIntoPolicyRevision(policyRevision: Partial<PolicyRevi
 export function deserializeIntoPolicyRule(policyRule: Partial<PolicyRule> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "archivedAt": n => { policyRule.archivedAt = n.getStringValue(); },
+        "condition": n => { policyRule.condition = n.getObjectValue<TargetingRule>(createTargetingRuleFromDiscriminatorValue); },
         "createdAt": n => { policyRule.createdAt = n.getStringValue(); },
         "effect": n => { policyRule.effect = n.getEnumValue<PolicyEffect>(PolicyEffectObject); },
         "id": n => { policyRule.id = n.getStringValue(); },
         "name": n => { policyRule.name = n.getStringValue(); },
         "permission": n => { policyRule.permission = n.getStringValue(); },
+        "resourceId": n => { policyRule.resourceId = n.getStringValue(); },
+        "resourceType": n => { policyRule.resourceType = n.getStringValue(); },
         "scope": n => { policyRule.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
         "status": n => { policyRule.status = n.getEnumValue<AuthorizationResourceStatus>(AuthorizationResourceStatusObject); },
         "subject": n => { policyRule.subject = n.getStringValue(); },
@@ -6402,6 +6507,18 @@ export function deserializeIntoRestoreFlagRequest(restoreFlagRequest: Partial<Re
 }
 /**
  * The deserialization information for the current model
+ * @param RestorePermissionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRestorePermissionRequest(restorePermissionRequest: Partial<RestorePermissionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { restorePermissionRequest.expectedVersion = n.getNumberValue(); },
+        "permissionId": n => { restorePermissionRequest.permissionId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param RestorePolicyRuleRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6546,6 +6663,7 @@ export function deserializeIntoRole(role: Partial<Role> | undefined = {}) : Reco
         "isSystem": n => { role.isSystem = n.getBooleanValue(); },
         "key": n => { role.key = n.getStringValue(); },
         "permissions": n => { role.permissions = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "scope": n => { role.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
         "status": n => { role.status = n.getEnumValue<AuthorizationResourceStatus>(AuthorizationResourceStatusObject); },
         "updatedAt": n => { role.updatedAt = n.getStringValue(); },
         "version": n => { role.version = n.getNumberValue(); },
@@ -7386,17 +7504,34 @@ export function deserializeIntoUpdateObjectMetadataRequest_customMetadata(update
 }
 /**
  * The deserialization information for the current model
+ * @param UpdatePermissionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdatePermissionRequest(updatePermissionRequest: Partial<UpdatePermissionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "description": n => { updatePermissionRequest.description = n.getStringValue(); },
+        "displayName": n => { updatePermissionRequest.displayName = n.getStringValue(); },
+        "expectedVersion": n => { updatePermissionRequest.expectedVersion = n.getNumberValue(); },
+        "permissionId": n => { updatePermissionRequest.permissionId = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param UpdatePolicyRuleRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
 export function deserializeIntoUpdatePolicyRuleRequest(updatePolicyRuleRequest: Partial<UpdatePolicyRuleRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "condition": n => { updatePolicyRuleRequest.condition = n.getObjectValue<TargetingRule>(createTargetingRuleFromDiscriminatorValue); },
         "effect": n => { updatePolicyRuleRequest.effect = n.getEnumValue<PolicyEffect>(PolicyEffectObject); },
         "expectedVersion": n => { updatePolicyRuleRequest.expectedVersion = n.getNumberValue(); },
         "name": n => { updatePolicyRuleRequest.name = n.getStringValue(); },
         "permission": n => { updatePolicyRuleRequest.permission = n.getStringValue(); },
         "policyRuleId": n => { updatePolicyRuleRequest.policyRuleId = n.getStringValue(); },
+        "resourceId": n => { updatePolicyRuleRequest.resourceId = n.getStringValue(); },
+        "resourceType": n => { updatePolicyRuleRequest.resourceType = n.getStringValue(); },
         "scope": n => { updatePolicyRuleRequest.scope = n.getObjectValue<AuthorizationScope>(createAuthorizationScopeFromDiscriminatorValue); },
         "subject": n => { updatePolicyRuleRequest.subject = n.getStringValue(); },
         "subjectType": n => { updatePolicyRuleRequest.subjectType = n.getEnumValue<PolicySubjectType>(PolicySubjectTypeObject); },
@@ -9096,6 +9231,14 @@ export interface PauseReleaseRequest extends Parsable {
 }
 export interface PermissionDefinition extends Parsable {
     /**
+     * The archivedAt property
+     */
+    archivedAt?: string | null;
+    /**
+     * The createdAt property
+     */
+    createdAt?: string | null;
+    /**
      * The description property
      */
     description?: string | null;
@@ -9104,6 +9247,14 @@ export interface PermissionDefinition extends Parsable {
      */
     displayName?: string | null;
     /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The isSystem property
+     */
+    isSystem?: boolean | null;
+    /**
      * The key property
      */
     key?: string | null;
@@ -9111,6 +9262,22 @@ export interface PermissionDefinition extends Parsable {
      * The module property
      */
     module?: string | null;
+    /**
+     * The scope property
+     */
+    scope?: AuthorizationScope | null;
+    /**
+     * The status property
+     */
+    status?: AuthorizationResourceStatus | null;
+    /**
+     * The updatedAt property
+     */
+    updatedAt?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
 }
 export interface PlatformCapability extends Parsable {
     /**
@@ -9172,6 +9339,10 @@ export interface PolicyRule extends Parsable {
      */
     archivedAt?: string | null;
     /**
+     * The condition property
+     */
+    condition?: TargetingRule | null;
+    /**
      * The createdAt property
      */
     createdAt?: string | null;
@@ -9191,6 +9362,14 @@ export interface PolicyRule extends Parsable {
      * The permission property
      */
     permission?: string | null;
+    /**
+     * The resourceId property
+     */
+    resourceId?: string | null;
+    /**
+     * The resourceType property
+     */
+    resourceType?: string | null;
     /**
      * The scope property
      */
@@ -9943,6 +10122,16 @@ export interface RestoreFlagRequest extends Parsable {
      */
     tenantId?: string | null;
 }
+export interface RestorePermissionRequest extends Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The permissionId property
+     */
+    permissionId?: string | null;
+}
 export interface RestorePolicyRuleRequest extends Parsable {
     /**
      * The expectedVersion property
@@ -10116,6 +10305,10 @@ export interface Role extends Parsable {
      * The permissions property
      */
     permissions?: string[] | null;
+    /**
+     * The scope property
+     */
+    scope?: AuthorizationScope | null;
     /**
      * The status property
      */
@@ -10643,7 +10836,10 @@ export function serializeAuthorizationDecision(writer: SerializationWriter, auth
 export function serializeAuthorizationDecisionInput(writer: SerializationWriter, authorizationDecisionInput: Partial<AuthorizationDecisionInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!authorizationDecisionInput || isSerializingDerivedType) { return; }
     writer.writeStringValue("actorId", authorizationDecisionInput.actorId);
+    writer.writeCollectionOfObjectValues<TargetingAttribute>("attributes", authorizationDecisionInput.attributes, serializeTargetingAttribute);
     writer.writeStringValue("permission", authorizationDecisionInput.permission);
+    writer.writeStringValue("resourceId", authorizationDecisionInput.resourceId);
+    writer.writeStringValue("resourceType", authorizationDecisionInput.resourceType);
     writer.writeObjectValue<AuthorizationScope>("scope", authorizationDecisionInput.scope, serializeAuthorizationScope);
     writer.writeCollectionOfPrimitiveValues<string>("trustedRoles", authorizationDecisionInput.trustedRoles);
 }
@@ -11191,6 +11387,20 @@ export function serializeCreateFlagRequest(writer: SerializationWriter, createFl
 }
 /**
  * Serializes information the current object
+ * @param CreatePermissionRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreatePermissionRequest(writer: SerializationWriter, createPermissionRequest: Partial<CreatePermissionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createPermissionRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("description", createPermissionRequest.description);
+    writer.writeStringValue("displayName", createPermissionRequest.displayName);
+    writer.writeStringValue("key", createPermissionRequest.key);
+    writer.writeObjectValue<AuthorizationScope>("scope", createPermissionRequest.scope, serializeAuthorizationScope);
+}
+/**
+ * Serializes information the current object
  * @param CreatePolicyRuleRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11198,9 +11408,12 @@ export function serializeCreateFlagRequest(writer: SerializationWriter, createFl
 // @ts-ignore
 export function serializeCreatePolicyRuleRequest(writer: SerializationWriter, createPolicyRuleRequest: Partial<CreatePolicyRuleRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createPolicyRuleRequest || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<TargetingRule>("condition", createPolicyRuleRequest.condition, serializeTargetingRule);
     writer.writeEnumValue<PolicyEffect>("effect", createPolicyRuleRequest.effect);
     writer.writeStringValue("name", createPolicyRuleRequest.name);
     writer.writeStringValue("permission", createPolicyRuleRequest.permission);
+    writer.writeStringValue("resourceId", createPolicyRuleRequest.resourceId);
+    writer.writeStringValue("resourceType", createPolicyRuleRequest.resourceType);
     writer.writeObjectValue<AuthorizationScope>("scope", createPolicyRuleRequest.scope, serializeAuthorizationScope);
     writer.writeStringValue("subject", createPolicyRuleRequest.subject);
     writer.writeEnumValue<PolicySubjectType>("subjectType", createPolicyRuleRequest.subjectType);
@@ -11240,6 +11453,7 @@ export function serializeCreateRoleRequest(writer: SerializationWriter, createRo
     writer.writeStringValue("displayName", createRoleRequest.displayName);
     writer.writeStringValue("key", createRoleRequest.key);
     writer.writeCollectionOfPrimitiveValues<string>("permissions", createRoleRequest.permissions);
+    writer.writeObjectValue<AuthorizationScope>("scope", createRoleRequest.scope, serializeAuthorizationScope);
 }
 /**
  * Serializes information the current object
@@ -12464,10 +12678,18 @@ export function serializePauseReleaseRequest(writer: SerializationWriter, pauseR
 // @ts-ignore
 export function serializePermissionDefinition(writer: SerializationWriter, permissionDefinition: Partial<PermissionDefinition> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!permissionDefinition || isSerializingDerivedType) { return; }
+    writer.writeStringValue("archivedAt", permissionDefinition.archivedAt);
+    writer.writeStringValue("createdAt", permissionDefinition.createdAt);
     writer.writeStringValue("description", permissionDefinition.description);
     writer.writeStringValue("displayName", permissionDefinition.displayName);
+    writer.writeStringValue("id", permissionDefinition.id);
+    writer.writeBooleanValue("isSystem", permissionDefinition.isSystem);
     writer.writeStringValue("key", permissionDefinition.key);
     writer.writeStringValue("module", permissionDefinition.module);
+    writer.writeObjectValue<AuthorizationScope>("scope", permissionDefinition.scope, serializeAuthorizationScope);
+    writer.writeEnumValue<AuthorizationResourceStatus>("status", permissionDefinition.status);
+    writer.writeStringValue("updatedAt", permissionDefinition.updatedAt);
+    writer.writeNumberValue("version", permissionDefinition.version);
 }
 /**
  * Serializes information the current object
@@ -12511,11 +12733,14 @@ export function serializePolicyRevision(writer: SerializationWriter, policyRevis
 export function serializePolicyRule(writer: SerializationWriter, policyRule: Partial<PolicyRule> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!policyRule || isSerializingDerivedType) { return; }
     writer.writeStringValue("archivedAt", policyRule.archivedAt);
+    writer.writeObjectValue<TargetingRule>("condition", policyRule.condition, serializeTargetingRule);
     writer.writeStringValue("createdAt", policyRule.createdAt);
     writer.writeEnumValue<PolicyEffect>("effect", policyRule.effect);
     writer.writeStringValue("id", policyRule.id);
     writer.writeStringValue("name", policyRule.name);
     writer.writeStringValue("permission", policyRule.permission);
+    writer.writeStringValue("resourceId", policyRule.resourceId);
+    writer.writeStringValue("resourceType", policyRule.resourceType);
     writer.writeObjectValue<AuthorizationScope>("scope", policyRule.scope, serializeAuthorizationScope);
     writer.writeEnumValue<AuthorizationResourceStatus>("status", policyRule.status);
     writer.writeStringValue("subject", policyRule.subject);
@@ -12953,6 +13178,18 @@ export function serializeRestoreFlagRequest(writer: SerializationWriter, restore
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RestorePermissionRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRestorePermissionRequest(writer: SerializationWriter, restorePermissionRequest: Partial<RestorePermissionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!restorePermissionRequest || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", restorePermissionRequest.expectedVersion);
+    writer.writeStringValue("permissionId", restorePermissionRequest.permissionId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RestorePolicyRuleRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13097,6 +13334,7 @@ export function serializeRole(writer: SerializationWriter, role: Partial<Role> |
     writer.writeBooleanValue("isSystem", role.isSystem);
     writer.writeStringValue("key", role.key);
     writer.writeCollectionOfPrimitiveValues<string>("permissions", role.permissions);
+    writer.writeObjectValue<AuthorizationScope>("scope", role.scope, serializeAuthorizationScope);
     writer.writeEnumValue<AuthorizationResourceStatus>("status", role.status);
     writer.writeStringValue("updatedAt", role.updatedAt);
     writer.writeNumberValue("version", role.version);
@@ -13942,17 +14180,34 @@ export function serializeUpdateObjectMetadataRequest_customMetadata(writer: Seri
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdatePermissionRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdatePermissionRequest(writer: SerializationWriter, updatePermissionRequest: Partial<UpdatePermissionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!updatePermissionRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("description", updatePermissionRequest.description);
+    writer.writeStringValue("displayName", updatePermissionRequest.displayName);
+    writer.writeNumberValue("expectedVersion", updatePermissionRequest.expectedVersion);
+    writer.writeStringValue("permissionId", updatePermissionRequest.permissionId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdatePolicyRuleRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
 export function serializeUpdatePolicyRuleRequest(writer: SerializationWriter, updatePolicyRuleRequest: Partial<UpdatePolicyRuleRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updatePolicyRuleRequest || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<TargetingRule>("condition", updatePolicyRuleRequest.condition, serializeTargetingRule);
     writer.writeEnumValue<PolicyEffect>("effect", updatePolicyRuleRequest.effect);
     writer.writeNumberValue("expectedVersion", updatePolicyRuleRequest.expectedVersion);
     writer.writeStringValue("name", updatePolicyRuleRequest.name);
     writer.writeStringValue("permission", updatePolicyRuleRequest.permission);
     writer.writeStringValue("policyRuleId", updatePolicyRuleRequest.policyRuleId);
+    writer.writeStringValue("resourceId", updatePolicyRuleRequest.resourceId);
+    writer.writeStringValue("resourceType", updatePolicyRuleRequest.resourceType);
     writer.writeObjectValue<AuthorizationScope>("scope", updatePolicyRuleRequest.scope, serializeAuthorizationScope);
     writer.writeStringValue("subject", updatePolicyRuleRequest.subject);
     writer.writeEnumValue<PolicySubjectType>("subjectType", updatePolicyRuleRequest.subjectType);
@@ -15382,7 +15637,29 @@ export interface UpdateObjectMetadataRequest extends Parsable {
 }
 export interface UpdateObjectMetadataRequest_customMetadata extends AdditionalDataHolder, Parsable {
 }
+export interface UpdatePermissionRequest extends Parsable {
+    /**
+     * The description property
+     */
+    description?: string | null;
+    /**
+     * The displayName property
+     */
+    displayName?: string | null;
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The permissionId property
+     */
+    permissionId?: string | null;
+}
 export interface UpdatePolicyRuleRequest extends Parsable {
+    /**
+     * The condition property
+     */
+    condition?: TargetingRule | null;
     /**
      * The effect property
      */
@@ -15403,6 +15680,14 @@ export interface UpdatePolicyRuleRequest extends Parsable {
      * The policyRuleId property
      */
     policyRuleId?: string | null;
+    /**
+     * The resourceId property
+     */
+    resourceId?: string | null;
+    /**
+     * The resourceType property
+     */
+    resourceType?: string | null;
     /**
      * The scope property
      */

@@ -2347,6 +2347,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2356,6 +2377,183 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListPermissionsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AuthorizationAdminService"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDefinition"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/authorization/permissions/{permissionId}": {
+      "patch": {
+        "tags": [
+          "AuthorizationAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "permissionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDefinition"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AuthorizationAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "permissionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDefinition"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/authorization/permissions/{permissionId}:restore": {
+      "post": {
+        "tags": [
+          "AuthorizationAdminService"
+        ],
+        "parameters": [
+          {
+            "name": "permissionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestorePermissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDefinition"
                 }
               }
             }
@@ -2406,6 +2604,20 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2651,6 +2863,13 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2810,6 +3029,13 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -12760,6 +12986,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TargetingAttribute"
+            }
           }
         },
         "additionalProperties": false
@@ -13688,6 +13926,24 @@
         },
         "additionalProperties": false
       },
+      "CreatePermissionRequest": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/AuthorizationScope"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreatePolicyRuleRequest": {
         "type": "object",
         "properties": {
@@ -13708,6 +13964,15 @@
           },
           "permission": {
             "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/TargetingRule"
           }
         },
         "additionalProperties": false
@@ -13775,6 +14040,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthorizationScope"
           }
         },
         "additionalProperties": false
@@ -15832,6 +16100,31 @@
           },
           "module": {
             "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthorizationScope"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AuthorizationResourceStatus"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -15939,6 +16232,15 @@
           },
           "archivedAt": {
             "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/TargetingRule"
           }
         },
         "additionalProperties": false
@@ -16693,6 +16995,19 @@
         },
         "additionalProperties": false
       },
+      "RestorePermissionRequest": {
+        "type": "object",
+        "properties": {
+          "permissionId": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
       "RestorePolicyRuleRequest": {
         "type": "object",
         "properties": {
@@ -16891,6 +17206,9 @@
           },
           "archivedAt": {
             "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthorizationScope"
           }
         },
         "additionalProperties": false
@@ -18421,6 +18739,25 @@
         },
         "additionalProperties": false
       },
+      "UpdatePermissionRequest": {
+        "type": "object",
+        "properties": {
+          "permissionId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdatePolicyRuleRequest": {
         "type": "object",
         "properties": {
@@ -18448,6 +18785,15 @@
           "expectedVersion": {
             "type": "integer",
             "format": "int64"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/TargetingRule"
           }
         },
         "additionalProperties": false

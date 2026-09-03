@@ -1,5 +1,6 @@
 using Asterloom.Modules.Authorization.Model;
 using Asterloom.Modules.Authorization.Persistence;
+using Asterloom.Targeting;
 using Casbin;
 using Casbin.Model;
 
@@ -10,10 +11,10 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
     private const string CasbinModel =
         """
         [request_definition]
-        r = sub, tenant, application, environment, permission
+        r = sub, tenant, application, environment, permission, resource_type, resource_id
 
         [policy_definition]
-        p = sub, tenant, application, environment, permission, eft
+        p = sub, tenant, application, environment, permission, resource_type, resource_id, eft
 
         [policy_effect]
         e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
@@ -23,7 +24,9 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
             (p.tenant == "*" || r.tenant == p.tenant) && \
             (p.application == "*" || r.application == p.application) && \
             (p.environment == "*" || r.environment == p.environment) && \
-            (p.permission == "*" || r.permission == p.permission)
+            (p.permission == "*" || r.permission == p.permission) && \
+            (p.resource_type == "*" || r.resource_type == p.resource_type) && \
+            (p.resource_id == "*" || r.resource_id == p.resource_id)
         """;
 
     public async Task<AuthorizationDecisionResult> DecideAsync(
@@ -32,6 +35,15 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
     {
         ArgumentNullException.ThrowIfNull(request);
         var snapshot = await store.GetPolicySnapshotAsync(cancellationToken);
+        if (!IsActivePermission(request, snapshot.Permissions))
+        {
+            return new AuthorizationDecisionResult(
+                false,
+                "The permission is not active in this application.",
+                [],
+                []);
+        }
+
         var roles = AuthorizationCatalog.SystemRoles
             .Concat(snapshot.Roles)
             .ToDictionary(static role => role.Id);
@@ -59,7 +71,8 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
                      StringComparison.Ordinal)))
         {
             if (!roles.TryGetValue(binding.RoleId, out var role)
-                || role.Status != AuthorizationResourceStatus.Active)
+                || role.Status != AuthorizationResourceStatus.Active
+                || !Contains(role.Scope, request.Scope))
             {
                 continue;
             }
@@ -72,6 +85,7 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
             }
         }
 
+        var attributes = CreateAttributes(request);
         foreach (var rule in snapshot.PolicyRules)
         {
             var applies = rule.SubjectType switch
@@ -87,7 +101,10 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
                         && actorRoleIds.Contains(roleId),
                 _ => false,
             };
-            if (!applies)
+            if (!applies
+                || !MatchesResource(rule, request)
+                || rule.Condition is not null
+                    && !TargetingEvaluator.Evaluate(rule.Condition, attributes).Matched)
             {
                 continue;
             }
@@ -97,6 +114,8 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
                 request.ActorId,
                 rule.Scope,
                 rule.Permission,
+                rule.ResourceType,
+                rule.ResourceId,
                 rule.Effect));
         }
 
@@ -110,6 +129,8 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
                 ScopeValue(policy.Scope.ApplicationId),
                 ScopeValue(policy.Scope.EnvironmentId),
                 policy.Permission,
+                WildcardValue(policy.ResourceType),
+                WildcardValue(policy.ResourceId),
                 policy.Effect == AuthorizationPolicyEffect.Allow ? "allow" : "deny");
         }
 
@@ -121,9 +142,18 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
             tenant,
             application,
             environment,
-            request.Permission);
+            request.Permission,
+            request.ResourceType,
+            request.ResourceId);
         var matched = policies
-            .Where(policy => Matches(policy, request, tenant, application, environment))
+            .Where(policy => Matches(
+                policy,
+                request,
+                tenant,
+                application,
+                environment,
+                request.ResourceType,
+                request.ResourceId))
             .Select(static policy => policy.Id)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -132,13 +162,53 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
         return new AuthorizationDecisionResult(
             allowed,
             allowed
-                ? "An active role or policy grants this permission."
+                ? "An active RBAC role, ACL, or ABAC policy grants this permission."
                 : matched.Length > 0
                     ? "An explicit deny policy overrides matching grants."
-                    : "No active role or policy grants this permission.",
+                    : "No active RBAC role, ACL, or ABAC policy grants this permission.",
             matched,
             actorRoleKeys.Order(StringComparer.Ordinal).ToArray());
     }
+
+    private static bool IsActivePermission(
+        AuthorizationDecisionRequest request,
+        IReadOnlyList<PermissionDefinition> applicationPermissions) =>
+        AuthorizationCatalog.IsKnownPermission(request.Permission)
+        || request.Scope.TenantId is not null
+            && request.Scope.ApplicationId is not null
+            && applicationPermissions.Any(permission =>
+                permission.Status == AuthorizationResourceStatus.Active
+                && permission.Scope.TenantId == request.Scope.TenantId
+                && permission.Scope.ApplicationId == request.Scope.ApplicationId
+                && string.Equals(permission.Key, request.Permission, StringComparison.Ordinal));
+
+    private static Dictionary<string, TargetingValue> CreateAttributes(
+        AuthorizationDecisionRequest request)
+    {
+        var attributes = new Dictionary<string, TargetingValue>(
+            request.Attributes ?? new Dictionary<string, TargetingValue>(),
+            StringComparer.Ordinal)
+        {
+            ["subject.id"] = TargetingValue.From(request.ActorId),
+            ["resource.type"] = TargetingValue.From(request.ResourceType),
+            ["resource.id"] = TargetingValue.From(request.ResourceId),
+            ["scope.tenantId"] = TargetingValue.From(
+                request.Scope.TenantId?.ToString("D") ?? string.Empty),
+            ["scope.applicationId"] = TargetingValue.From(
+                request.Scope.ApplicationId?.ToString("D") ?? string.Empty),
+            ["scope.environmentId"] = TargetingValue.From(
+                request.Scope.EnvironmentId?.ToString("D") ?? string.Empty),
+        };
+        return attributes;
+    }
+
+    private static bool MatchesResource(
+        AuthorizationPolicyRule rule,
+        AuthorizationDecisionRequest request) =>
+        (string.IsNullOrEmpty(rule.ResourceType)
+            || string.Equals(rule.ResourceType, request.ResourceType, StringComparison.Ordinal))
+        && (string.IsNullOrEmpty(rule.ResourceId)
+            || string.Equals(rule.ResourceId, request.ResourceId, StringComparison.Ordinal));
 
     private static void AddRolePolicies(
         ICollection<DecisionPolicy> policies,
@@ -153,6 +223,8 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
                 actorId,
                 scope,
                 permission,
+                string.Empty,
+                string.Empty,
                 AuthorizationPolicyEffect.Allow));
         }
     }
@@ -162,13 +234,19 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
         AuthorizationDecisionRequest request,
         string tenant,
         string application,
-        string environment) =>
+        string environment,
+        string resourceType,
+        string resourceId) =>
         string.Equals(policy.Subject, request.ActorId, StringComparison.Ordinal)
         && MatchesScope(policy.Scope.TenantId, tenant)
         && MatchesScope(policy.Scope.ApplicationId, application)
         && MatchesScope(policy.Scope.EnvironmentId, environment)
         && (policy.Permission == "*"
-            || string.Equals(policy.Permission, request.Permission, StringComparison.Ordinal));
+            || string.Equals(policy.Permission, request.Permission, StringComparison.Ordinal))
+        && (string.IsNullOrEmpty(policy.ResourceType)
+            || string.Equals(policy.ResourceType, resourceType, StringComparison.Ordinal))
+        && (string.IsNullOrEmpty(policy.ResourceId)
+            || string.Equals(policy.ResourceId, resourceId, StringComparison.Ordinal));
 
     private static bool MatchesScope(Guid? policyValue, string requestValue) =>
         policyValue is null
@@ -189,10 +267,15 @@ public sealed class AuthorizationDecisionService(IAuthorizationStore store)
 
     private static string RequestScopeValue(Guid? value) => value?.ToString() ?? string.Empty;
 
+    private static string WildcardValue(string value) =>
+        string.IsNullOrEmpty(value) ? "*" : value;
+
     private sealed record DecisionPolicy(
         string Id,
         string Subject,
         AuthorizationScope Scope,
         string Permission,
+        string ResourceType,
+        string ResourceId,
         AuthorizationPolicyEffect Effect);
 }

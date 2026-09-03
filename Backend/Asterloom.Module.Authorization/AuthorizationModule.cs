@@ -21,6 +21,9 @@ public sealed class AuthorizationModule : IAsterloomModule
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IAsterloomModuleMigration,
                 AuthorizationInitialMigration>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IAsterloomModuleMigration,
+                AuthorizationApplicationPolicyMigration>());
         services.AddSingleton<AuthorizationDecisionService>();
         services.AddScoped<AuthorizationManagementService>();
         services.AddScoped<AuthorizationAdminGrpcService>();

@@ -572,10 +572,51 @@ public static class TargetingEvaluator
     {
         TargetingContract.ValidateRule(rule);
         TargetingContract.ValidateContext(context);
+        return EvaluateCore(
+            rule,
+            (string attribute, out TargetingValue? value) =>
+                TryGetValue(context, attribute, out value));
+    }
+
+    public static TargetingRuleResult Evaluate(
+        TargetingRule rule,
+        IReadOnlyDictionary<string, TargetingValue> attributes)
+    {
+        TargetingContract.ValidateRule(rule);
+        ArgumentNullException.ThrowIfNull(attributes);
+        if (attributes.Count > 128)
+        {
+            throw new ArgumentException(
+                "At most 128 authorization attributes are accepted.",
+                nameof(attributes));
+        }
+
+        foreach (var (key, value) in attributes)
+        {
+            TargetingContract.ValidateCustomAttributeName(key);
+            ArgumentNullException.ThrowIfNull(value);
+            if (value.Kind == TargetingValueKind.Text && value.StringValue!.Length > 1_000)
+            {
+                throw new ArgumentException(
+                    $"Authorization attribute '{key}' exceeds 1000 characters.",
+                    nameof(attributes));
+            }
+        }
+
+        return EvaluateCore(
+            rule,
+            (string attribute, out TargetingValue? value) =>
+                attributes.TryGetValue(attribute, out value));
+    }
+
+    private static TargetingRuleResult EvaluateCore(
+        TargetingRule rule,
+        TryResolveAttribute resolveAttribute)
+    {
         var results = new List<TargetingConditionResult>(rule.Conditions.Count);
         foreach (var condition in rule.Conditions)
         {
-            var result = EvaluateCondition(condition, context);
+            var result = EvaluateCondition(condition, resolveAttribute);
             results.Add(result);
             if (rule.MatchMode == TargetingMatchMode.All && !result.Matched)
             {
@@ -593,9 +634,9 @@ public static class TargetingEvaluator
 
     private static TargetingConditionResult EvaluateCondition(
         TargetingCondition condition,
-        TargetingEvaluationContext context)
+        TryResolveAttribute resolveAttribute)
     {
-        var exists = TryGetValue(context, condition.Attribute, out var actual);
+        var exists = resolveAttribute(condition.Attribute, out var actual);
         if (condition.Operator == TargetingOperator.Exists)
         {
             return Result(
@@ -732,6 +773,10 @@ public static class TargetingEvaluator
         string conditionId,
         bool matched,
         TargetingConditionReason reason) => new(conditionId, matched, reason);
+
+    private delegate bool TryResolveAttribute(
+        string attribute,
+        out TargetingValue? value);
 }
 
 internal sealed partial class SemanticVersion : IComparable<SemanticVersion>
