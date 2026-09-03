@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, type ReactNode } from "react";
+import useSWR from "swr";
 
 import { CommandMenu } from "@/components/layout/command-menu";
 import { AccountMenu } from "@/components/layout/account-menu";
@@ -26,6 +27,7 @@ import { LocaleToggle } from "@/components/i18n/locale-toggle";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Badge } from "@/components/ui/badge";
+import { getPlatformInfo } from "@/lib/api/platform";
 import { cn } from "@/lib/utils/cn";
 import type { Actor } from "@/lib/auth/types";
 
@@ -82,6 +84,7 @@ export function ConsoleShell({
   headerTitle?: string;
 }) {
   const { locale, t } = useLocale();
+  const { data: platformInfo } = useSWR("platform-info", getPlatformInfo);
 
   useEffect(() => {
     document.title = `${t(headerTitle)} · Asterloom`;
@@ -149,6 +152,9 @@ export function ConsoleShell({
           </div>
           <p className="mt-2 text-xs leading-5 text-slate-500">
             {t("All contract-first slices through Operations are live with complete Web management coverage.")}
+          </p>
+          <p className="mt-2 font-mono text-[10px] text-slate-600" data-testid="server-version">
+            Asterloom.Server v{platformInfo?.version ?? "…"}
           </p>
         </div>
       </aside>

@@ -24,6 +24,9 @@ test("shows the platform API response through the BFF", async ({ page }) => {
   await expect(page.getByText("Operational", { exact: true })).toBeVisible();
   await expect(page.getByTestId("capability-rpc")).toContainText("Ready");
   await expect(page.getByTestId("capability-identity")).toContainText("Ready");
+  await expect(page.getByTestId("server-version")).toHaveText(
+    /^Asterloom\.Server v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/,
+  );
 
   const rejectedMutation = await page.evaluate(async () => {
     const response = await fetch("/api/asterloom/api/v1/platform/info", {
