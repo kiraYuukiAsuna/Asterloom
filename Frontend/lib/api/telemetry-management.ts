@@ -9,7 +9,11 @@ import {
 
 import { getAsterloomApiClient } from "./asterloom-client";
 
-const idSchema = z.string().uuid();
+// Use a lenient UUID regex that accepts any hex UUID format, not just RFC 4122.
+// Zod v4's uuid() validator is strict about version and variant bits (RFC 4122),
+// but TelemetryRecord.Id is derived from a SHA-256 hash and may not be a valid RFC 4122 UUID.
+const uuidPattern = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
+const idSchema = z.string().regex(uuidPattern, "Invalid UUID format.");
 const timestampSchema = z.string().min(1);
 const optionalTextSchema = z.string().nullish().transform((value) => value ?? "");
 const optionalTimestampSchema = timestampSchema.nullish().transform((value) => value ?? null);
