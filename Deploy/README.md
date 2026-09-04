@@ -91,9 +91,12 @@ docker compose up -d --build
 docker compose down
 ```
 
-`docker compose down` preserves named volumes. `docker compose down -v` removes
-local PostgreSQL, MinIO, Redis, and Data Protection data; use it only when an
-intentional full reset is required.
+Compose stores local runtime state under the repository root `.data/` directory:
+PostgreSQL in `.data/postgres/`, MinIO in `.data/minio/`, Redis in
+`.data/redis/`, Data Protection keys in `.data/dataprotection-keys/`, and
+reference application state under `.data/reference-app/`. `docker compose down`
+and `docker compose down -v` do not remove these bind-mounted directories; delete
+the relevant `.data/*` directory only when an intentional full reset is required.
 
 ### 2.3 Run the server and web console from source
 
@@ -332,6 +335,22 @@ The token signing/encryption PFX files are separate from the HTTPS certificate.
 The server uses the PFX files inside its container for tokens; Certbot creates
 the HTTPS certificate used by host Nginx for TLS termination.
 
+Production secrets and runtime state live at these host paths after preparation:
+
+| Path | Contents |
+| --- | --- |
+| `<repo>/.env` | Production domain, database/Redis/MinIO passwords, bootstrap administrator, OIDC secret, session encryption key, telemetry ingestion key, and PFX password. |
+| `<repo>/Deploy/Secrets/asterloom-signing.pfx` | OpenIddict token signing certificate. |
+| `<repo>/Deploy/Secrets/asterloom-encryption.pfx` | OpenIddict token encryption certificate. |
+| `<repo>/.data/postgres/` | PostgreSQL database files. |
+| `<repo>/.data/minio/` | S3-compatible object data. |
+| `<repo>/.data/redis/` | Redis append-only session data. |
+| `<repo>/.data/dataprotection-keys/` | ASP.NET Core Data Protection key ring. |
+| `<repo>/.data/reference-app/reference.env` | Reference application client/resource server credentials, when provisioned. |
+| `<repo>/.data/reference-app/state/` | Reference application writable state, when used. |
+| `/etc/letsencrypt/live/<domain>/` and `/etc/letsencrypt/archive/<domain>/` | HTTPS certificate managed by Certbot. |
+| `/etc/nginx/sites-available/asterloom` and `/etc/nginx/sites-enabled/asterloom` | Rendered host Nginx site. |
+
 ### 4.4 Obtain the TLS certificate
 
 After DNS has propagated and `/.well-known/acme-challenge/` is reachable over
@@ -479,18 +498,20 @@ then investigate browser behavior.
 
 At minimum, back up or have a tested reconstruction plan for:
 
-- PostgreSQL data;
-- MinIO object data;
+- `.data/postgres/`;
+- `.data/minio/`;
+- `.data/redis/` if seamless BFF session continuity is required;
 - the root `.env`;
 - `Deploy/Secrets/*.pfx`;
 - `.data/dataprotection-keys/`;
 - `.data/reference-app/reference.env` and `state/` when using the reference app;
 - the host's `/etc/letsencrypt/` and Nginx site configuration.
 
-Redis primarily contains disposable BFF sessions, but include it in recovery if
-seamless session continuity is required. Never use `docker compose down -v` as a
-routine stop command; it removes production named volumes. Database migrations
-are forward-applied, so evaluate schema compatibility before rolling code back.
+Redis primarily contains disposable BFF sessions. `docker compose down` and
+`docker compose down -v` stop containers without deleting the bind-mounted
+`.data/*` directories; remove those directories explicitly only as part of an
+intentional reset. Database migrations are forward-applied, so evaluate schema
+compatibility before rolling code back.
 
 The Collector uses a shared ingestion key to forward traces, metrics, and logs to
 the Server, which stores them in PostgreSQL `telemetry.records` for seven days.
@@ -595,6 +616,9 @@ the [desktop update guide](../Docs/Module/Desktop-Updates.md).
 | `../.env` | Manual copy or `Prepare-ProductionHost.sh` | Compose secrets and bootstrap settings. |
 | `Secrets/asterloom-signing.pfx` | `Prepare-ProductionHost.sh` | OpenIddict token signing certificate. |
 | `Secrets/asterloom-encryption.pfx` | `Prepare-ProductionHost.sh` | OpenIddict token encryption certificate. |
+| `../.data/postgres/` | Compose / PostgreSQL | PostgreSQL database files. |
+| `../.data/minio/` | Compose / MinIO | S3-compatible object data. |
+| `../.data/redis/` | Compose / Redis | Redis append-only Web BFF session data. |
 | `../.data/dataprotection-keys/` | `Prepare-ProductionHost.sh` / Server | Persistent ASP.NET Core Data Protection keys. |
 | `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | Reference service/BFF credentials, Public Client ID/API scope, and Reference Backend issuer/audience/tenant/application validation settings. |
 | `../.data/reference-app/state/` | Reference client | Writable reference provisioning and diagnostic state. |

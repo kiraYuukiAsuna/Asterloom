@@ -52,7 +52,7 @@ services:
       - "60001:8000"
       - "60002:8001"
     volumes:
-      - dataprotection-keys:/var/lib/asterloom/dataprotection-keys
+      - ./.data/dataprotection-keys:/var/lib/asterloom/dataprotection-keys
     restart: unless-stopped
 
   web:
@@ -130,7 +130,7 @@ services:
       server:
         condition: service_started
     volumes:
-      - reference-app-data:/var/lib/asterloom-reference
+      - ./.data/reference-app/state:/var/lib/asterloom-reference
     restart: "no"
 
   postgres:
@@ -145,7 +145,7 @@ services:
       timeout: 5s
       retries: 12
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - ./.data/postgres:/var/lib/postgresql/data
     restart: unless-stopped
 
   redis:
@@ -162,7 +162,7 @@ services:
       timeout: 5s
       retries: 12
     volumes:
-      - redis-data:/data
+      - ./.data/redis:/data
     restart: unless-stopped
 
   minio:
@@ -174,7 +174,7 @@ services:
     ports:
       - "60003:9000"
     volumes:
-      - minio-data:/data
+      - ./.data/minio:/data
     restart: unless-stopped
 
   otel-collector:
@@ -185,10 +185,3 @@ services:
     volumes:
       - ./Deploy/OpenTelemetry/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
     restart: unless-stopped
-
-volumes:
-  dataprotection-keys:
-  minio-data:
-  postgres-data:
-  redis-data:
-  reference-app-data:

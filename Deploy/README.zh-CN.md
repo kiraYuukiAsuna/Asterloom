@@ -89,8 +89,11 @@ docker compose up -d --build
 docker compose down
 ```
 
-`docker compose down` 保留命名卷。`docker compose down -v` 会删除 PostgreSQL、MinIO、
-Redis 和 Data Protection 等本地数据，只能在确认需要重置环境时使用。
+Compose 会把本地运行状态放在仓库根目录 `.data/` 下：PostgreSQL 位于 `.data/postgres/`，
+MinIO 位于 `.data/minio/`，Redis 位于 `.data/redis/`，Data Protection Key 位于
+`.data/dataprotection-keys/`，参考应用状态位于 `.data/reference-app/`。`docker compose down`
+和 `docker compose down -v` 都不会删除这些 bind mount 目录；只有确认要完整重置环境时，才手动删除
+对应的 `.data/*` 目录。
 
 ### 2.3 从源码运行后端和 Web
 
@@ -311,6 +314,22 @@ Migration/Bootstrap Service。
 Token 签名/加密 PFX 与 HTTPS 证书不是同一类证书：前者由 Server 在容器内签发和保护
 Token，后者由 Certbot 生成并由宿主机 Nginx 终止 TLS。
 
+生产准备完成后，Secret 与运行状态位于以下宿主机路径：
+
+| 路径 | 内容 |
+| --- | --- |
+| `<repo>/.env` | 生产域名、数据库/Redis/MinIO 密码、Bootstrap 管理员、OIDC Secret、Session 加密 Key、Telemetry Ingestion Key 和 PFX 密码。 |
+| `<repo>/Deploy/Secrets/asterloom-signing.pfx` | OpenIddict Token 签名证书。 |
+| `<repo>/Deploy/Secrets/asterloom-encryption.pfx` | OpenIddict Token 加密证书。 |
+| `<repo>/.data/postgres/` | PostgreSQL 数据库文件。 |
+| `<repo>/.data/minio/` | S3 兼容对象数据。 |
+| `<repo>/.data/redis/` | Redis AOF Session 数据。 |
+| `<repo>/.data/dataprotection-keys/` | ASP.NET Core Data Protection Key Ring。 |
+| `<repo>/.data/reference-app/reference.env` | 参考应用 Provision 后写入的 Client/Resource Server 凭据。 |
+| `<repo>/.data/reference-app/state/` | 参考应用可写状态。 |
+| `/etc/letsencrypt/live/<domain>/` 与 `/etc/letsencrypt/archive/<domain>/` | Certbot 管理的 HTTPS 证书。 |
+| `/etc/nginx/sites-available/asterloom` 与 `/etc/nginx/sites-enabled/asterloom` | 渲染后的宿主机 Nginx Site。 |
+
 ### 4.4 获取 TLS 证书
 
 确认 DNS 已生效且 Nginx 的 `/.well-known/acme-challenge/` 可从公网访问，然后执行：
@@ -449,17 +468,18 @@ sudo journalctl -u nginx --since "30 minutes ago"
 
 至少应备份或具备重建方案的内容包括：
 
-- PostgreSQL 数据库；
-- MinIO 对象数据；
+- `.data/postgres/`；
+- `.data/minio/`；
+- 如需无感会话连续性，备份 `.data/redis/`；
 - 根目录 `.env`；
 - `Deploy/Secrets/*.pfx`；
 - `.data/dataprotection-keys/`；
 - 使用参考应用时的 `.data/reference-app/reference.env` 与 `state/`；
 - 宿主机 `/etc/letsencrypt/` 和 Nginx Site 配置。
 
-Redis 主要保存可失效的 BFF Session，但若需要无感会话连续性，也应把它纳入恢复设计。
-不要把 `docker compose down -v` 当作普通停止命令；它会删除生产命名卷。数据库迁移是前向
-执行的，代码回滚前必须单独评估 Schema 兼容性，不能假设回退 Git 提交会自动回退数据库。
+Redis 主要保存可失效的 BFF Session。`docker compose down` 和 `docker compose down -v`
+只会停止容器，不会删除 bind mount 的 `.data/*` 目录；只有确认要重置时才显式删除这些目录。
+数据库迁移是前向执行的，代码回滚前必须单独评估 Schema 兼容性，不能假设回退 Git 提交会自动回退数据库。
 
 Collector 使用共享 Ingestion Key 将 Trace、Metric、Log 转发给 Server，并保存到 PostgreSQL
 `telemetry.records`；默认保留七天，不再创建遥测文件卷。PostgreSQL 备份必须覆盖这些记录。
@@ -555,6 +575,9 @@ Web 制品使用相同方式，并选择 `Deploy/Dockerfile.web-prebuilt`。默�
 | `../.env` | 手动复制或 `Prepare-ProductionHost.sh` | Compose Secret 和 Bootstrap 配置。 |
 | `Secrets/asterloom-signing.pfx` | `Prepare-ProductionHost.sh` | OpenIddict Token 签名证书。 |
 | `Secrets/asterloom-encryption.pfx` | `Prepare-ProductionHost.sh` | OpenIddict Token 加密证书。 |
+| `../.data/postgres/` | Compose / PostgreSQL | PostgreSQL 数据库文件。 |
+| `../.data/minio/` | Compose / MinIO | S3 兼容对象数据。 |
+| `../.data/redis/` | Compose / Redis | Redis AOF Web BFF Session 数据。 |
 | `../.data/dataprotection-keys/` | `Prepare-ProductionHost.sh` / Server | 持久化 ASP.NET Core Data Protection Key。 |
 | `../.data/reference-app/reference.env` | `Provision-Reference-App.sh` | 参考服务/业务 BFF 凭据、Public Client ID/API Scope，以及 Reference Backend 的 Issuer/Audience/Tenant/Application 验证配置。 |
 | `../.data/reference-app/state/` | 参考客户端 | 参考应用可写诊断和 Provision 状态。 |

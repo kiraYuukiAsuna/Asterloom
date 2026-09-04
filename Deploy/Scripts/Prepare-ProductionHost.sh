@@ -10,7 +10,12 @@ load_asterloom_production_domain false
 
 umask 077
 install -d -m 0700 Deploy/Secrets
+install -d -m 0700 .data
 install -d -m 0700 .data/dataprotection-keys
+install -d -m 0755 .data/postgres
+install -d -m 0755 .data/minio
+install -d -m 0755 .data/redis
+install -d -m 0755 .data/reference-app/state
 chown -R 1654:1654 .data/dataprotection-keys
 
 if [[ ! -f "$ASTERLOOM_ENV_FILE" ]]; then
