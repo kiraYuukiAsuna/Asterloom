@@ -688,7 +688,7 @@ function Review({
             </div>
           ))}
       </dl>
-      <div className="mt-4 rounded-xl border border-amber-400/15 bg-amber-400/[0.05] p-4 text-xs leading-5 text-amber-100/75">
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-xs leading-5 text-slate-300">
         {translate("Desktop users join the application on first sign-in. Registration is authorized through the trusted server client; no business event is sent automatically. SMTP credentials, release signing keys, and release artifacts require manual configuration.")}
       </div>
     </div>
@@ -771,8 +771,8 @@ function InitializationResult({
       )}
 
       {(serverSecret || analyticsSecret) && (
-        <div className="mt-5 space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-4">
-          <p className="text-sm font-semibold text-amber-100">
+        <div className="mt-5 space-y-3 rounded-xl border border-amber-400/25 bg-white/[0.04] p-4">
+          <p className="text-sm font-semibold text-slate-100">
             {translate("Copy these credentials now")}
           </p>
           <p className="text-xs text-slate-300">
@@ -834,7 +834,7 @@ function Secret({
       </p>
       <div className="flex gap-2">
         <code
-          className="min-w-0 flex-1 break-all rounded-lg bg-slate-950 px-3 py-2 text-xs text-amber-100"
+          className="min-w-0 flex-1 break-all rounded-lg bg-slate-950 px-3 py-2 text-xs text-slate-100"
           data-testid={testId}
         >
           {value}

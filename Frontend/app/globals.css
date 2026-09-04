@@ -230,6 +230,11 @@ html.light [class~="text-amber-300"] {
   color: #b45309;
 }
 
+html.light [class*="bg-amber-"][class*="text-amber-"],
+html.light [class*="bg-amber-"] [class*="text-amber-"] {
+  color: #78350f;
+}
+
 html.light [class~="hover:bg-white/[0.025]"]:hover,
 html.light [class~="hover:bg-white/[0.04]"]:hover,
 html.light [class~="hover:bg-white/[0.06]"]:hover {
@@ -420,6 +425,11 @@ html.dark [class~="text-amber-100"] {
 html.dark [class~="text-amber-200"],
 html.dark [class~="text-amber-300"] {
   color: #fcd34d;
+}
+
+html.dark [class*="bg-amber-"][class*="text-amber-"],
+html.dark [class*="bg-amber-"] [class*="text-amber-"] {
+  color: #f8fafc;
 }
 
 html.dark [class~="hover:bg-white/[0.025]"]:hover,
