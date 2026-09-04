@@ -169,7 +169,7 @@ test("initializes a production-ready application", async ({ page }) => {
   await signIn(page, "/tenants");
 
   const suffix = Date.now().toString(36).slice(-8);
-  const tenantSlug = "1init-e2e-" + suffix;
+  const tenantSlug = "analytics-tenant-e2e-" + suffix;
   const applicationSlug = "app-e2e-" + suffix;
 
   await page.getByLabel("Slug", { exact: true }).first().fill(tenantSlug);
@@ -193,7 +193,10 @@ test("initializes a production-ready application", async ({ page }) => {
     .click();
   await expect(dialog).toContainText("Production (production)");
   await expect(dialog).toContainText(
-    "app-" + tenantSlug + "-" + applicationSlug + ".api",
+    tenantSlug + "-" + applicationSlug + ".api",
+  );
+  await expect(dialog).toContainText(
+    "app." + tenantSlug + "-" + applicationSlug + ".access",
   );
   await dialog
     .locator('[data-ui-action="application-initialization-run"]')

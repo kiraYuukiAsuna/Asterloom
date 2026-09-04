@@ -482,7 +482,7 @@ export function ApplicationInitializationDialog({
       aria-labelledby="application-initialization-title"
       aria-modal="true"
     >
-      <div className="mx-auto my-6 max-w-3xl rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:p-7">
+      <div className="mx-auto my-6 max-w-3xl rounded-2xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">
@@ -525,7 +525,7 @@ export function ApplicationInitializationDialog({
                   <span className="block text-sm font-semibold text-emerald-200">
                     {translate("Production environment")}
                   </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-400">
+                  <span className="mt-1 block text-xs leading-5 text-slate-300">
                     {translate("Required: protected Production environment with slug production.")}
                   </span>
                 </span>
@@ -561,7 +561,7 @@ export function ApplicationInitializationDialog({
                         <span className="block text-sm font-semibold text-slate-200">
                           {translate(presetCopy[id].title)}
                         </span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                        <span className="mt-1 block text-xs leading-5 text-slate-400">
                           {translate(presetCopy[id].description)}
                         </span>
                       </span>
@@ -739,7 +739,7 @@ function InitializationResult({
                   : "Initialization stopped",
             )}
           </h3>
-          <p className="mt-1 text-xs text-slate-500" aria-live="polite">
+          <p className="mt-1 text-xs text-slate-400" aria-live="polite">
             {currentStep
               ? translate("Creating " + currentStep + "…")
               : translate(completed.length + " steps completed.")}
@@ -764,7 +764,7 @@ function InitializationResult({
       {phase === "error" && (
         <div className="mt-5 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-4">
           <p className="text-sm font-medium text-rose-200">{error}</p>
-          <p className="mt-2 text-xs leading-5 text-slate-400">
+          <p className="mt-2 text-xs leading-5 text-slate-300">
             {translate("Completed resources were kept. Close this window and finish the remaining resources manually to avoid creating duplicates.")}
           </p>
         </div>
@@ -775,7 +775,7 @@ function InitializationResult({
           <p className="text-sm font-semibold text-amber-100">
             {translate("Copy these credentials now")}
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-300">
             {translate("Secrets are shown once and disappear when this window closes.")}
           </p>
           {serverSecret && (
@@ -792,7 +792,7 @@ function InitializationResult({
               value={analyticsSecret}
             />
           )}
-          <p className="break-all font-mono text-[10px] text-slate-600">
+          <p className="break-all font-mono text-[10px] text-slate-400">
             {translate("Server client ID")}: {names.serverClient}
           </p>
         </div>
@@ -829,7 +829,7 @@ function Secret({
 
   return (
     <div>
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
       <div className="flex gap-2">
@@ -863,7 +863,7 @@ function initializationNames(
   const dotBase = (tenant.slug + "." + application.slug).replaceAll("-", ".");
 
   return {
-    accessPermission: withSuffix(base, ".access", 200),
+    accessPermission: withSuffix("app." + base, ".access", 200),
     analyticsEvent: withSuffix(base, ".started"),
     apiAudience: withSuffix(base, "-api", 200),
     apiScope: withSuffix(base, ".api"),
