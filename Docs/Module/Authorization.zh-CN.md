@@ -50,6 +50,10 @@ Application 可以创建自己的 Permission，例如：
 业务 Permission 必须是小写、带分隔符的动作键，且不能使用 Asterloom 已占用的模块命名空间。它严格属于创建时指定的
 Tenant/Application，同名 Permission 可以存在于不同 Application，但角色和策略不能跨 Application 引用它。
 
+生成业务权限时建议使用应用自有命名空间，例如 `app.orders.refund` 或 `app.acme-payments.access`。
+不要直接把 Tenant/Application slug 放在第一个分段；如果 slug 是 `analytics-payments`，会与保留的
+`analytics.*` 系统权限命名空间冲突。
+
 归档 Permission 会让它立即停止参与决策，即使某个活动 Role 仍保留该键；恢复后原 Role/Policy 无需重建。归档用于下线
 业务动作，不会删除历史 Revision。
 

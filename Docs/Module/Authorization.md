@@ -51,6 +51,10 @@ An application key must be lowercase, contain a separator, and must not use an A
 It belongs to the selected Tenant/Application. Different Applications may use the same key, but roles and policies
 cannot reference another Application's definition.
 
+Prefer an application-owned namespace such as `app.orders.refund` or `app.acme-payments.access` for generated
+business permissions. Avoid deriving the first segment directly from Tenant or Application slugs, because a slug such
+as `analytics-payments` would otherwise collide with the reserved `analytics.*` system namespace.
+
 Archiving a Permission immediately makes it inactive even if an active Role still contains the key. Restoring it
 reactivates existing roles and policies without recreating them. Revisions remain durable.
 

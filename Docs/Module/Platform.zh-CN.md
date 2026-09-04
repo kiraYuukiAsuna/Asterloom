@@ -41,6 +41,13 @@ Tenant
 Web 支持 Tenant、Application、Environment 的 List/Create/Update/Archive/Restore，以及 Membership
 的 List/Set/Remove。归档保留历史，不是物理删除。
 
+创建 Application 后，控制台可以打开应用初始化向导。默认预设会创建受保护的 `production`
+Environment、OIDC Client/Scope、应用访问 Permission 与运行时 Allow Policy、以及 Feature、Config、
+Storage、Release、Analytics、Telemetry 的起始资源；需要返回 Client Secret 或 Write Key 的步骤只展示一次。
+向导生成的业务 Permission 会在租户/应用 slug 前固定加 `app.` 前缀，例如
+`app.acme-payments-checkout.access`，避免租户 slug 以 `analytics-`、`telemetry-` 等保留模块名开头时
+与 Asterloom 系统权限命名空间冲突。
+
 ## 3. 生命周期与并发
 
 - Slug 创建后不可修改；Display Name 可以更新。

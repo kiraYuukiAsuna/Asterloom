@@ -42,6 +42,13 @@ Route: `/tenants`
 The Web console covers List/Create/Update/Archive/Restore for all three resources and List/Set/Remove for
 memberships. Archive retains history; it is not physical deletion.
 
+After creating an Application, the console can open the application initialization dialog. The default preset creates
+a protected `production` Environment, OIDC clients/scopes, an application access Permission and runtime Allow policies,
+starter Feature/Config/Storage/Release/Analytics/Telemetry resources, and one-time client secrets or write keys when
+needed. Generated business permission keys are prefixed with `app.` before the tenant/application slug, for example
+`app.acme-payments-checkout.access`; this keeps applications whose slugs start with reserved module names such as
+`analytics-` from colliding with Asterloom's system permission namespaces.
+
 ## 3. Lifecycle and concurrency
 
 - Slugs are immutable after creation; display names are editable.

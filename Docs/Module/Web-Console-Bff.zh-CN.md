@@ -95,7 +95,7 @@ Web 当前提供以下工作区：
 | Config | `/config` |
 | Release | `/channels`、`/artifacts`、`/releases` |
 | Analytics | `/analytics/schemas`、`/analytics/explorer` |
-| Telemetry | `/telemetry/sources`、`/telemetry/health` |
+| Telemetry | `/telemetry/sources`、`/telemetry/signals`、`/telemetry/health` |
 | Storage | `/storage/buckets`、`/storage/objects` |
 | Audit | `/audit` |
 | Operations | `/operations/apis`、`/operations/health` |
