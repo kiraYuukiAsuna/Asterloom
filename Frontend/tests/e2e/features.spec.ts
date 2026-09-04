@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { signIn, webUrl } from "./support/environment";
+import {
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages feature flags through every admin and runtime API", async ({
   page,
@@ -176,6 +180,7 @@ async function createFeatureScope(
     .nth(1)
     .fill("Feature E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const createEnvironmentForm = page

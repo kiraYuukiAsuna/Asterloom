@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { signIn, webUrl } from "./support/environment";
+import {
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages buckets and verified objects through every Storage admin API", async ({
   page,
@@ -146,6 +150,7 @@ async function createScope(
     .nth(1)
     .fill("Storage E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const form = page

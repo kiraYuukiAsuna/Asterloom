@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { apiUrl, signIn, webUrl } from "./support/environment";
+import {
+  apiUrl,
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages every Analytics API through the Web Console", async ({ page, request }) => {
   test.setTimeout(180_000);
@@ -159,6 +164,7 @@ async function createScope(
   await page.getByLabel("Slug", { exact: true }).nth(1).fill(applicationSlug);
   await page.getByLabel("Display name", { exact: true }).nth(1).fill("Analytics E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const form = page.locator("form").filter({ has: page.locator('[data-ui-action="create-environment"]') });

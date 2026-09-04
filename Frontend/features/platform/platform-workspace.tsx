@@ -63,6 +63,7 @@ import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/ui/use-hydrated";
 import { translate } from "@/lib/i18n/locale";
 import { listUsers } from "@/lib/api/identity-management";
+import { ApplicationInitializationDialog } from "./application-initialization-dialog";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -288,6 +289,7 @@ export function PlatformWorkspace({ csrfToken }: { csrfToken: string }) {
             applicationCursor.reset();
             setApplicationQuery(value);
           }}
+          onInitialized={() => environments.mutate()}
           onSelect={selectApplication}
           page={applications.data}
           pending={pending}
@@ -569,6 +571,7 @@ function ApplicationPanel({
   cursor,
   includeArchived,
   onIncludeArchivedChange,
+  onInitialized,
   onQueryChange,
   onSelect,
   page,
@@ -583,6 +586,7 @@ function ApplicationPanel({
   cursor: Cursor;
   includeArchived: boolean;
   onIncludeArchivedChange: (value: boolean) => void;
+  onInitialized: () => Promise<unknown>;
   onQueryChange: (value: string) => void;
   onSelect: (application: ApplicationRecord) => void;
   page?: { applications: ApplicationRecord[]; nextPageToken?: string | null };
@@ -597,6 +601,8 @@ function ApplicationPanel({
   const [displayName, setDisplayName] = useState("");
   const [editingId, setEditingId] = useState("");
   const [editingName, setEditingName] = useState("");
+  const [initializingApplication, setInitializingApplication] =
+    useState<ApplicationRecord>();
 
   if (!tenant) {
     return (
@@ -628,6 +634,7 @@ function ApplicationPanel({
       setDisplayName("");
       onQueryChange(created.slug);
       onSelect(created);
+      setInitializingApplication(created);
     }
   }
 
@@ -643,7 +650,8 @@ function ApplicationPanel({
   }
 
   return (
-    <Card className="min-w-0" data-ui-action="list-applications">
+    <>
+      <Card className="min-w-0" data-ui-action="list-applications">
       <PanelHeader
         description={translate(`Application catalog inside ${tenant.displayName}.`)}
         icon={Boxes}
@@ -794,7 +802,17 @@ function ApplicationPanel({
             {translate("Create application")}</Button>
         </CreateFormShell>
       </CardContent>
-    </Card>
+      </Card>
+      {initializingApplication && (
+        <ApplicationInitializationDialog
+          application={initializingApplication}
+          csrfToken={csrfToken}
+          onClose={() => setInitializingApplication(undefined)}
+          onInitialized={onInitialized}
+          tenant={selectedTenant}
+        />
+      )}
+    </>
   );
 }
 

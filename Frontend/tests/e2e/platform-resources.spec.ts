@@ -53,6 +53,15 @@ test("manages the complete platform hierarchy through the Web Console", async ({
     .fill("E2E Application");
   await page.locator('[data-ui-action="create-application"]').click();
 
+  const initializationDialog = page.getByTestId(
+    "application-initialization-dialog",
+  );
+  await expect(initializationDialog).toBeVisible();
+  await initializationDialog
+    .locator('[data-ui-action="application-initialization-skip"]')
+    .click();
+  await expect(initializationDialog).toHaveCount(0);
+
   const applicationRow = page.getByTestId("application-" + applicationSlug);
   await expect(applicationRow).toContainText("E2E Application");
   await applicationRow
@@ -151,4 +160,60 @@ test("manages the complete platform hierarchy through the Web Console", async ({
   ).toBeVisible();
   await tenantRow.locator('[data-ui-action="restore-tenant"]').click();
   await expect(tenantRow.locator('[data-ui-action="archive-tenant"]')).toBeVisible();
+});
+
+test("initializes a production-ready application", async ({ page }) => {
+  test.setTimeout(120_000);
+  page.setDefaultTimeout(20_000);
+
+  await signIn(page, "/tenants");
+
+  const suffix = Date.now().toString(36).slice(-8);
+  const tenantSlug = "1init-e2e-" + suffix;
+  const applicationSlug = "app-e2e-" + suffix;
+
+  await page.getByLabel("Slug", { exact: true }).first().fill(tenantSlug);
+  await page
+    .getByLabel("Display name", { exact: true })
+    .first()
+    .fill("Initializer Tenant");
+  await page.locator('[data-ui-action="create-tenant"]').click();
+
+  await page.getByLabel("Slug", { exact: true }).nth(1).fill(applicationSlug);
+  await page
+    .getByLabel("Display name", { exact: true })
+    .nth(1)
+    .fill("Initializer Application");
+  await page.locator('[data-ui-action="create-application"]').click();
+
+  const dialog = page.getByTestId("application-initialization-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog
+    .locator('[data-ui-action="application-initialization-next"]')
+    .click();
+  await expect(dialog).toContainText("Production (production)");
+  await expect(dialog).toContainText(
+    "app-" + tenantSlug + "-" + applicationSlug + ".api",
+  );
+  await dialog
+    .locator('[data-ui-action="application-initialization-run"]')
+    .click();
+
+  await expect(dialog.getByText("Initialization complete")).toBeVisible({
+    timeout: 90_000,
+  });
+  await expect(
+    dialog.getByTestId("initialization-server-secret"),
+  ).not.toBeEmpty();
+  await expect(
+    dialog.getByTestId("initialization-analytics-secret"),
+  ).not.toBeEmpty();
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+
+  const environmentPanel = page.locator(
+    '[data-ui-action="list-environments"]',
+  );
+  await expect(
+    environmentPanel.getByTestId("environment-production"),
+  ).toContainText("Protected");
 });

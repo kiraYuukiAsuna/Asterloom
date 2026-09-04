@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { signIn, webUrl } from "./support/environment";
+import {
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages and simulates targeting segments through every admin API", async ({
   page,
@@ -133,6 +137,7 @@ async function createTargetingScope(
     .nth(1)
     .fill("Targeting E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const environmentPanel = page.locator('[data-ui-action="list-environments"]');

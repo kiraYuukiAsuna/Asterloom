@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { signIn, webUrl } from "./support/environment";
+import {
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages every Telemetry API through the Web Console", async ({ page }) => {
   test.setTimeout(180_000);
@@ -83,6 +87,7 @@ async function createScope(page: Page, tenantSlug: string, applicationSlug: stri
   await page.getByLabel("Slug", { exact: true }).nth(1).fill(applicationSlug);
   await page.getByLabel("Display name", { exact: true }).nth(1).fill("Telemetry E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const form = page.locator("form").filter({ has: page.locator('[data-ui-action="create-environment"]') });

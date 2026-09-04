@@ -65,3 +65,12 @@ export async function signIn(
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(webUrl(returnTo));
 }
+
+export async function skipApplicationInitialization(page: Page) {
+  const dialog = page.getByTestId("application-initialization-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog
+    .locator('[data-ui-action="application-initialization-skip"]')
+    .click();
+  await expect(dialog).toHaveCount(0);
+}

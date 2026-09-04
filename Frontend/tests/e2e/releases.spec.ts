@@ -9,7 +9,11 @@ import {
 import { expect, test, type Page } from "@playwright/test";
 import { strToU8, zipSync } from "fflate";
 
-import { signIn, webUrl } from "./support/environment";
+import {
+  signIn,
+  skipApplicationInitialization,
+  webUrl,
+} from "./support/environment";
 
 test("manages every signed Release API through the Web Console", async ({ page }) => {
   test.setTimeout(240_000);
@@ -377,6 +381,7 @@ async function createScope(
     .nth(1)
     .fill("Release E2E App");
   await page.locator('[data-ui-action="create-application"]').click();
+  await skipApplicationInitialization(page);
   await expect(page.getByTestId(`application-${applicationSlug}`)).toBeVisible();
 
   const form = page
