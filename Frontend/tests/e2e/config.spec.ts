@@ -134,7 +134,7 @@ async function createSegment(
   await create.locator('input[name="segmentKey"]').fill(segmentKey);
   await create.locator('input[name="segmentDisplayName"]').fill("Config users");
   await create.locator('textarea[name="segmentDescription"]').fill("Users in CN");
-  await create.locator('input[name="createConditionAttribute"]').fill("region");
+  await create.locator('select[name="createConditionAttribute"]').selectOption("region");
   await create.locator('input[name="createConditionValue"]').fill("cn");
   await create.getByRole("button", { name: "Create segment" }).click();
   await expect(page.getByTestId(`targeting-segment-${segmentKey}`)).toBeVisible();

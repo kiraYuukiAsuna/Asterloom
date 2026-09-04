@@ -148,6 +148,7 @@ export const featureTargetingConfigZhCnMessages: Readonly<Record<string, string>
   "Simulation segment": "模拟分群",
   "Select segment": "选择分群",
   "Custom attributes": "自定义属性",
+  "Custom attribute": "自定义属性",
   "Typed non-PII attributes only; built-ins belong in the fields above.": "仅允许非 PII 的类型化属性；内置属性请填写在上方字段。",
   "Add attribute": "添加属性",
   "Preview deterministic bucket allocation": "预览确定性分桶分配",

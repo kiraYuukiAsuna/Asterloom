@@ -125,6 +125,8 @@ export const zhCnMessages: Readonly<Record<string, string>> = {
   "Actor": "主体",
   "User": "用户",
   "User ID": "用户 ID",
+  "Application ID": "应用 ID",
+  "Environment ID": "环境 ID",
   "Targeting key": "定向键",
   "Client version": "客户端版本",
   "Region": "区域",

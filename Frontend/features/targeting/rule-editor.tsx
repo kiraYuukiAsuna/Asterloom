@@ -16,6 +16,7 @@ import type {
   TargetingValueInput,
 } from "@/lib/api/targeting-management";
 import { translate } from "@/lib/i18n/locale";
+import { cn } from "@/lib/utils/cn";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-white/10 bg-slate-950/75 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-sky-400/45 focus:ring-2 focus:ring-sky-400/15 disabled:opacity-50";
@@ -30,6 +31,7 @@ const multipleValueOperators = new Set<string>([
   TargetingOperatorObject.TARGETING_OPERATOR_ONE_OF,
   TargetingOperatorObject.TARGETING_OPERATOR_NOT_ONE_OF,
 ]);
+const customAttributeOption = "__custom__";
 
 type ValueKind = TargetingConditionInput["valueKind"];
 type Operator = TargetingConditionInput["operator"];
@@ -108,17 +110,44 @@ export function RuleEditor({
     });
   }
 
-  function changeValueKind(index: number, valueKind: ValueKind) {
+  function operatorForValueKind(valueKind: ValueKind, currentOperator: Operator) {
     const supportedOperators = catalog?.operators.filter((metadata) =>
       metadata.supportedValueKinds.includes(valueKind),
     );
+    return supportedOperators?.some((metadata) => metadata.operator === currentOperator)
+      ? currentOperator
+      : (supportedOperators?.[0]?.operator ??
+        TargetingOperatorObject.TARGETING_OPERATOR_EQUALS);
+  }
+
+  function changeAttribute(index: number, attribute: string) {
+    if (attribute === customAttributeOption) {
+      updateCondition(index, { attribute: "" });
+      return;
+    }
+
+    const metadata = catalog?.attributes.find((candidate) => candidate.key === attribute);
+    if (!metadata) {
+      updateCondition(index, { attribute });
+      return;
+    }
+
+    const valueKind = metadata.valueKind;
+    updateCondition(index, {
+      attribute: metadata.key,
+      operator: operatorForValueKind(valueKind, draft.conditions[index].operator),
+      rawValues: "",
+      valueKind,
+    });
+  }
+
+  function changeValueKind(index: number, valueKind: ValueKind) {
     const current = draft.conditions[index];
-    const operator =
-      supportedOperators?.some((metadata) => metadata.operator === current.operator)
-        ? current.operator
-        : (supportedOperators?.[0]?.operator ??
-          TargetingOperatorObject.TARGETING_OPERATOR_EQUALS);
-    updateCondition(index, { operator, rawValues: "", valueKind });
+    updateCondition(index, {
+      operator: operatorForValueKind(valueKind, current.operator),
+      rawValues: "",
+      valueKind,
+    });
   }
 
   function removeCondition(index: number) {
@@ -153,16 +182,11 @@ export function RuleEditor({
         </select>
       </label>
 
-      <datalist id={`${idPrefix}-attribute-options`}>
-        {catalog?.attributes.map((attribute) => (
-          <option key={attribute.key} value={attribute.key}>
-            {attribute.displayName}
-          </option>
-        ))}
-      </datalist>
-
       <div className="space-y-3">
         {draft.conditions.map((condition, index) => {
+          const attributeMetadata = catalog?.attributes.find(
+            (metadata) => metadata.key === condition.attribute,
+          );
           const operatorDefinitions = catalog?.operators.filter((metadata) =>
             metadata.supportedValueKinds.includes(condition.valueKind),
           );
@@ -203,16 +227,35 @@ export function RuleEditor({
                 </label>
                 <label className="block">
                   <span className={labelClassName}>{translate("Attribute")}</span>
-                  <input
+                  <select
                     className={inputClassName}
-                    list={`${idPrefix}-attribute-options`}
                     name={`${idPrefix}ConditionAttribute`}
                     onChange={(event) =>
-                      updateCondition(index, { attribute: event.target.value })
+                      changeAttribute(index, event.target.value)
                     }
-                    placeholder={translate("region or subscription.plan")}
-                    value={condition.attribute}
-                  />
+                    value={attributeMetadata ? condition.attribute : customAttributeOption}
+                  >
+                    {catalog?.attributes.map((attribute) => (
+                      <option key={attribute.key} value={attribute.key}>
+                        {translate(attribute.displayName)}
+                      </option>
+                    ))}
+                    <option value={customAttributeOption}>
+                      {translate("Custom attribute")}
+                    </option>
+                  </select>
+                  {!attributeMetadata && (
+                    <input
+                      aria-label={translate("Custom attribute")}
+                      className={cn(inputClassName, "mt-2")}
+                      name={`${idPrefix}CustomConditionAttribute`}
+                      onChange={(event) =>
+                        updateCondition(index, { attribute: event.target.value })
+                      }
+                      placeholder={translate("subscription.plan")}
+                      value={condition.attribute}
+                    />
+                  )}
                 </label>
                 <label className="block">
                   <span className={labelClassName}>{translate("Value type")}</span>

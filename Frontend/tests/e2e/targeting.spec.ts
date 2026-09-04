@@ -61,8 +61,8 @@ test("manages and simulates targeting segments through every admin API", async (
     .locator('textarea[name="segmentDescription"]')
     .fill("Users whose region is China");
   await createForm
-    .locator('input[name="createConditionAttribute"]')
-    .fill("region");
+    .locator('select[name="createConditionAttribute"]')
+    .selectOption("region");
   await createForm
     .locator('input[name="createConditionValue"]')
     .fill("cn");

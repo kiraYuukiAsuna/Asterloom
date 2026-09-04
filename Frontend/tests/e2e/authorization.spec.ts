@@ -194,7 +194,10 @@ test("manages the complete authorization surface through the Web Console", async
   await createPolicyCard.locator('input[name="policyResourceId"]').fill("order-42");
   await createPolicyCard.getByLabel("Enable ABAC attribute condition").check();
   await createPolicyCard
-    .locator('input[name="authorizationPolicyConditionConditionAttribute"]')
+    .locator('select[name="authorizationPolicyConditionConditionAttribute"]')
+    .selectOption("__custom__");
+  await createPolicyCard
+    .locator('input[name="authorizationPolicyConditionCustomConditionAttribute"]')
     .fill("subject.department");
   await createPolicyCard
     .locator('input[name="authorizationPolicyConditionConditionValue"]')
